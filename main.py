@@ -1,0 +1,109 @@
+from itertools import combinations_with_replacement
+from tkinter import *
+from tkinter import ttk
+from tkinter.font import Font
+
+
+class Root(Tk):
+    def __init__(self):
+        super().__init__()
+        self.width, self.height, self.font_size = 350, 175, 10
+        self.geometry(f"{self.width}x{self.height}")
+        self.title('VTM calculator')
+
+        self.scale = 1
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.dice_number = IntVar(value=1)
+        self.difficulty = IntVar(value=6)
+        self.success_needed = IntVar(value=1)
+
+        self.result = StringVar(value='0.00%')
+
+        self.interface()
+
+    def scale_up(self, up=True):
+        if up:
+            if self.scale < 4:
+                self.scale += 1
+                self.width *= 2
+                self.height *= 2
+                self.font_size *= 2
+        else:
+            if self.scale > 1:
+                self.scale -= 1
+                self.width //= 2
+                self.height //= 2
+                self.font_size //= 2
+        self.geometry(f"{self.width}x{self.height}")
+        for widget in self.winfo_children():
+            widget.destroy()
+        self.interface()
+
+    def calculate(self):
+        calculator = Calculator(self.dice_number.get(), self.difficulty.get(), self.success_needed.get())
+        self.result.set(f'{calculator.get_result():.2f}%')
+
+    @staticmethod
+    def place_widgets(lst: list[list[Widget]]) -> None:
+        for y in range(len(lst)):
+            for x in range(len(lst[y])):
+                lst[y][x].grid(column=x, row=y)
+
+    def interface(self):
+        frm_main = ttk.Frame(self, padding=20)
+        lbl_title = ttk.Label(frm_main, text='VTM calculator', font=Font(size=int(self.font_size * 1.5)))
+        frm1 = ttk.Frame(frm_main, padding=10)
+        btn = ttk.Button(frm_main, text='Calculate!', width=10*self.scale, command=self.calculate)
+
+        frm_main_placement = [[lbl_title],
+                              [frm1],
+                              [btn]]
+
+        lbl_result = ttk.Label(self, textvariable=self.result, font=Font(size=int(self.font_size * 2)), width=8)
+
+        frm_scale = ttk.Frame(self, padding=10)
+        btn_plus = ttk.Button(frm_scale, width=1*self.scale, text='+', command=lambda: self.scale_up(True))
+        btn_minus = ttk.Button(frm_scale, width=1*self.scale, text='-', command=lambda: self.scale_up(False))
+        frm_scale_placement = [[btn_plus],
+                               [btn_minus]]
+
+        root_placement = [[frm_main, lbl_result, frm_scale]]
+
+        lbl1 = ttk.Label(frm1, text="Number of dice:", padding=3*self.scale, font=Font(size=self.font_size))
+        lbl2 = ttk.Label(frm1, text="Difficulty:", padding=3*self.scale, font=Font(size=self.font_size))
+        lbl3 = ttk.Label(frm1, text="Success needed:", padding=3*self.scale, font=Font(size=self.font_size))
+        spn_box1 = ttk.Spinbox(frm1, width=2*self.scale, from_=1, to=20, increment=1, textvariable=self.dice_number, font=Font(size=self.font_size))
+        spn_box2 = ttk.Spinbox(frm1, width=2*self.scale, from_=2, to=10, increment=1, textvariable=self.difficulty, font=Font(size=self.font_size))
+        spn_box3 = ttk.Spinbox(frm1, width=2*self.scale, from_=1, to=10, increment=1, textvariable=self.success_needed, font=Font(size=self.font_size))
+        frm1_placement = [[lbl1, spn_box1],
+                          [lbl2, spn_box2],
+                          [lbl3, spn_box3]]
+
+
+
+        for obj in (root_placement, frm_main_placement, frm1_placement, frm_scale_placement):
+            self.place_widgets(obj)
+
+
+class Calculator:
+    def __init__(self, dice_number: int = 1, difficulty: int = 6, success_needed: int = 1):
+        self.dice_number, self.difficulty, self.success_needed = dice_number, difficulty, success_needed
+
+    def get_product(self) -> list[tuple[int, ...]]:
+        return list(combinations_with_replacement(range(1, 10 + 1), self.dice_number))
+
+    def run(self, prod: list[tuple[int, ...]]) -> list[bool]:
+        return [[i >= self.difficulty for i in lst].count(True) - lst.count(1) >= self.success_needed for lst in prod]
+
+    def get_result(self) -> float:
+        result = self.run(self.get_product())
+        return result.count(True) / len(result) * 100
+
+
+root = Root()
+root.mainloop()
