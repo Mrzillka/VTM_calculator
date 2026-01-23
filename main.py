@@ -8,7 +8,7 @@ from tkinter.font import Font
 class Root(Tk):
     def __init__(self):
         super().__init__()
-        self.width, self.height, self.font_size = 410, 200, 10
+        self.width, self.height, self.font_size = 500, 200, 10
         self.geometry(f"{self.width}x{self.height}")
         self.title('VTM calculator')
 
@@ -68,6 +68,12 @@ class Root(Tk):
         self.roll_result_3.set(f'{self.roll_result[10:15]}')
         self.roll_result_4.set(f'{self.roll_result[15:]}')
 
+    def roll_and_calculate(self):
+        self.calculate()
+        self.roll()
+
+    def scaler(self, s, var):
+        var.set(int(float(s)))
 
     @staticmethod
     def place_widgets(lst: list[list[Widget]]) -> None:
@@ -79,27 +85,34 @@ class Root(Tk):
         frm_main = ttk.Frame(self, padding=20)
         lbl_title = ttk.Label(frm_main, text='VTM calculator', font=Font(size=int(self.font_size * 1)))
         frm1 = ttk.Frame(frm_main, padding=10)
-        btn_calkulate = ttk.Button(frm_main, text='Calculate!', width=10 * self.scale, command=self.calculate)
-        btn_roll = ttk.Button(frm_main, text='Roll!', width=10 * self.scale, command=self.roll)
+        btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', width=20 * self.scale,
+                                   # font=Font(size=int(self.font_size * 1)),
+                                   command=self.roll_and_calculate)
+        # btn_calkulate = ttk.Button(frm_main, text='Calculate!', width=10 * self.scale, command=self.calculate)
+        # btn_roll = ttk.Button(frm_main, text='Roll!', width=10 * self.scale, command=self.roll)
 
         frm_main_placement = [[lbl_title],
                               [frm1],
-                              [btn_calkulate],
-                              [btn_roll]]
+                              [btn_calkulate]]
 
         frm_results = ttk.Frame(self, padding=10)
         lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, font=Font(size=int(self.font_size * 2)),
                                     width=8, anchor="w")
-        lbl_result_roll_1 = ttk.Label(frm_results, textvariable=self.roll_result_1, font=Font(size=int(self.font_size * 1.5)),
-                                    width=15, anchor="n")
-        lbl_result_roll_2 = ttk.Label(frm_results, textvariable=self.roll_result_2, font=Font(size=int(self.font_size * 1.5)),
-                                    width=15, anchor="n")
-        lbl_result_roll_3 = ttk.Label(frm_results, textvariable=self.roll_result_3, font=Font(size=int(self.font_size * 1.5)),
-                                    width=15, anchor="n")
-        lbl_result_roll_4 = ttk.Label(frm_results, textvariable=self.roll_result_4, font=Font(size=int(self.font_size * 1.5)),
-                                    width=15, anchor="n")
-        lbl_successes = ttk.Label(frm_results, textvariable=self.successes, font=Font(size=int(self.font_size * 2)),
-                                    width=8, anchor='n')
+        lbl_result_roll_1 = ttk.Label(frm_results, textvariable=self.roll_result_1,
+                                      font=Font(size=int(self.font_size * 1.5)),
+                                      width=12, anchor="n")
+        lbl_result_roll_2 = ttk.Label(frm_results, textvariable=self.roll_result_2,
+                                      font=Font(size=int(self.font_size * 1.5)),
+                                      width=12, anchor="n")
+        lbl_result_roll_3 = ttk.Label(frm_results, textvariable=self.roll_result_3,
+                                      font=Font(size=int(self.font_size * 1.5)),
+                                      width=12, anchor="n")
+        lbl_result_roll_4 = ttk.Label(frm_results, textvariable=self.roll_result_4,
+                                      font=Font(size=int(self.font_size * 1.5)),
+                                      width=12, anchor="n")
+        lbl_successes = ttk.Label(frm_results, textvariable=self.successes,
+                                  font=Font(size=int(self.font_size * 2)),
+                                  width=8, anchor='n')
         frm_results_placement = [[lbl_result_calc],
                                  [lbl_result_roll_1],
                                  [lbl_result_roll_2],
@@ -115,18 +128,48 @@ class Root(Tk):
 
         root_placement = [[frm_main, frm_results, frm_scale]]
 
-        lbl1 = ttk.Label(frm1, text="Number of dice:", padding=3 * self.scale, font=Font(size=self.font_size))
-        lbl2 = ttk.Label(frm1, text="Difficulty:", padding=3 * self.scale, font=Font(size=self.font_size))
-        lbl3 = ttk.Label(frm1, text="Success needed:", padding=3 * self.scale, font=Font(size=self.font_size))
-        spn_box1 = ttk.Spinbox(frm1, width=2 * self.scale, from_=1, to=20, increment=1, textvariable=self.dice_number,
-                               font=Font(size=self.font_size))
-        spn_box2 = ttk.Spinbox(frm1, width=2 * self.scale, from_=2, to=10, increment=1, textvariable=self.difficulty,
-                               font=Font(size=self.font_size))
-        spn_box3 = ttk.Spinbox(frm1, width=2 * self.scale, from_=1, to=10, increment=1,
-                               textvariable=self.success_needed, font=Font(size=self.font_size))
-        frm1_placement = [[lbl1, spn_box1],
-                          [lbl2, spn_box2],
-                          [lbl3, spn_box3]]
+        lbl1 = ttk.Label(frm1, text="Number of dice:", width=15, padding=3 * self.scale, anchor='e',
+                         font=Font(size=self.font_size))
+        lbl2 = ttk.Label(frm1, text="Difficulty:", width=15, padding=3 * self.scale, anchor='e',
+                         font=Font(size=self.font_size))
+        lbl3 = ttk.Label(frm1, text="Success needed:", width=15, padding=3 * self.scale, anchor='e',
+                         font=Font(size=self.font_size))
+        scale_1 = ttk.Scale(frm1,
+                            from_=1,
+                            to=20,
+                            length=100 * self.scale,
+                            variable=self.dice_number,
+                            command=lambda s: self.scaler(s, self.dice_number))
+        lbl_scale_1 = ttk.Label(frm1,
+                                textvariable=self.dice_number,
+                                width=3,
+                                padding=3 * self.scale,
+                                font=Font(size=self.font_size))
+        scale_2 = ttk.Scale(frm1,
+                            from_=2,
+                            to=10,
+                            length=100 * self.scale,
+                            variable=self.difficulty,
+                            command=lambda s: self.scaler(s, self.difficulty))
+        lbl_scale_2 = ttk.Label(frm1,
+                                textvariable=self.difficulty,
+                                width=3,
+                                padding=3 * self.scale,
+                                font=Font(size=self.font_size))
+        scale_3 = ttk.Scale(frm1,
+                            from_=1,
+                            to=10,
+                            length=100 * self.scale,
+                            variable=self.success_needed,
+                            command=lambda s: self.scaler(s, self.success_needed))
+        lbl_scale_3 = ttk.Label(frm1,
+                                textvariable=self.success_needed,
+                                width=3,
+                                padding=3 * self.scale,
+                                font=Font(size=self.font_size))
+        frm1_placement = [[lbl1, scale_1, lbl_scale_1],
+                          [lbl2, scale_2, lbl_scale_2],
+                          [lbl3, scale_3, lbl_scale_3]]
 
         for obj in (root_placement, frm_main_placement, frm_results_placement, frm1_placement, frm_scale_placement):
             self.place_widgets(obj)
