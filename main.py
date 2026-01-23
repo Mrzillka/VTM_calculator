@@ -99,7 +99,7 @@ class Root(Tk):
         lbl_result_roll_4 = ttk.Label(frm_results, textvariable=self.roll_result_4, font=Font(size=int(self.font_size * 1.5)),
                                     width=15, anchor="n")
         lbl_successes = ttk.Label(frm_results, textvariable=self.successes, font=Font(size=int(self.font_size * 2)),
-                                    width=8, anchor='w')
+                                    width=8, anchor='n')
         frm_results_placement = [[lbl_result_calc],
                                  [lbl_result_roll_1],
                                  [lbl_result_roll_2],
