@@ -8,7 +8,7 @@ from tkinter.font import Font
 class Root(Tk):
     def __init__(self):
         super().__init__()
-        self.width, self.height, self.font_size = 775, 350, 10
+        self.width, self.height, self.font_size = 775, 450, 10
         self.geometry(f"{self.width}x{self.height}")
         self.title('VTM calculator')
 
@@ -22,6 +22,8 @@ class Root(Tk):
         self.dice_number = IntVar(value=1)
         self.difficulty = IntVar(value=6)
         self.success_needed = IntVar(value=1)
+        self.auto_success = IntVar(value=0)
+        self.additional_options = BooleanVar(value=False)
 
         self.result = StringVar(value='0.00%')
         self.roll_result = []
@@ -34,6 +36,7 @@ class Root(Tk):
             "my.TButton": ttk.Style(),
             "my.Horizontal.TScale": ttk.Style(),
             "my.TSpinbox": ttk.Style(),
+            "my.TCheckbutton": ttk.Style(),
             "L.TLabel": ttk.Style(),
             "M.TLabel": ttk.Style(),
             "S.TLabel": ttk.Style(),
@@ -42,13 +45,22 @@ class Root(Tk):
 
         self.interface()
 
+    def redraw_interface(self):
+        # TODO: window size update when add widgets
+        for widget in self.winfo_children():
+            widget.destroy()
+        self.interface()
+
     def styles_configure(self):
+        # TODO: test styles functionality
         self.styles["my.TButton"].configure("my.TButton", font=("Javanese text", int(self.font_size * 1.5)),
                                             padding=3 * self.scale, )
         self.styles["my.Horizontal.TScale"].configure("my.Horizontal.TScale", font=("Javanese text", self.font_size),
                                                       padding=3 * self.scale, )
         self.styles["my.TSpinbox"].configure("my.TSpinbox", font=("Javanese text", self.font_size),
                                              padding=3 * self.scale, )
+        self.styles["my.TCheckbutton"].configure("my.TCheckbutton", font=("Javanese text", self.font_size),
+                                                 padding=3 * self.scale)
         self.styles["L.TLabel"].configure("L.TLabel", font=("Javanese text", self.font_size * 2),
                                           padding=3 * self.scale)
         self.styles["M.TLabel"].configure("M.TLabel", font=("Javanese text", int(self.font_size * 1.5)),
@@ -71,16 +83,14 @@ class Root(Tk):
         self.geometry(f"{self.width}x{self.height}")
         self.styles_configure()
 
-        for widget in self.winfo_children():
-            widget.destroy()
-        self.interface()
+        self.redraw_interface()
 
     def calculate(self):
         calculator = Calculator(self.dice_number.get(), self.difficulty.get(), self.success_needed.get())
         self.result.set(f'Chance: {calculator.get_result():.2f}%')
 
     def roll(self):
-        roller = Roller(self.dice_number.get(), self.difficulty.get())
+        roller = Roller(self.dice_number.get(), self.difficulty.get(), self.auto_success.get())
         roll, successes = roller.get_result()
         self.roll_result = roll
         self.set_roll_result_placement()
@@ -104,8 +114,9 @@ class Root(Tk):
                 lst[y][x].grid(column=x, row=y)
 
     def interface(self):
+        # TODO: rework widget placement
         frm_main = ttk.Frame(self, padding=20)
-        lbl_title = ttk.Label(frm_main, text='VTM calculator', style='L.TLabel')
+        lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
         frm1 = ttk.Frame(frm_main, padding=10)
         btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', width=20 * self.scale, style="my.TButton",
                                    command=self.roll_and_calculate)
@@ -150,62 +161,92 @@ class Root(Tk):
         root_placement = [[frm_main, frm_results, frm_scale]]
 
         lbl1 = ttk.Label(frm1, text="Number of dice:", width=15, style="M.TLabel", anchor='e')
-        lbl2 = ttk.Label(frm1, text="Difficulty:", width=15, style="M.TLabel", anchor='e')
-        lbl3 = ttk.Label(frm1, text="Success needed:", width=15, style="M.TLabel", anchor='e')
-
         scale_1 = ttk.Scale(frm1,
                             from_=1,
                             to=15,
                             length=125 * self.scale,
                             variable=self.dice_number,
+                            style="my.Horizontal.TScale",
                             command=lambda s: self.scaler(s, self.dice_number))
         spinbox_1 = ttk.Spinbox(frm1,
                                 from_=1,
                                 to=15,
                                 textvariable=self.dice_number,
                                 width=3,
-                                font=Font(size=self.font_size))
+                                style="my.TSpinbox")
+        lbl2 = ttk.Label(frm1, text="Difficulty:", width=15, style="M.TLabel", anchor='e')
         scale_2 = ttk.Scale(frm1,
                             from_=2,
                             to=10,
                             length=125 * self.scale,
                             variable=self.difficulty,
+                            style="my.Horizontal.TScale",
                             command=lambda s: self.scaler(s, self.difficulty))
         spinbox_2 = ttk.Spinbox(frm1,
                                 from_=2,
                                 to=10,
                                 textvariable=self.difficulty,
                                 width=3,
-                                font=Font(size=self.font_size))
-        scale_3 = ttk.Scale(frm1,
-                            from_=1,
-                            to=10,
-                            length=175 * self.scale,
-                            variable=self.success_needed,
-                            command=lambda s: self.scaler(s, self.success_needed))
-        spinbox_3 = ttk.Spinbox(frm1,
-                                from_=1,
-                                to=10,
-                                textvariable=self.success_needed,
-                                width=3,
-                                font=Font(size=self.font_size))
+                                style="my.TSpinbox")
+        chk_box = ttk.Checkbutton(frm1,
+                                  text="Additional options",
+                                  variable=self.additional_options,
+                                  command=self.redraw_interface,
+                                  style="my.TCheckbutton")
         frm1_placement = [[lbl1, scale_1, spinbox_1],
                           [lbl2, scale_2, spinbox_2],
-                          [lbl3, scale_3, spinbox_3]]
+                          [chk_box]]
+        if self.additional_options.get():
+            lbl3 = ttk.Label(frm1, text="Success needed:", width=15, style="M.TLabel", anchor='e')
+            scale_3 = ttk.Scale(frm1,
+                                from_=1,
+                                to=10,
+                                length=175 * self.scale,
+                                variable=self.success_needed,
+                                style="my.Horizontal.TScale",
+                                command=lambda s: self.scaler(s, self.success_needed))
+            spinbox_3 = ttk.Spinbox(frm1,
+                                    from_=1,
+                                    to=10,
+                                    textvariable=self.success_needed,
+                                    width=3,
+                                    style="my.TSpinbox")
+            frm1_placement.append([lbl3, scale_3, spinbox_3])
+            lbl4 = ttk.Label(frm1, text="Auto success:", width=15, style="M.TLabel", anchor='e')
+            scale_4 = ttk.Scale(frm1,
+                                from_=0,
+                                to=5,
+                                length=175 * self.scale,
+                                variable=self.auto_success,
+                                style="my.Horizontal.TScale",
+                                command=lambda s: self.scaler(s, self.auto_success))
+            spinbox_4 = ttk.Spinbox(frm1,
+                                    from_=0,
+                                    to=5,
+                                    textvariable=self.auto_success,
+                                    width=3,
+                                    style="my.TSpinbox")
+            frm1_placement.append([lbl4, scale_4, spinbox_4])
 
         for obj in (root_placement, frm_main_placement, frm_results_placement, frm1_placement, frm_scale_placement):
             self.place_widgets(obj)
 
 
 class Calculator:
-    def __init__(self, dice_number: int = 1, difficulty: int = 6, success_needed: int = 1):
-        self.dice_number, self.difficulty, self.success_needed = dice_number, difficulty, success_needed
+    def __init__(self, dice_number: int = 1, difficulty: int = 6, success_needed: int = 1, auto_successes: int = 0):
+        self.dice_number = dice_number
+        self.difficulty = difficulty
+        self.success_needed = success_needed
+        self.auto_successes = auto_successes
 
     def get_product(self) -> list[tuple[int, ...]]:
         return list(combinations_with_replacement(range(1, 10 + 1), self.dice_number))
 
     def run(self, prod: list[tuple[int, ...]]) -> list[bool]:
-        return [[i >= self.difficulty for i in lst].count(True) - lst.count(1) >= self.success_needed for lst in prod]
+        return [
+            [i >= self.difficulty for i in lst].count(True) - lst.count(1) + self.auto_successes >= self.success_needed
+            for lst in
+            prod]
 
     def get_result(self) -> float:
         result = self.run(self.get_product())
@@ -213,16 +254,17 @@ class Calculator:
 
 
 class Roller:
-    def __init__(self, dice_number: int = 1, difficulty: int = 6):
-        self.dice_number, self.difficulty = dice_number, difficulty
+    def __init__(self, dice_number: int = 1, difficulty: int = 6, auto_success: int = 0):
+        self.dice_number, self.difficulty, self.auto_success = dice_number, difficulty, auto_success
 
     def get_result(self):
         roll = [randint(1, 10) for _ in range(self.dice_number)]
-        successes = len([1 for d in roll if d >= self.difficulty])
+        successes = len([1 for d in roll if d >= self.difficulty]) + self.auto_success
         failures = roll.count(1)
         successes -= failures
         return roll, successes
 
 
-root = Root()
-root.mainloop()
+if __name__ == '__main__':
+    root = Root()
+    root.mainloop()
