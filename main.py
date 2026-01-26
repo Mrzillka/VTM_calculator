@@ -7,7 +7,6 @@ from typing import Tuple, List
 
 class Root(Tk):
     # TODO: add statistics
-    # TODO: add specialisations
     def __init__(self):
         super().__init__()
         self.start_font_size = 10
@@ -26,12 +25,14 @@ class Root(Tk):
         self.success_needed = IntVar(value=1)
         self.auto_success = IntVar(value=0)
         self.additional_options = BooleanVar(value=False)
+        self.specialisation = BooleanVar(value=False)
 
         self.result = StringVar(value='Chance: -.--%')
         self.roll_result = []
+        self.specialisation_roll = []
         self.roll_result_1 = StringVar(value="[]")
         self.roll_result_2 = StringVar(value="")
-        self.roll_result_3 = StringVar(value="")
+        self.roll_result_spec = StringVar(value="")
         self.successes = StringVar(value="0")
 
         self.styles = {
@@ -58,7 +59,7 @@ class Root(Tk):
     def styles_configure(self):
         # TODO: test styles functionality
         self.styles["first.TFrame"].configure("first.TFrame", background='#A0A0A0')
-        self.styles["second.TFrame"].configure("second.TFrame", background='#000000')
+        self.styles["second.TFrame"].configure("second.TFrame", background='#010101')
         self.styles["third.TFrame"].configure("third.TFrame", background='#FFFFFF')
         self.styles["my.TButton"].configure("my.TButton", font=("Javanese text", int(self.font_size * 1.5)),
                                             padding=3 * self.scale, )
@@ -75,7 +76,6 @@ class Root(Tk):
         self.styles["S.TLabel"].configure("S.TLabel", font=("Javanese text", self.font_size), padding=3 * self.scale)
 
     def redraw_interface(self) -> None:
-        # TODO: size from widget size
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -112,9 +112,13 @@ class Root(Tk):
         self.result.set(f'Chance: {calculator.get_result():.2f}%')
 
     def roll(self) -> None:
-        roller = Roller(self.dice_number.get(), self.difficulty.get(), self.auto_success.get())
-        roll, successes = roller.get_result()
+        roller = Roller(self.dice_number.get(),
+                        self.difficulty.get(),
+                        self.auto_success.get(),
+                        self.specialisation.get())
+        roll, successes, specialisation_roll = roller.get_result()
         self.roll_result = roll
+        self.specialisation_roll = specialisation_roll
         self.set_roll_result_placement()
         self.successes.set(f"{successes}")
 
@@ -123,8 +127,9 @@ class Root(Tk):
         self.roll()
 
     def set_roll_result_placement(self) -> None:
-        self.roll_result_1.set(f'{self.roll_result[:8]}')
-        self.roll_result_2.set(f'{self.roll_result[8:]}')
+        self.roll_result_1.set(f'{", ".join(map(str, self.roll_result[:8]))}')
+        self.roll_result_2.set(f'{", ".join(map(str, self.roll_result[8:]))}')
+        self.roll_result_spec.set(f'{", ".join(map(str, self.specialisation_roll))}')
 
     @staticmethod
     def scaler(s, var) -> None:
@@ -181,14 +186,14 @@ class Root(Tk):
                                 textvariable=self.difficulty,
                                 width=3,
                                 style="my.TSpinbox")
-        chk_box = ttk.Checkbutton(frm_controls,
+        chk_additional_options = ttk.Checkbutton(frm_controls,
                                   text="Additional options",
                                   variable=self.additional_options,
                                   command=self.redraw_interface,
                                   style="my.TCheckbutton")
         frm_controls_placement = [[lbl1, scale_1, spinbox_1],
                                   [lbl2, scale_2, spinbox_2],
-                                  [chk_box]]
+                                  [chk_additional_options]]
 
         if self.additional_options.get():
             lbl3 = ttk.Label(frm_controls, text="Success needed:", width=12, style="M.TLabel", anchor='e')
@@ -206,6 +211,7 @@ class Root(Tk):
                                     width=3,
                                     style="my.TSpinbox")
             frm_controls_placement.append([lbl3, scale_3, spinbox_3])
+
             lbl4 = ttk.Label(frm_controls, text="Auto success:", width=12, style="M.TLabel", anchor='e')
             scale_4 = ttk.Scale(frm_controls,
                                 from_=0,
@@ -222,6 +228,12 @@ class Root(Tk):
                                     style="my.TSpinbox")
             frm_controls_placement.append([lbl4, scale_4, spinbox_4])
 
+            chk_specialisations = ttk.Checkbutton(frm_controls,
+                                      text="Specialisation?",
+                                      variable=self.specialisation,
+                                      style="my.TCheckbutton")
+            frm_controls_placement.append([chk_specialisations])
+
         # frm_result
         lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, style="L.TLabel", width=14, anchor="center")
         lbl_result_roll_1 = ttk.Label(frm_results,
@@ -234,6 +246,11 @@ class Root(Tk):
                                       style="S.TLabel",
                                       width=20,
                                       anchor="n")
+        lbl_result_roll_spec = ttk.Label(frm_results,
+                                      textvariable=self.roll_result_spec,
+                                      style="S.TLabel",
+                                      width=20,
+                                      anchor="n")
         lbl_successes = ttk.Label(frm_results,
                                   textvariable=self.successes,
                                   style="L.TLabel",
@@ -242,6 +259,7 @@ class Root(Tk):
         frm_results_placement = [[lbl_result_calc],
                                  [lbl_result_roll_1],
                                  [lbl_result_roll_2],
+                                 [lbl_result_roll_spec],
                                  [lbl_successes]]
 
         # frm_scale
@@ -281,15 +299,27 @@ class Calculator:
 
 
 class Roller:
-    def __init__(self, dice_number: int = 1, difficulty: int = 6, auto_success: int = 0):
-        self.dice_number, self.difficulty, self.auto_success = dice_number, difficulty, auto_success
+    def __init__(self, dice_number: int = 1, difficulty: int = 6, auto_success: int = 0, specialisation: bool = False):
+        self.dice_number = dice_number
+        self.difficulty = difficulty
+        self.auto_success = auto_success
+        self.specialisation = specialisation
 
-    def get_result(self) -> Tuple[List[int], int]:
+    def get_result(self) -> Tuple[List[int], int, List[int]]:
         roll = [randint(1, 10) for _ in range(self.dice_number)]
-        successes = len([1 for d in roll if d >= self.difficulty]) + self.auto_success
+
+        additional_roll = []
+        if self.specialisation:
+            for r in [i for i in roll if i == 10]:
+                new_ = r
+                while new_ == 10:
+                    new_ = randint(1, 10)
+                    additional_roll.append(new_)
+
+        successes = len([1 for d in roll + additional_roll if d >= self.difficulty]) + self.auto_success
         failures = roll.count(1)
         successes -= failures
-        return roll, successes
+        return roll, successes, additional_roll
 
 
 if __name__ == '__main__':
