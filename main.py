@@ -10,11 +10,16 @@ class Root(Tk):
     # TODO: add specialisations
     def __init__(self):
         super().__init__()
-        self.width, self.height, self.font_size = 100, 100, 10
-        self.geometry(f"{self.width}x{self.height}")
+        self.start_font_size = 10
+        self.font_size = self.start_font_size
         self.title('VTM calculator')
 
         self.scale = 1
+
+        self.grid_columnconfigure(0, pad=10)
+        self.grid_columnconfigure(1, pad=10)
+        self.grid_columnconfigure(2, pad=10)
+        self.grid_rowconfigure(0, pad=10)
 
         self.dice_number = IntVar(value=1)
         self.difficulty = IntVar(value=6)
@@ -22,7 +27,7 @@ class Root(Tk):
         self.auto_success = IntVar(value=0)
         self.additional_options = BooleanVar(value=False)
 
-        self.result = StringVar(value='0.00%')
+        self.result = StringVar(value='Chance: -.--%')
         self.roll_result = []
         self.roll_result_1 = StringVar(value="[]")
         self.roll_result_2 = StringVar(value="")
@@ -48,13 +53,13 @@ class Root(Tk):
         self.width = sum(frm.winfo_width() for frm in self.winfo_children()) + 10 * 3
         self.height = max(frm.winfo_height() for frm in self.winfo_children()) + 10
 
-        self.redraw_interface()
+        self.set_window_size()
 
     def styles_configure(self):
         # TODO: test styles functionality
         self.styles["first.TFrame"].configure("first.TFrame", background='#A0A0A0')
         self.styles["second.TFrame"].configure("second.TFrame", background='#000000')
-        self.styles["third.TFrame"].configure("third.TFrame", background='#A0A0A0')
+        self.styles["third.TFrame"].configure("third.TFrame", background='#FFFFFF')
         self.styles["my.TButton"].configure("my.TButton", font=("Javanese text", int(self.font_size * 1.5)),
                                             padding=3 * self.scale, )
         self.styles["my.Horizontal.TScale"].configure("my.Horizontal.TScale", font=("Javanese text", self.font_size),
@@ -69,31 +74,35 @@ class Root(Tk):
                                           padding=3 * self.scale)
         self.styles["S.TLabel"].configure("S.TLabel", font=("Javanese text", self.font_size), padding=3 * self.scale)
 
-    def redraw_interface(self):
+    def redraw_interface(self) -> None:
+        # TODO: size from widget size
         for widget in self.winfo_children():
             widget.destroy()
-        additional_width = 0
-        additional_height = 0
-        if self.additional_options.get():
-            additional_height = 100
 
-        self.geometry(f"{self.width * self.scale}x{self.height * self.scale + additional_height * self.scale}")
         self.grid_columnconfigure(0, pad=10)
         self.grid_columnconfigure(1, pad=10)
         self.grid_columnconfigure(2, pad=10)
         self.grid_rowconfigure(0, pad=10)
 
         self.interface()
+        self.set_window_size()
+
+    def set_window_size(self):
+        width = sum(frm.winfo_width() for frm in self.winfo_children()) + 10 * 3
+        height = max(frm.winfo_height() for frm in self.winfo_children()) + 10
+        self.geometry(f"{width}x{height}")
 
     def scale_up(self, up=True) -> None:
         if up:
-            if self.scale < 4:
+            if self.scale < 3:
                 self.scale += 1
-                self.font_size *= 2
+                self.font_size *= self.scale
         else:
             if self.scale > 1:
                 self.scale -= 1
-                self.font_size //= 2
+                self.font_size = self.start_font_size * self.scale
+            else:
+                return
 
         self.styles_configure()
         self.redraw_interface()
@@ -131,7 +140,7 @@ class Root(Tk):
     def interface(self) -> None:
         # 3 main frames
         frm_main = ttk.Frame(self, padding=10, style='first.TFrame')
-        frm_results = ttk.Frame(self, padding=10, style='first.TFrame')
+        frm_results = ttk.Frame(self, padding=10, style='second.TFrame')
         frm_scale = ttk.Frame(self, padding=10, style='first.TFrame')
 
         # frm_main
@@ -214,7 +223,7 @@ class Root(Tk):
             frm_controls_placement.append([lbl4, scale_4, spinbox_4])
 
         # frm_result
-        lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, style="L.TLabel", width=15, anchor="center")
+        lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, style="L.TLabel", width=14, anchor="center")
         lbl_result_roll_1 = ttk.Label(frm_results,
                                       textvariable=self.roll_result_1,
                                       style="S.TLabel",
@@ -236,9 +245,9 @@ class Root(Tk):
                                  [lbl_successes]]
 
         # frm_scale
-        btn_plus = ttk.Button(frm_scale, width=2 * self.scale, text='+', style='my.TButton',
+        btn_plus = ttk.Button(frm_scale, width=2, text='+', style='my.TButton',
                               command=lambda: self.scale_up(True))
-        btn_minus = ttk.Button(frm_scale, width=2 * self.scale, text='-', style='my.TButton',
+        btn_minus = ttk.Button(frm_scale, width=2, text='-', style='my.TButton',
                                command=lambda: self.scale_up(False))
         frm_scale_placement = [[btn_plus],
                                [btn_minus]]
