@@ -1,5 +1,5 @@
 import asyncio
-import os
+# import os
 import threading
 from itertools import combinations_with_replacement
 from random import randint, choice
@@ -8,17 +8,19 @@ from tkinter import messagebox
 from tkinter import ttk
 from typing import Tuple, List
 
-import dotenv
+# import dotenv
 from telegram import Bot, Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes, Application, CommandHandler
 
 NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
 
-dotenv.load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-THREAD_ID = None
+# dotenv.load_dotenv()
+# BOT_TOKEN = os.getenv("BOT_TOKEN")
+# CHAT_ID = os.getenv("CHAT_ID")
+# THREAD_ID = None
+
+BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
 
 
 class Root(Tk):
@@ -30,6 +32,7 @@ class Root(Tk):
         self.start_font_size = 10
         self.font_size = self.start_font_size
         self.title('VTM calculator')
+        self.resizable(False, False)
 
         self.scale = 1
 
@@ -175,12 +178,17 @@ class Root(Tk):
                 lst[y][x].grid(column=x, row=y)
 
     def send_to_telegram(self):
-        message = f"""{self.name.get()} rolled:
-{', '.join((self.roll_result_1.get(), self.roll_result_2.get(), self.roll_result_spec.get()))}
-on {self.dice_number.get()} dices with difficulty {self.difficulty.get()}.
+        roll = self.roll_result_1.get().split(', ') + self.roll_result_2.get().split(
+            ', ') + self.roll_result_spec.get().split(', ')
+        roll = [i for i in roll if i]
+        print(roll)
 
-Total successes: {self.successes.get()}
-It's {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!
+        message = f"""<b><i>{self.name.get()}</i> rolled:</b>
+<i>{', '.join(roll)}</i>
+on <b>{self.dice_number.get()} dices</b> with <b> difficulty {self.difficulty.get()}</b>.
+
+<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>
+<b><u>Total successes: {self.successes.get()}</u></b>
 
 Succeed {self.result.get()}
 """
@@ -286,7 +294,7 @@ Succeed {self.result.get()}
             frm_controls_placement.append([lbl5, entr_name])
 
             chk_specialisations = ttk.Checkbutton(frm_controls,
-                                                  text="Specialisation?",
+                                                  text="Specialisation",
                                                   variable=self.specialisation,
                                                   style="my.TCheckbutton")
             frm_controls_placement.append([chk_specialisations])
@@ -363,17 +371,21 @@ Results will be send to the last thread where you use /start command."""
         self.CHAT_ID = update.effective_chat.id
         self.THREAD_ID = update.message.message_thread_id
         try:
-            await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID, text=self.greeting_message)
+            await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID,
+                                           text=self.greeting_message)
         except TelegramError as e:
             raise RuntimeError(f"Telegram error: {e}")
+
+    # async def debug_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     async def send_telegram_message(self, text: str):
         bot = Bot(token=BOT_TOKEN)
         try:
             await bot.send_message(
-                chat_id=CHAT_ID,
+                chat_id=self.CHAT_ID,
                 message_thread_id=self.THREAD_ID,
-                text=text
+                text=text,
+                parse_mode="HTML"
             )
         except TelegramError as e:
             raise RuntimeError(f"Telegram error: {e}")
