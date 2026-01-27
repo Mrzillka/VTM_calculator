@@ -1,12 +1,30 @@
+import asyncio
+import os
+import threading
 from itertools import combinations_with_replacement
-from random import randint
+from random import randint, choice
 from tkinter import *
+from tkinter import messagebox
 from tkinter import ttk
 from typing import Tuple, List
 
+import dotenv
+from telegram import Bot, Update
+from telegram.error import TelegramError
+from telegram.ext import ContextTypes, Application, CommandHandler
+
+NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
+
+dotenv.load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+THREAD_ID = None
+
 
 class Root(Tk):
+
     # TODO: add statistics
+    # TODO: add roll_history
     def __init__(self):
         super().__init__()
         self.start_font_size = 10
@@ -14,6 +32,12 @@ class Root(Tk):
         self.title('VTM calculator')
 
         self.scale = 1
+
+        self.bot = TgBot(BOT_TOKEN)
+        threading.Thread(
+            target=self.bot.run_bot_polling,
+            daemon=True
+        ).start()
 
         self.grid_columnconfigure(0, pad=10)
         self.grid_columnconfigure(1, pad=10)
@@ -25,21 +49,25 @@ class Root(Tk):
         self.success_needed = IntVar(value=1)
         self.auto_success = IntVar(value=0)
         self.additional_options = BooleanVar(value=False)
+        self.is_send_to_telegram = BooleanVar(value=False)
+        self.name = StringVar(value=choice(NAMES))
         self.specialisation = BooleanVar(value=False)
 
         self.result = StringVar(value='Chance: -.--%')
         self.roll_result = []
         self.specialisation_roll = []
-        self.roll_result_1 = StringVar(value="[]")
+        self.roll_result_1 = StringVar(value="")
         self.roll_result_2 = StringVar(value="")
         self.roll_result_spec = StringVar(value="")
         self.successes = StringVar(value="0")
 
         self.styles = {
+            "my.TFrame": ttk.Style(),
             "first.TFrame": ttk.Style(),
             "second.TFrame": ttk.Style(),
             "third.TFrame": ttk.Style(),
             "my.TButton": ttk.Style(),
+            "my.TEntry": ttk.Style(),
             "my.Horizontal.TScale": ttk.Style(),
             "my.TSpinbox": ttk.Style(),
             "my.TCheckbutton": ttk.Style(),
@@ -58,15 +86,17 @@ class Root(Tk):
 
     def styles_configure(self):
         # TODO: test styles functionality
+        self.styles["my.TFrame"].configure("first.TFrame")
         self.styles["first.TFrame"].configure("first.TFrame", background='#A0A0A0')
         self.styles["second.TFrame"].configure("second.TFrame", background='#010101')
         self.styles["third.TFrame"].configure("third.TFrame", background='#FFFFFF')
         self.styles["my.TButton"].configure("my.TButton", font=("Javanese text", int(self.font_size * 1.5)),
-                                            padding=3 * self.scale, )
+                                            padding=3 * self.scale)
+        self.styles["my.TEntry"].configure("my.TEntry", font=("Javanese text", self.font_size))
         self.styles["my.Horizontal.TScale"].configure("my.Horizontal.TScale", font=("Javanese text", self.font_size),
-                                                      padding=3 * self.scale, )
+                                                      padding=3 * self.scale)
         self.styles["my.TSpinbox"].configure("my.TSpinbox", font=("Javanese text", self.font_size),
-                                             padding=3 * self.scale, )
+                                             padding=3 * self.scale)
         self.styles["my.TCheckbutton"].configure("my.TCheckbutton", font=("Javanese text", self.font_size),
                                                  padding=3 * self.scale)
         self.styles["L.TLabel"].configure("L.TLabel", font=("Javanese text", self.font_size * 2),
@@ -125,6 +155,8 @@ class Root(Tk):
     def roll_and_calculate(self) -> None:
         self.calculate()
         self.roll()
+        if self.is_send_to_telegram.get():
+            self.send_to_telegram()
 
     def set_roll_result_placement(self) -> None:
         self.roll_result_1.set(f'{", ".join(map(str, self.roll_result[:8]))}')
@@ -142,15 +174,31 @@ class Root(Tk):
                 lst[y][x].update()
                 lst[y][x].grid(column=x, row=y)
 
+    def send_to_telegram(self):
+        message = f"""{self.name.get()} rolled:
+{', '.join((self.roll_result_1.get(), self.roll_result_2.get(), self.roll_result_spec.get()))}
+on {self.dice_number.get()} dices with difficulty {self.difficulty.get()}.
+
+Total successes: {self.successes.get()}
+It's {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!
+
+Succeed {self.result.get()}
+"""
+
+        print(message + f"\n{'-' * 20}\n")
+
+        self.bot.threaded_send(message)
+
     def interface(self) -> None:
         # 3 main frames
-        frm_main = ttk.Frame(self, padding=10, style='first.TFrame')
-        frm_results = ttk.Frame(self, padding=10, style='second.TFrame')
-        frm_scale = ttk.Frame(self, padding=10, style='first.TFrame')
+        frm_main = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_results = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_scale = ttk.Frame(self, padding=10, style='my.TFrame')
 
         # frm_main
         lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
-        frm_controls = ttk.Frame(frm_main, padding=10, style="first.TFrame")
+        frm_controls = ttk.Frame(frm_main, padding=10, style="my.TFrame")
+        frm_controls.grid_columnconfigure(1, pad=5)
         btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', style="my.TButton",
                                    command=self.roll_and_calculate)
         frm_main_placement = [[lbl_title],
@@ -187,13 +235,17 @@ class Root(Tk):
                                 width=3,
                                 style="my.TSpinbox")
         chk_additional_options = ttk.Checkbutton(frm_controls,
-                                  text="Additional options",
-                                  variable=self.additional_options,
-                                  command=self.redraw_interface,
-                                  style="my.TCheckbutton")
+                                                 text="Additional options",
+                                                 variable=self.additional_options,
+                                                 command=self.redraw_interface,
+                                                 style="my.TCheckbutton")
+        chk_is_send_to_telegram = ttk.Checkbutton(frm_controls,
+                                                  text="Send to Telegram",
+                                                  variable=self.is_send_to_telegram,
+                                                  style="my.TCheckbutton")
         frm_controls_placement = [[lbl1, scale_1, spinbox_1],
                                   [lbl2, scale_2, spinbox_2],
-                                  [chk_additional_options]]
+                                  [chk_additional_options, chk_is_send_to_telegram]]
 
         if self.additional_options.get():
             lbl3 = ttk.Label(frm_controls, text="Success needed:", width=12, style="M.TLabel", anchor='e')
@@ -228,14 +280,19 @@ class Root(Tk):
                                     style="my.TSpinbox")
             frm_controls_placement.append([lbl4, scale_4, spinbox_4])
 
+            lbl5 = ttk.Label(frm_controls, text="Character name:", width=12, anchor='e', style="M.TLabel")
+            entr_name = ttk.Entry(frm_controls, textvariable=self.name, width=15,
+                                  font=("Javanese text", self.font_size))
+            frm_controls_placement.append([lbl5, entr_name])
+
             chk_specialisations = ttk.Checkbutton(frm_controls,
-                                      text="Specialisation?",
-                                      variable=self.specialisation,
-                                      style="my.TCheckbutton")
+                                                  text="Specialisation?",
+                                                  variable=self.specialisation,
+                                                  style="my.TCheckbutton")
             frm_controls_placement.append([chk_specialisations])
 
         # frm_result
-        lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, style="L.TLabel", width=14, anchor="center")
+        lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, width=14, anchor="center", style="L.TLabel")
         lbl_result_roll_1 = ttk.Label(frm_results,
                                       textvariable=self.roll_result_1,
                                       style="S.TLabel",
@@ -247,10 +304,10 @@ class Root(Tk):
                                       width=20,
                                       anchor="n")
         lbl_result_roll_spec = ttk.Label(frm_results,
-                                      textvariable=self.roll_result_spec,
-                                      style="S.TLabel",
-                                      width=20,
-                                      anchor="n")
+                                         textvariable=self.roll_result_spec,
+                                         style="S.TLabel",
+                                         width=20,
+                                         anchor="n")
         lbl_successes = ttk.Label(frm_results,
                                   textvariable=self.successes,
                                   style="L.TLabel",
@@ -275,6 +332,68 @@ class Root(Tk):
         for obj in (root_placement, frm_main_placement, frm_results_placement, frm_controls_placement,
                     frm_scale_placement):
             self.place_widgets(obj)
+
+
+class TgBot:
+    def __init__(self, token):
+        self.token = token
+        self.CHAT_ID = None
+        self.THREAD_ID = None
+
+        self.greeting_message = """Hello! I'm a bot, connected to VTM Calculator.
+
+Press check box in the desktop interface to send roll results in this thread
+
+Results will be send to the last thread where you use /start command."""
+
+        self.message = ""
+
+    def run_bot_polling(self):
+        application = (
+            Application.builder()
+            .token(BOT_TOKEN)
+            .build()
+        )
+
+        application.add_handler(CommandHandler("start", self.start_command))
+
+        application.run_polling()
+
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.CHAT_ID = update.effective_chat.id
+        self.THREAD_ID = update.message.message_thread_id
+        try:
+            await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID, text=self.greeting_message)
+        except TelegramError as e:
+            raise RuntimeError(f"Telegram error: {e}")
+
+    async def send_telegram_message(self, text: str):
+        bot = Bot(token=BOT_TOKEN)
+        try:
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                message_thread_id=self.THREAD_ID,
+                text=text
+            )
+        except TelegramError as e:
+            raise RuntimeError(f"Telegram error: {e}")
+
+    def send_message_from_gui(self, text: str):
+        async def runner():
+            await self.send_telegram_message(text)
+
+        try:
+            asyncio.run(runner())
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def threaded_send(self, text: str):
+        thread = threading.Thread(
+            target=self.send_message_from_gui,
+            args=(text,),
+            daemon=True
+        )
+        thread.start()
 
 
 class Calculator:
