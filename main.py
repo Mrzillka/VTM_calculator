@@ -1,32 +1,31 @@
 import asyncio
-# import os
+import logging
 import threading
 from itertools import combinations_with_replacement
 from random import randint, choice
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
-from typing import Tuple, List
+from typing import Tuple, List, Any
 
-# import dotenv
 from telegram import Bot, Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes, Application, CommandHandler
 
-NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
-# dotenv.load_dotenv()
-# BOT_TOKEN = os.getenv("BOT_TOKEN")
-# CHAT_ID = os.getenv("CHAT_ID")
-# THREAD_ID = None
+NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
 
 BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
 
 
 class Root(Tk):
-
     # TODO: add statistics
-    # TODO: add roll_history
+    # TODO: improve interface
+    # TODO: make initiative roll
     def __init__(self):
         super().__init__()
         self.start_font_size = 10
@@ -37,10 +36,7 @@ class Root(Tk):
         self.scale = 1
 
         self.bot = TgBot(BOT_TOKEN)
-        threading.Thread(
-            target=self.bot.run_bot_polling,
-            daemon=True
-        ).start()
+        self.chat_id = StringVar(value=self.bot.CHAT_ID)
 
         self.grid_columnconfigure(0, pad=10)
         self.grid_columnconfigure(1, pad=10)
@@ -69,7 +65,8 @@ class Root(Tk):
             "first.TFrame": ttk.Style(),
             "second.TFrame": ttk.Style(),
             "third.TFrame": ttk.Style(),
-            "my.TButton": ttk.Style(),
+            "L.TButton": ttk.Style(),
+            "S.TButton": ttk.Style(),
             "my.TEntry": ttk.Style(),
             "my.Horizontal.TScale": ttk.Style(),
             "my.TSpinbox": ttk.Style(),
@@ -93,8 +90,10 @@ class Root(Tk):
         self.styles["first.TFrame"].configure("first.TFrame", background='#A0A0A0')
         self.styles["second.TFrame"].configure("second.TFrame", background='#010101')
         self.styles["third.TFrame"].configure("third.TFrame", background='#FFFFFF')
-        self.styles["my.TButton"].configure("my.TButton", font=("Javanese text", int(self.font_size * 1.5)),
-                                            padding=3 * self.scale)
+        self.styles["L.TButton"].configure("L.TButton", font=("Javanese text", int(self.font_size * 1.5)),
+                                           padding=3 * self.scale)
+        self.styles["S.TButton"].configure("S.TButton", font=("Javanese text", self.font_size),
+                                           padding=3 * self.scale)
         self.styles["my.TEntry"].configure("my.TEntry", font=("Javanese text", self.font_size))
         self.styles["my.Horizontal.TScale"].configure("my.Horizontal.TScale", font=("Javanese text", self.font_size),
                                                       padding=3 * self.scale)
@@ -106,7 +105,8 @@ class Root(Tk):
                                           padding=3 * self.scale)
         self.styles["M.TLabel"].configure("M.TLabel", font=("Javanese text", int(self.font_size * 1.5)),
                                           padding=3 * self.scale)
-        self.styles["S.TLabel"].configure("S.TLabel", font=("Javanese text", self.font_size), padding=3 * self.scale)
+        self.styles["S.TLabel"].configure("S.TLabel", font=("Javanese text", self.font_size),
+                                          padding=3 * self.scale)
 
     def redraw_interface(self) -> None:
         for widget in self.winfo_children():
@@ -161,6 +161,12 @@ class Root(Tk):
         if self.is_send_to_telegram.get():
             self.send_to_telegram()
 
+    def run_bot_polling(self):
+        threading.Thread(
+            target=self.bot.run_bot_polling,
+            daemon=True
+        ).start()
+
     def set_roll_result_placement(self) -> None:
         self.roll_result_1.set(f'{", ".join(map(str, self.roll_result[:8]))}')
         self.roll_result_2.set(f'{", ".join(map(str, self.roll_result[8:]))}')
@@ -207,7 +213,7 @@ Succeed {self.result.get()}
         lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
         frm_controls = ttk.Frame(frm_main, padding=10, style="my.TFrame")
         frm_controls.grid_columnconfigure(1, pad=5)
-        btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', style="my.TButton",
+        btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', style="L.TButton",
                                    command=self.roll_and_calculate)
         frm_main_placement = [[lbl_title],
                               [frm_controls],
@@ -251,9 +257,9 @@ Succeed {self.result.get()}
                                                   text="Send to Telegram",
                                                   variable=self.is_send_to_telegram,
                                                   style="my.TCheckbutton")
-        frm_controls_placement = [[lbl1, scale_1, spinbox_1],
-                                  [lbl2, scale_2, spinbox_2],
-                                  [chk_additional_options, chk_is_send_to_telegram]]
+        frm_controls_placement: List[Any] = [[lbl1, scale_1, spinbox_1],
+                                             [lbl2, scale_2, spinbox_2],
+                                             [chk_additional_options, chk_is_send_to_telegram]]
 
         if self.additional_options.get():
             lbl3 = ttk.Label(frm_controls, text="Success needed:", width=12, style="M.TLabel", anchor='e')
@@ -299,6 +305,10 @@ Succeed {self.result.get()}
                                                   style="my.TCheckbutton")
             frm_controls_placement.append([chk_specialisations])
 
+            btn_connect = ttk.Button(frm_controls, text="Connect to Telegram", style='S.TButton',
+                                     command=self.run_bot_polling)
+            frm_controls_placement.append([btn_connect])
+
         # frm_result
         lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, width=14, anchor="center", style="L.TLabel")
         lbl_result_roll_1 = ttk.Label(frm_results,
@@ -328,9 +338,9 @@ Succeed {self.result.get()}
                                  [lbl_successes]]
 
         # frm_scale
-        btn_plus = ttk.Button(frm_scale, width=2, text='+', style='my.TButton',
+        btn_plus = ttk.Button(frm_scale, width=2, text='+', style='L.TButton',
                               command=lambda: self.scale_up(True))
-        btn_minus = ttk.Button(frm_scale, width=2, text='-', style='my.TButton',
+        btn_minus = ttk.Button(frm_scale, width=2, text='-', style='L.TButton',
                                command=lambda: self.scale_up(False))
         frm_scale_placement = [[btn_plus],
                                [btn_minus]]
@@ -357,15 +367,16 @@ Results will be send to the last thread where you use /start command."""
         self.message = ""
 
     def run_bot_polling(self):
-        application = (
+        self.application = (
             Application.builder()
             .token(BOT_TOKEN)
             .build()
         )
 
-        application.add_handler(CommandHandler("start", self.start_command))
+        self.application.add_handler(CommandHandler("start", self.start_command))
+        self.application.add_handler(CommandHandler("debug", self.debug_command))
 
-        application.run_polling()
+        self.application.run_polling()
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         self.CHAT_ID = update.effective_chat.id
@@ -373,17 +384,27 @@ Results will be send to the last thread where you use /start command."""
         try:
             await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID,
                                            text=self.greeting_message)
+            self.application.stop_running()
         except TelegramError as e:
             raise RuntimeError(f"Telegram error: {e}")
 
-    # async def debug_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def debug_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.CHAT_ID = update.effective_chat.id
+        self.THREAD_ID = update.message.message_thread_id
+        try:
+            await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID, parse_mode="HTML",
+                                           text=f"CHAT ID: <code>{str(update.effective_chat.id)}</code>")
+            await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID, parse_mode="HTML",
+                                           text=f"THREAD ID: <code>{str(update.message.message_thread_id)}</code>")
+        except TelegramError as e:
+            raise RuntimeError(f"Telegram error: {e}")
 
     async def send_telegram_message(self, text: str):
         bot = Bot(token=BOT_TOKEN)
         try:
             await bot.send_message(
                 chat_id=self.CHAT_ID,
-                message_thread_id=self.THREAD_ID,
+                message_thread_id=int(self.THREAD_ID) if self.THREAD_ID else None,
                 text=text,
                 parse_mode="HTML"
             )
