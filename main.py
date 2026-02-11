@@ -22,16 +22,20 @@ NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'A
 BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
 
 
+# TODO: installer!!!
+# TODO: save and load properties in file
 class Root(Tk):
     # TODO: add statistics
     # TODO: improve interface
     # TODO: make initiative roll
+
+    start_font_size = 10
+
     def __init__(self):
         super().__init__()
-        self.start_font_size = 10
         self.font_size = self.start_font_size
         self.title('VTM calculator')
-        self.resizable(False, False)
+        self.resizable(True, False)
 
         self.scale = 1
 
@@ -41,6 +45,7 @@ class Root(Tk):
         self.grid_columnconfigure(0, pad=10)
         self.grid_columnconfigure(1, pad=10)
         self.grid_columnconfigure(2, pad=10)
+        self.grid_columnconfigure(3, pad=10)
         self.grid_rowconfigure(0, pad=10)
 
         self.dice_number = IntVar(value=1)
@@ -49,7 +54,6 @@ class Root(Tk):
         self.auto_success = IntVar(value=0)
         self.additional_options = BooleanVar(value=False)
         self.is_send_to_telegram = BooleanVar(value=False)
-        self.name = StringVar(value=choice(NAMES))
         self.specialisation = BooleanVar(value=False)
 
         self.result = StringVar(value='Chance: -.--%')
@@ -59,6 +63,13 @@ class Root(Tk):
         self.roll_result_2 = StringVar(value="")
         self.roll_result_spec = StringVar(value="")
         self.successes = StringVar(value="0")
+        self.initiative = StringVar(value="")
+
+        self.expand = BooleanVar(value=False)
+        self.name = StringVar(value=choice(NAMES))
+        self.pooling_state = StringVar(value='Connect to Telegram')
+        self.initiative_bonus_dex = IntVar(value=0)
+        self.initiative_bonus_wits = IntVar(value=0)
 
         self.styles = {
             "my.TFrame": ttk.Style(),
@@ -115,6 +126,7 @@ class Root(Tk):
         self.grid_columnconfigure(0, pad=10)
         self.grid_columnconfigure(1, pad=10)
         self.grid_columnconfigure(2, pad=10)
+        self.grid_columnconfigure(3, pad=10)
         self.grid_rowconfigure(0, pad=10)
 
         self.interface()
@@ -159,13 +171,29 @@ class Root(Tk):
         self.calculate()
         self.roll()
         if self.is_send_to_telegram.get():
-            self.send_to_telegram()
+            self.send_roll_to_telegram()
+
+    def roll_initiative(self):
+        roll = randint(1, 10)
+        self.initiative.set(f"Initiative: {roll + self.initiative_bonus_dex.get() + self.initiative_bonus_wits.get()}")
+        if self.is_send_to_telegram.get():
+            self.send_initiative_to_telegram()
 
     def run_bot_polling(self):
+        self.bot.is_pooling = True
+        self.pooling_state.set('Pooling...')
+        self.update_pooling_state(0)
         threading.Thread(
             target=self.bot.run_bot_polling,
             daemon=True
         ).start()
+
+    def update_pooling_state(self, x):
+        if self.bot.is_pooling:
+            self.pooling_state.set('Connecting...')
+        else:
+            self.pooling_state.set('Connect to Telegram')
+        self.after(1000, self.update_pooling_state, x)
 
     def set_roll_result_placement(self) -> None:
         self.roll_result_1.set(f'{", ".join(map(str, self.roll_result[:8]))}')
@@ -180,24 +208,36 @@ class Root(Tk):
     def place_widgets(lst: list[list[Widget]]) -> None:
         for y in range(len(lst)):
             for x in range(len(lst[y])):
-                lst[y][x].update()
                 lst[y][x].grid(column=x, row=y)
+                lst[y][x].update()
 
-    def send_to_telegram(self):
+    def send_roll_to_telegram(self):
         roll = self.roll_result_1.get().split(', ') + self.roll_result_2.get().split(
             ', ') + self.roll_result_spec.get().split(', ')
         roll = [i for i in roll if i]
         print(roll)
 
-        message = f"""<b><i>{self.name.get()}</i> rolled:</b>
-<i>{', '.join(roll)}</i>
-on <b>{self.dice_number.get()} dices</b> with <b> difficulty {self.difficulty.get()}</b>.
+        message = f"<b><i>{self.name.get()}</i> rolled:</b>\n"
+        message += f"<i>{', '.join(roll)}</i>\n"
+        message += f"on <b>{self.dice_number.get()} dices</b> with <b>difficulty {self.difficulty.get()}</b>.\n"
 
-<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>
-<b><u>Total successes: {self.successes.get()}</u></b>
+        message += f"<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>\n"
+        message += f"<b><u>Total successes: {int(self.successes.get()) - int(self.auto_success.get())} + {self.auto_success.get()} = {self.successes.get()}</u></b>\n"
 
-Succeed {self.result.get()}
-"""
+        message += f"Succeed {self.result.get()}"
+
+        print(message + f"\n{'-' * 20}\n")
+
+        self.bot.threaded_send(message)
+
+    def send_initiative_to_telegram(self):
+        roll = int(self.initiative.get().split()[1])
+        bonus_dex = self.initiative_bonus_dex.get()
+        bonus_wits = self.initiative_bonus_wits.get()
+
+        message = f"<b><i>{self.name.get()}</i> rolled #INITIATIVE</b>\n"
+        message += f"Result: <b>{roll + bonus_dex + bonus_wits}</b>\n"
+        message += f"<i>Rolled {roll} + {bonus_dex} Dex + {bonus_wits} Wits</i>"
 
         print(message + f"\n{'-' * 20}\n")
 
@@ -208,16 +248,22 @@ Succeed {self.result.get()}
         frm_main = ttk.Frame(self, padding=10, style='my.TFrame')
         frm_results = ttk.Frame(self, padding=10, style='my.TFrame')
         frm_scale = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_expand = ttk.Frame(self, padding=10, style='my.TFrame')
 
         # frm_main
         lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
         frm_controls = ttk.Frame(frm_main, padding=10, style="my.TFrame")
         frm_controls.grid_columnconfigure(1, pad=5)
-        btn_calkulate = ttk.Button(frm_main, text='Calculate & Roll!', style="L.TButton",
+
+        frm_main_buttons = ttk.Frame(frm_main, padding=5, style='my.TFrame')
+        btn_calkulate = ttk.Button(frm_main_buttons, text='Calculate & Roll!', style='L.TButton',
                                    command=self.roll_and_calculate)
+        btn_initiative = ttk.Button(frm_main_buttons, text='Roll initiative', style='M.TButton',
+                                    command=self.roll_initiative)
+        frm_main_buttons_placement = [[btn_calkulate, btn_initiative]]
         frm_main_placement = [[lbl_title],
                               [frm_controls],
-                              [btn_calkulate]]
+                              [frm_main_buttons]]
 
         # frm_main -> frm_controls
         lbl1 = ttk.Label(frm_controls, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
@@ -294,20 +340,11 @@ Succeed {self.result.get()}
                                     style="my.TSpinbox")
             frm_controls_placement.append([lbl4, scale_4, spinbox_4])
 
-            lbl5 = ttk.Label(frm_controls, text="Character name:", width=12, anchor='e', style="M.TLabel")
-            entr_name = ttk.Entry(frm_controls, textvariable=self.name, width=15,
-                                  font=("Javanese text", self.font_size))
-            frm_controls_placement.append([lbl5, entr_name])
-
             chk_specialisations = ttk.Checkbutton(frm_controls,
                                                   text="Specialisation",
                                                   variable=self.specialisation,
                                                   style="my.TCheckbutton")
             frm_controls_placement.append([chk_specialisations])
-
-            btn_connect = ttk.Button(frm_controls, text="Connect to Telegram", style='S.TButton',
-                                     command=self.run_bot_polling)
-            frm_controls_placement.append([btn_connect])
 
         # frm_result
         lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, width=14, anchor="center", style="L.TLabel")
@@ -315,40 +352,89 @@ Succeed {self.result.get()}
                                       textvariable=self.roll_result_1,
                                       style="S.TLabel",
                                       width=20,
-                                      anchor="n")
+                                      anchor='n')
         lbl_result_roll_2 = ttk.Label(frm_results,
                                       textvariable=self.roll_result_2,
                                       style="S.TLabel",
                                       width=20,
-                                      anchor="n")
+                                      anchor='n')
         lbl_result_roll_spec = ttk.Label(frm_results,
                                          textvariable=self.roll_result_spec,
                                          style="S.TLabel",
                                          width=20,
-                                         anchor="n")
+                                         anchor='n')
         lbl_successes = ttk.Label(frm_results,
                                   textvariable=self.successes,
                                   style="L.TLabel",
                                   width=5,
                                   anchor='n')
+        lbl_initiative = ttk.Label(frm_results,
+                                   textvariable=self.initiative,
+                                   style="M.TLabel",
+                                   width=10,
+                                   anchor='n')
         frm_results_placement = [[lbl_result_calc],
                                  [lbl_result_roll_1],
                                  [lbl_result_roll_2],
                                  [lbl_result_roll_spec],
-                                 [lbl_successes]]
+                                 [lbl_successes],
+                                 [lbl_initiative]]
 
         # frm_scale
+        chk_expand = ttk.Checkbutton(frm_scale,
+                                     text='>',
+                                     variable=self.expand,
+                                     command=self.redraw_interface,
+                                     style='my.TCheckbutton')
         btn_plus = ttk.Button(frm_scale, width=2, text='+', style='L.TButton',
                               command=lambda: self.scale_up(True))
         btn_minus = ttk.Button(frm_scale, width=2, text='-', style='L.TButton',
                                command=lambda: self.scale_up(False))
-        frm_scale_placement = [[btn_plus],
+        frm_scale_placement = [[chk_expand],
+                               [btn_plus],
                                [btn_minus]]
 
-        root_placement = [[frm_main, frm_results, frm_scale]]
+        # frm_expand
+        frm_expand_placement = []
+        frm_expand_initiative_placement = []
+        if self.expand.get():
+            lbl_name = ttk.Label(frm_expand, text="Character name:", width=12, anchor='e', style="S.TLabel")
+            entr_name = ttk.Entry(frm_expand, textvariable=self.name, width=15,
+                                  font=("Javanese text", self.font_size))
+            frm_expand_placement.append([lbl_name, entr_name])
 
-        for obj in (root_placement, frm_main_placement, frm_results_placement, frm_controls_placement,
-                    frm_scale_placement):
+            frm_expand_initiative = ttk.Frame(frm_expand, padding=5, style='my.TFrame')
+            lbl_expand_initiative_dex = ttk.Label(frm_expand_initiative, text='Dex', width=5, anchor='e',
+                                                  style='S.TLabel')
+            spinbox_expand_initiative_dex = ttk.Spinbox(frm_expand_initiative,
+                                                        from_=0,
+                                                        to=10,
+                                                        textvariable=self.initiative_bonus_dex,
+                                                        width=3,
+                                                        style='my.TSpinbox')
+            lbl_expand_initiative_wits = ttk.Label(frm_expand_initiative, text='Wits', width=5, anchor='e',
+                                                   style='S.TLabel')
+            spinbox_expand_initiative_wits = ttk.Spinbox(frm_expand_initiative,
+                                                         from_=0,
+                                                         to=10,
+                                                         textvariable=self.initiative_bonus_wits,
+                                                         width=3,
+                                                         style='my.TSpinbox')
+
+            frm_expand_initiative_placement = [
+                [lbl_expand_initiative_dex, spinbox_expand_initiative_dex],
+                [lbl_expand_initiative_wits, spinbox_expand_initiative_wits],
+            ]
+            frm_expand_placement.append([frm_expand_initiative])
+
+            btn_connect = ttk.Button(frm_expand, textvariable=self.pooling_state, style='S.TButton',
+                                     command=self.run_bot_polling)
+            frm_expand_placement.append([btn_connect])
+
+        root_placement = [[frm_main, frm_results, frm_scale, frm_expand]]
+
+        for obj in (root_placement, frm_main_placement, frm_main_buttons_placement, frm_results_placement,
+                    frm_controls_placement, frm_scale_placement, frm_expand_placement, frm_expand_initiative_placement):
             self.place_widgets(obj)
 
 
@@ -357,6 +443,7 @@ class TgBot:
         self.token = token
         self.CHAT_ID = None
         self.THREAD_ID = None
+        self.is_pooling = False
 
         self.greeting_message = """Hello! I'm a bot, connected to VTM Calculator.
 
@@ -385,6 +472,7 @@ Results will be send to the last thread where you use /start command."""
             await context.bot.send_message(chat_id=self.CHAT_ID, message_thread_id=self.THREAD_ID,
                                            text=self.greeting_message)
             self.application.stop_running()
+            self.is_pooling = False
         except TelegramError as e:
             raise RuntimeError(f"Telegram error: {e}")
 
