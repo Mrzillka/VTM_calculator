@@ -20,6 +20,17 @@ logging.basicConfig(
 )
 
 NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
+WOUNDS = (
+    ("", ""),
+    ("Bruised", ""),
+    ("Hurt", "-1"),
+    ("Injured", "-1"),
+    ("Wounded", "-2"),
+    ("Mauled", "-2"),
+    ("Crippled", "-5"),
+    ("Incapacitated", ""),
+    ("Torpor", ""),
+)
 
 BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
 ENV_PATH = '%s\\VTM Roller\\' % os.environ['APPDATA']
@@ -32,7 +43,7 @@ def set_appdata_settings():
         os.makedirs(ENV_PATH)
     if not os.path.exists(ENV_FILE_PATH):
         print(f'{ENV_FILE_PATH} does not exist! Creating...')
-        file =  open(ENV_FILE_PATH, 'w')
+        file = open(ENV_FILE_PATH, 'w')
         file.close()
     dotenv.load_dotenv(ENV_FILE_PATH)
 
@@ -79,11 +90,21 @@ class Root(Tk):
         self.successes = StringVar(value="0")
         self.initiative = StringVar(value="")
 
-        self.expand = BooleanVar(value=False)
+        self.expand_options = BooleanVar(value=False)
         self.name = StringVar(value=choice(NAMES))
         self.pooling_state = StringVar(value='Connect to Telegram')
         self.initiative_bonus_dex = IntVar(value=0)
         self.initiative_bonus_wits = IntVar(value=0)
+
+        self.expand_blood = BooleanVar(value=False)
+        self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(4)]
+        self.blood_value = 0
+        self.set_blood(load=True)
+
+        self.expand_wounds = BooleanVar(value=False)
+        self.wounds = [BooleanVar(value=False) for _ in range(9)]
+        self.wounds_value = 0
+        self.roll_penalty = IntVar(value=0)
 
         self.styles = {
             "my.TFrame": ttk.Style(),
@@ -169,14 +190,22 @@ class Root(Tk):
         self.redraw_interface()
 
     def calculate(self) -> None:
-        calculator = Calculator(self.dice_number.get(), self.difficulty.get(), self.success_needed.get())
+        calculator = Calculator(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            success_needed=self.success_needed.get(),
+            auto_successes=self.auto_success.get(),
+        )
         self.result.set(f'Chance: {calculator.get_result():.2f}%')
 
     def roll(self) -> None:
-        roller = Roller(self.dice_number.get(),
-                        self.difficulty.get(),
-                        self.auto_success.get(),
-                        self.specialisation.get())
+        roller = Roller(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            specialisation=self.specialisation.get(),
+            penalty=self.roll_penalty.get()
+        )
         roll, successes, specialisation_roll = roller.get_result()
         self.roll_result = roll
         self.specialisation_roll = specialisation_roll
@@ -190,7 +219,7 @@ class Root(Tk):
             self.send_roll_to_telegram()
 
     def roll_initiative(self):
-        roll = randint(1, 10)
+        roll = randint(1, 10) + self.roll_penalty.get()
         self.initiative.set(f"Initiative: {roll + self.initiative_bonus_dex.get() + self.initiative_bonus_wits.get()}")
         if self.is_send_to_telegram.get():
             self.send_initiative_to_telegram()
@@ -238,7 +267,7 @@ class Root(Tk):
         message += f"on <b>{self.dice_number.get()} dices</b> with <b>difficulty {self.difficulty.get()}</b>.\n"
 
         message += f"<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>\n"
-        message += f"<b><u>Total successes: {int(self.successes.get()) - int(self.auto_success.get())} + {self.auto_success.get()} = {self.successes.get()}</u></b>\n"
+        message += f"<b><u>Total successes: {int(self.successes.get()) - int(self.auto_success.get())} + {self.auto_success.get()} - {-self.roll_penalty.get()} = {self.successes.get()}</u></b>\n"
 
         message += f"Succeed {self.result.get()}"
 
@@ -266,23 +295,60 @@ class Root(Tk):
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='NAME', value_to_set=self.name.get())
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='DEX', value_to_set=str(self.initiative_bonus_dex.get()))
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='WITS', value_to_set=str(self.initiative_bonus_wits.get()))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='BLOOD', value_to_set=str(self.blood_value))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='WOUNDS', value_to_set=str(self.wounds_value))
 
     def load_from_file(self):
-        # TODO: load data
-        env = dotenv.dotenv_values(dotenv_path=ENV_FILE_PATH)
-        self.bot.CHAT_ID = env['CHAT_ID']
-        self.bot.THREAD_ID = env['THREAD_ID'] if env['THREAD_ID'] != 'None' else None
-        self.name.set(env['NAME'])
-        self.initiative_bonus_dex.set(int(env['DEX']))
-        self.initiative_bonus_wits.set(int(env['WITS']))
+        try:
+            env = dotenv.dotenv_values(dotenv_path=ENV_FILE_PATH)
+            self.bot.CHAT_ID = env['CHAT_ID']
+            self.bot.THREAD_ID = env['THREAD_ID'] if env['THREAD_ID'] != 'None' else None
+            self.name.set(env['NAME'])
+            self.initiative_bonus_dex.set(int(env['DEX']))
+            self.initiative_bonus_wits.set(int(env['WITS']))
+            self.blood_value = int(env['BLOOD'])
+            self.set_blood(load=True)
+            self.wounds_value = int(env['WOUNDS'])
+            self.set_wounds(load=True)
+        except KeyError as e:
+            self.save_to_file()
 
+    def set_blood(self, r=0, c=0, load=False) -> None:
+        if load:
+            r = self.blood_value // 10
+            c = self.blood_value % 10
+        for i in range(4):
+            for j in range(10):
+                if i < r:
+                    self.blood[i][j].set(True)
+                elif i <= r and j <= c:
+                    self.blood[i][j].set(True)
+                else:
+                    self.blood[i][j].set(False)
+        if load:
+            self.blood[r][c].set(False)
+        self.blood_value = 10 * r + (c + 1)
+
+    def set_wounds(self, y=0, load=False):
+        if load:
+            y = self.wounds_value
+        for i in range(9):
+            if i <= y:
+                self.wounds[i].set(True)
+            else:
+                self.wounds[i].set(False)
+        self.wounds_value = y
+        roll_penalty = WOUNDS[self.wounds_value][1]
+        self.roll_penalty.set(int(roll_penalty) if roll_penalty else 0)
 
     def interface(self) -> None:
-        # 3 main frames
+        # main frames
         frm_main = ttk.Frame(self, padding=10, style='my.TFrame')
         frm_results = ttk.Frame(self, padding=10, style='my.TFrame')
         frm_scale = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_expand = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_expand_options = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_expand_blood = ttk.Frame(self, padding=10, style='my.TFrame')
+        frm_expand_wounds = ttk.Frame(self, padding=10, style='my.TFrame')
 
         # frm_main
         lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
@@ -301,6 +367,7 @@ class Root(Tk):
 
         # frm_main -> frm_controls
         lbl1 = ttk.Label(frm_controls, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
+        lbl_penalty = ttk.Label(frm_controls, textvariable=self.roll_penalty, width=3, style="S.TLabel")
         scale_1 = ttk.Scale(frm_controls,
                             from_=1,
                             to=15,
@@ -337,7 +404,7 @@ class Root(Tk):
                                                   text="Send to Telegram",
                                                   variable=self.is_send_to_telegram,
                                                   style="my.TCheckbutton")
-        frm_controls_placement: List[Any] = [[lbl1, scale_1, spinbox_1],
+        frm_controls_placement: List[Any] = [[lbl1, scale_1, spinbox_1, lbl_penalty],
                                              [lbl2, scale_2, spinbox_2],
                                              [chk_additional_options, chk_is_send_to_telegram]]
 
@@ -415,30 +482,42 @@ class Root(Tk):
                                  [lbl_initiative]]
 
         # frm_scale
-        chk_expand = ttk.Checkbutton(frm_scale,
-                                     text='>',
-                                     variable=self.expand,
-                                     command=self.redraw_interface,
-                                     style='my.TCheckbutton')
+        chk_expand_options = ttk.Checkbutton(frm_scale,
+                                             text='Options >',
+                                             variable=self.expand_options,
+                                             command=self.redraw_interface,
+                                             style='my.TCheckbutton')
+        chk_expand_blood = ttk.Checkbutton(frm_scale,
+                                           text='Blood >',
+                                           variable=self.expand_blood,
+                                           command=self.redraw_interface,
+                                           style='my.TCheckbutton')
+        chk_expand_wounds = ttk.Checkbutton(frm_scale,
+                                            text='Wounds >',
+                                            variable=self.expand_wounds,
+                                            command=self.redraw_interface,
+                                            style='my.TCheckbutton')
         btn_plus = ttk.Button(frm_scale, width=2, text='+', style='L.TButton',
                               command=lambda: self.scale_up(True))
         btn_minus = ttk.Button(frm_scale, width=2, text='-', style='L.TButton',
                                command=lambda: self.scale_up(False))
-        frm_scale_placement = [[chk_expand],
+        frm_scale_placement = [[chk_expand_options],
+                               [chk_expand_blood],
+                               [chk_expand_wounds],
                                [btn_plus],
                                [btn_minus]]
 
-        # frm_expand
-        frm_expand_placement = []
-        frm_expand_initiative_placement = []
-        if self.expand.get():
-            lbl_name = ttk.Label(frm_expand, text="Character name:", width=12, anchor='e', style="M.TLabel")
-            frm_expand_placement.append([lbl_name])
-            entr_name = ttk.Entry(frm_expand, textvariable=self.name, width=15,
+        # frm_expand_options
+        frm_expand_options_placement = []
+        frm_expand_options_initiative_placement = []
+        if self.expand_options.get():
+            lbl_name = ttk.Label(frm_expand_options, text="Character name:", width=12, anchor='e', style="M.TLabel")
+            frm_expand_options_placement.append([lbl_name])
+            entr_name = ttk.Entry(frm_expand_options, textvariable=self.name, width=15,
                                   font=("Javanese text", self.font_size))
-            frm_expand_placement.append([entr_name])
+            frm_expand_options_placement.append([entr_name])
 
-            frm_expand_initiative = ttk.Frame(frm_expand, padding=5, style='my.TFrame')
+            frm_expand_initiative = ttk.Frame(frm_expand_options, padding=5, style='my.TFrame')
             lbl_expand_initiative_dex = ttk.Label(frm_expand_initiative, text='Dex', width=5, anchor='e',
                                                   style='S.TLabel')
             spinbox_expand_initiative_dex = ttk.Spinbox(frm_expand_initiative,
@@ -456,24 +535,60 @@ class Root(Tk):
                                                          width=3,
                                                          style='my.TSpinbox')
 
-            frm_expand_initiative_placement = [
+            frm_expand_options_initiative_placement = [
                 [lbl_expand_initiative_dex, spinbox_expand_initiative_dex],
                 [lbl_expand_initiative_wits, spinbox_expand_initiative_wits],
             ]
-            frm_expand_placement.append([frm_expand_initiative])
+            frm_expand_options_placement.append([frm_expand_initiative])
 
-            btn_connect = ttk.Button(frm_expand, textvariable=self.pooling_state, style='S.TButton',
+            btn_connect = ttk.Button(frm_expand_options, textvariable=self.pooling_state, style='S.TButton',
                                      command=self.run_bot_polling)
-            frm_expand_placement.append([btn_connect])
+            frm_expand_options_placement.append([btn_connect])
 
-            btn_save = ttk.Button(frm_expand, text='Save User Data', style='S.TButton',
+            btn_save = ttk.Button(frm_expand_options, text='Save User Data', style='S.TButton',
                                   command=self.save_to_file)
-            frm_expand_placement.append([btn_save])
+            frm_expand_options_placement.append([btn_save])
 
-        root_placement = [[frm_main, frm_results, frm_scale, frm_expand]]
+        frm_expand_blood_placement = []
+        frm_expand_blood_cells_placement = []
+        if self.expand_blood.get():
+            lbl_blood_title = ttk.Label(frm_expand_blood, text='Blood', width=12, anchor='n', style="M.TLabel")
+            frm_expand_blood_placement.append([lbl_blood_title])
+            frm_expand_blood_cells = ttk.Frame(frm_expand_blood, style="my.TFrame")
+            for i in range(4):
+                frm_expand_blood_cells_placement.append([])
+                for j in range(10):
+                    blood_cell = ttk.Checkbutton(frm_expand_blood_cells,
+                                                 variable=self.blood[i][j],
+                                                 command=lambda r=i, c=j: self.set_blood(r, c),
+                                                 style="my.TCheckbutton")
+                    frm_expand_blood_cells_placement[i].append(blood_cell)
+            frm_expand_blood_placement.append([frm_expand_blood_cells])
+
+        frm_expand_wounds_placement = []
+        frm_expand_wounds_cells_placement = []
+        if self.expand_wounds.get():
+            lbl_wounds_title = ttk.Label(frm_expand_wounds, text='Wounds', width=12, anchor='n', style="M.TLabel")
+            frm_expand_wounds_placement.append([lbl_wounds_title])
+            frm_expand_wounds_cells = ttk.Frame(frm_expand_wounds, style="my.TFrame")
+            for i in range(9):
+                wound_name = ttk.Label(frm_expand_wounds_cells, text=WOUNDS[i][0], width=10, anchor='e',
+                                       style="S.TLabel")
+                wound_penalty = ttk.Label(frm_expand_wounds_cells, text=WOUNDS[i][1], anchor='w', style="S.TLabel")
+                wound_cell = ttk.Checkbutton(frm_expand_wounds_cells,
+                                             variable=self.wounds[i],
+                                             command=lambda y=i: self.set_wounds(y),
+                                             style="my.TCheckbutton")
+                frm_expand_wounds_cells_placement.append([wound_name, wound_penalty, wound_cell])
+            frm_expand_wounds_placement.append([frm_expand_wounds_cells])
+
+        root_placement = [[frm_main, frm_results, frm_scale, frm_expand_options, frm_expand_blood, frm_expand_wounds]]
 
         for obj in (root_placement, frm_main_placement, frm_main_buttons_placement, frm_results_placement,
-                    frm_controls_placement, frm_scale_placement, frm_expand_placement, frm_expand_initiative_placement):
+                    frm_controls_placement, frm_scale_placement,
+                    frm_expand_options_placement, frm_expand_options_initiative_placement,
+                    frm_expand_blood_placement, frm_expand_blood_cells_placement,
+                    frm_expand_wounds_placement, frm_expand_wounds_cells_placement):
             self.place_widgets(obj)
 
 
@@ -568,9 +683,11 @@ class Calculator:
 
     def run(self, prod: list[tuple[int, ...]]) -> list[bool]:
         return [
-            [i >= self.difficulty for i in lst].count(True) - lst.count(1) + self.auto_successes >= self.success_needed
-            for lst in
-            prod]
+            [
+                i >= self.difficulty for i in lst
+            ].count(True) - lst.count(1) + self.auto_successes >= self.success_needed
+            for lst in prod
+        ]
 
     def get_result(self) -> float:
         result = self.run(self.get_product())
@@ -578,14 +695,16 @@ class Calculator:
 
 
 class Roller:
-    def __init__(self, dice_number: int = 1, difficulty: int = 6, auto_success: int = 0, specialisation: bool = False):
+    def __init__(self, dice_number: int = 1, difficulty: int = 6, auto_success: int = 0, specialisation: bool = False,
+                 penalty: int = 0):
         self.dice_number = dice_number
         self.difficulty = difficulty
         self.auto_success = auto_success
         self.specialisation = specialisation
+        self.penalty = penalty
 
     def get_result(self) -> Tuple[List[int], int, List[int]]:
-        roll = [randint(1, 10) for _ in range(self.dice_number)]
+        roll = [randint(1, 10) for _ in range(self.dice_number + self.penalty)]
 
         additional_roll = []
         if self.specialisation:
