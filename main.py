@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import threading
 from itertools import combinations_with_replacement
 from random import randint, choice
@@ -8,6 +9,7 @@ from tkinter import messagebox
 from tkinter import ttk
 from typing import Tuple, List, Any
 
+import dotenv
 from telegram import Bot, Update
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes, Application, CommandHandler
@@ -20,6 +22,19 @@ logging.basicConfig(
 NAMES = ('Alex', 'Greg', 'John', 'Bill', 'Emma', 'Richard', 'Anna', 'Thomas', 'Andrew', 'Maria', 'Caren', 'Carl')
 
 BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
+ENV_PATH = '%s\\VTM Roller\\' % os.environ['APPDATA']
+ENV_FILE_PATH = os.path.join(ENV_PATH, ".env")
+
+
+def set_appdata_settings():
+    if not os.path.exists(ENV_PATH):
+        print(f'{ENV_PATH} does not exist! Creating...')
+        os.makedirs(ENV_PATH)
+    if not os.path.exists(ENV_FILE_PATH):
+        print(f'{ENV_FILE_PATH} does not exist! Creating...')
+        file =  open(ENV_FILE_PATH, 'w')
+        file.close()
+    dotenv.load_dotenv(ENV_FILE_PATH)
 
 
 # TODO: installer!!!
@@ -27,7 +42,6 @@ BOT_TOKEN = "8184695854:AAGBsg4e2dg-IwVu-Ggf7K_a8an_1LJnObA"
 class Root(Tk):
     # TODO: add statistics
     # TODO: improve interface
-    # TODO: make initiative roll
 
     start_font_size = 10
 
@@ -94,6 +108,8 @@ class Root(Tk):
         self.height = max(frm.winfo_height() for frm in self.winfo_children()) + 10
 
         self.set_window_size()
+
+        self.load_from_file()
 
     def styles_configure(self):
         # TODO: test styles functionality
@@ -234,6 +250,7 @@ class Root(Tk):
         roll = int(self.initiative.get().split()[1])
         bonus_dex = self.initiative_bonus_dex.get()
         bonus_wits = self.initiative_bonus_wits.get()
+        roll -= bonus_dex + bonus_wits
 
         message = f"<b><i>{self.name.get()}</i> rolled #INITIATIVE</b>\n"
         message += f"Result: <b>{roll + bonus_dex + bonus_wits}</b>\n"
@@ -242,6 +259,23 @@ class Root(Tk):
         print(message + f"\n{'-' * 20}\n")
 
         self.bot.threaded_send(message)
+
+    def save_to_file(self):
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='CHAT_ID', value_to_set=str(self.bot.CHAT_ID))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='THREAD_ID', value_to_set=str(self.bot.THREAD_ID))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='NAME', value_to_set=self.name.get())
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='DEX', value_to_set=str(self.initiative_bonus_dex.get()))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='WITS', value_to_set=str(self.initiative_bonus_wits.get()))
+
+    def load_from_file(self):
+        # TODO: load data
+        env = dotenv.dotenv_values(dotenv_path=ENV_FILE_PATH)
+        self.bot.CHAT_ID = env['CHAT_ID']
+        self.bot.THREAD_ID = env['THREAD_ID'] if env['THREAD_ID'] != 'None' else None
+        self.name.set(env['NAME'])
+        self.initiative_bonus_dex.set(int(env['DEX']))
+        self.initiative_bonus_wits.set(int(env['WITS']))
+
 
     def interface(self) -> None:
         # 3 main frames
@@ -398,10 +432,11 @@ class Root(Tk):
         frm_expand_placement = []
         frm_expand_initiative_placement = []
         if self.expand.get():
-            lbl_name = ttk.Label(frm_expand, text="Character name:", width=12, anchor='e', style="S.TLabel")
+            lbl_name = ttk.Label(frm_expand, text="Character name:", width=12, anchor='e', style="M.TLabel")
+            frm_expand_placement.append([lbl_name])
             entr_name = ttk.Entry(frm_expand, textvariable=self.name, width=15,
                                   font=("Javanese text", self.font_size))
-            frm_expand_placement.append([lbl_name, entr_name])
+            frm_expand_placement.append([entr_name])
 
             frm_expand_initiative = ttk.Frame(frm_expand, padding=5, style='my.TFrame')
             lbl_expand_initiative_dex = ttk.Label(frm_expand_initiative, text='Dex', width=5, anchor='e',
@@ -430,6 +465,10 @@ class Root(Tk):
             btn_connect = ttk.Button(frm_expand, textvariable=self.pooling_state, style='S.TButton',
                                      command=self.run_bot_polling)
             frm_expand_placement.append([btn_connect])
+
+            btn_save = ttk.Button(frm_expand, text='Save User Data', style='S.TButton',
+                                  command=self.save_to_file)
+            frm_expand_placement.append([btn_save])
 
         root_placement = [[frm_main, frm_results, frm_scale, frm_expand]]
 
@@ -563,5 +602,6 @@ class Roller:
 
 
 if __name__ == '__main__':
+    set_appdata_settings()
     root = Root()
     root.mainloop()
