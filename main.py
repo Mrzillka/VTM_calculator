@@ -48,8 +48,13 @@ def set_appdata_settings():
     dotenv.load_dotenv(ENV_FILE_PATH)
 
 
-# TODO: installer!!!
-# TODO: save and load properties in file
+def place_widgets(lst: list[list[Widget]]) -> None:
+    for y in range(len(lst)):
+        for x in range(len(lst[y])):
+            lst[y][x].grid(column=x, row=y)
+            lst[y][x].update()
+
+
 class Root(Tk):
     # TODO: add statistics
     # TODO: improve interface
@@ -60,7 +65,7 @@ class Root(Tk):
         super().__init__()
         self.font_size = self.start_font_size
         self.title('VTM calculator')
-        self.resizable(True, False)
+        self.resizable(True, True)
 
         self.scale = 1
 
@@ -97,6 +102,7 @@ class Root(Tk):
         self.initiative_bonus_wits = IntVar(value=0)
 
         self.expand_blood = BooleanVar(value=False)
+        self.blood_max_value = IntVar(value=10)
         self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(4)]
         self.blood_value = 0
         self.set_blood(load=True)
@@ -249,13 +255,6 @@ class Root(Tk):
     def scaler(s, var) -> None:
         var.set(int(float(s)))
 
-    @staticmethod
-    def place_widgets(lst: list[list[Widget]]) -> None:
-        for y in range(len(lst)):
-            for x in range(len(lst[y])):
-                lst[y][x].grid(column=x, row=y)
-                lst[y][x].update()
-
     def send_roll_to_telegram(self):
         roll = self.roll_result_1.get().split(', ') + self.roll_result_2.get().split(
             ', ') + self.roll_result_spec.get().split(', ')
@@ -296,6 +295,7 @@ class Root(Tk):
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='DEX', value_to_set=str(self.initiative_bonus_dex.get()))
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='WITS', value_to_set=str(self.initiative_bonus_wits.get()))
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='BLOOD', value_to_set=str(self.blood_value))
+        dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='MAX_BLOOD', value_to_set=str(self.blood_max_value.get()))
         dotenv.set_key(dotenv_path=ENV_FILE_PATH, key_to_set='WOUNDS', value_to_set=str(self.wounds_value))
 
     def load_from_file(self):
@@ -307,10 +307,11 @@ class Root(Tk):
             self.initiative_bonus_dex.set(int(env['DEX']))
             self.initiative_bonus_wits.set(int(env['WITS']))
             self.blood_value = int(env['BLOOD'])
+            self.blood_max_value.set(int(env['MAX_BLOOD']))
             self.set_blood(load=True)
             self.wounds_value = int(env['WOUNDS'])
             self.set_wounds(load=True)
-        except KeyError as e:
+        except KeyError:
             self.save_to_file()
 
     def set_blood(self, r=0, c=0, load=False) -> None:
@@ -341,255 +342,343 @@ class Root(Tk):
         roll_penalty = WOUNDS[self.wounds_value][1]
         self.roll_penalty.set(int(roll_penalty) if roll_penalty else 0)
 
+    def interface_main(self):
+        pass
+
     def interface(self) -> None:
-        # main frames
-        frm_main = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_results = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_scale = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_expand_options = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_expand_blood = ttk.Frame(self, padding=10, style='my.TFrame')
-        frm_expand_wounds = ttk.Frame(self, padding=10, style='my.TFrame')
+        interface = Interface(self)
+        interface.place_objects()
+        place_widgets([[interface]])
 
-        # frm_main
-        lbl_title = ttk.Label(frm_main, text='VTM calculator', anchor='n', style='L.TLabel')
-        frm_controls = ttk.Frame(frm_main, padding=10, style="my.TFrame")
-        frm_controls.grid_columnconfigure(1, pad=5)
 
-        frm_main_buttons = ttk.Frame(frm_main, padding=5, style='my.TFrame')
-        btn_calkulate = ttk.Button(frm_main_buttons, text='Calculate & Roll!', style='L.TButton',
-                                   command=self.roll_and_calculate)
-        btn_initiative = ttk.Button(frm_main_buttons, text='Roll initiative', style='M.TButton',
-                                    command=self.roll_initiative)
-        frm_main_buttons_placement = [[btn_calkulate, btn_initiative]]
-        frm_main_placement = [[lbl_title],
-                              [frm_controls],
-                              [frm_main_buttons]]
+class Interface(ttk.Frame):
+    def __init__(self, root: Root):
+        super().__init__()
 
-        # frm_main -> frm_controls
-        lbl1 = ttk.Label(frm_controls, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
-        lbl_penalty = ttk.Label(frm_controls, textvariable=self.roll_penalty, width=3, style="S.TLabel")
-        scale_1 = ttk.Scale(frm_controls,
+        self.root = root
+
+        self.placement: dict[str, list[list[Any]]] = {}
+        self.placement['root'] = [
+            [
+                self.frm_main(root_frm=self),
+                self.frm_results(root_frm=self),
+                self.frm_scale(root_frm=self),
+                self.frm_expand_options(root_frm=self),
+                self.frm_expand_blood(root_frm=self),
+                self.frm_expand_wounds(root_frm=self),
+            ]
+        ]
+
+        self.place_objects()
+
+    def frm_main(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        lbl_title = ttk.Label(frm, text='VTM calculator', anchor='n', style='L.TLabel')
+
+        self.placement['frm_main'] = [
+            [lbl_title],
+            [self.frm_controls(root_frm=frm)],
+            [self.frm_main_buttons(root_frm=frm)]
+        ]
+
+        return frm
+
+    def frm_controls(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style="my.TFrame")
+        frm.grid_columnconfigure(1, pad=5)
+        self.placement['frm_controls'] = []
+
+        lbl1 = ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
+        scale_1 = ttk.Scale(frm,
                             from_=1,
                             to=15,
-                            length=125 * self.scale,
-                            variable=self.dice_number,
+                            length=125 * self.root.scale,
+                            variable=self.root.dice_number,
                             style="my.Horizontal.TScale",
-                            command=lambda s: self.scaler(s, self.dice_number))
-        spinbox_1 = ttk.Spinbox(frm_controls,
+                            command=lambda s: self.root.scaler(s, self.root.dice_number))
+        spinbox_1 = ttk.Spinbox(frm,
                                 from_=1,
                                 to=15,
-                                textvariable=self.dice_number,
+                                textvariable=self.root.dice_number,
                                 width=3,
                                 style="my.TSpinbox")
-        lbl2 = ttk.Label(frm_controls, text="Difficulty:", width=12, style="M.TLabel", anchor='e')
-        scale_2 = ttk.Scale(frm_controls,
+        lbl_penalty = ttk.Label(frm, textvariable=self.root.roll_penalty, width=3, style="S.TLabel")
+        self.placement['frm_controls'].append([lbl1, scale_1, spinbox_1, lbl_penalty])
+
+        lbl2 = ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor='e')
+        scale_2 = ttk.Scale(frm,
                             from_=2,
                             to=10,
-                            length=125 * self.scale,
-                            variable=self.difficulty,
+                            length=125 * self.root.scale,
+                            variable=self.root.difficulty,
                             style="my.Horizontal.TScale",
-                            command=lambda s: self.scaler(s, self.difficulty))
-        spinbox_2 = ttk.Spinbox(frm_controls,
+                            command=lambda s: self.root.scaler(s, self.root.difficulty))
+        spinbox_2 = ttk.Spinbox(frm,
                                 from_=2,
                                 to=10,
-                                textvariable=self.difficulty,
+                                textvariable=self.root.difficulty,
                                 width=3,
                                 style="my.TSpinbox")
-        chk_additional_options = ttk.Checkbutton(frm_controls,
-                                                 text="Additional options",
-                                                 variable=self.additional_options,
-                                                 command=self.redraw_interface,
-                                                 style="my.TCheckbutton")
-        chk_is_send_to_telegram = ttk.Checkbutton(frm_controls,
-                                                  text="Send to Telegram",
-                                                  variable=self.is_send_to_telegram,
-                                                  style="my.TCheckbutton")
-        frm_controls_placement: List[Any] = [[lbl1, scale_1, spinbox_1, lbl_penalty],
-                                             [lbl2, scale_2, spinbox_2],
-                                             [chk_additional_options, chk_is_send_to_telegram]]
+        self.placement['frm_controls'].append([lbl2, scale_2, spinbox_2])
 
-        if self.additional_options.get():
-            lbl3 = ttk.Label(frm_controls, text="Success needed:", width=12, style="M.TLabel", anchor='e')
-            scale_3 = ttk.Scale(frm_controls,
+        chk_additional_options = ttk.Checkbutton(frm,
+                                                 text="Additional options",
+                                                 variable=self.root.additional_options,
+                                                 command=self.root.redraw_interface,
+                                                 style="my.TCheckbutton")
+        chk_is_send_to_telegram = ttk.Checkbutton(frm,
+                                                  text="Send to Telegram",
+                                                  variable=self.root.is_send_to_telegram,
+                                                  style="my.TCheckbutton")
+        self.placement['frm_controls'].append([chk_additional_options, chk_is_send_to_telegram])
+
+        if self.root.additional_options.get():
+            lbl3 = ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor='e')
+            scale_3 = ttk.Scale(frm,
                                 from_=1,
                                 to=10,
-                                length=125 * self.scale,
-                                variable=self.success_needed,
+                                length=125 * self.root.scale,
+                                variable=self.root.success_needed,
                                 style="my.Horizontal.TScale",
-                                command=lambda s: self.scaler(s, self.success_needed))
-            spinbox_3 = ttk.Spinbox(frm_controls,
+                                command=lambda s: self.root.scaler(s, self.root.success_needed))
+            spinbox_3 = ttk.Spinbox(frm,
                                     from_=1,
                                     to=10,
-                                    textvariable=self.success_needed,
+                                    textvariable=self.root.success_needed,
                                     width=3,
                                     style="my.TSpinbox")
-            frm_controls_placement.append([lbl3, scale_3, spinbox_3])
+            self.placement['frm_controls'].append([lbl3, scale_3, spinbox_3])
 
-            lbl4 = ttk.Label(frm_controls, text="Auto success:", width=12, style="M.TLabel", anchor='e')
-            scale_4 = ttk.Scale(frm_controls,
+            lbl4 = ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor='e')
+            scale_4 = ttk.Scale(frm,
                                 from_=0,
                                 to=5,
-                                length=125 * self.scale,
-                                variable=self.auto_success,
+                                length=125 * self.root.scale,
+                                variable=self.root.auto_success,
                                 style="my.Horizontal.TScale",
-                                command=lambda s: self.scaler(s, self.auto_success))
-            spinbox_4 = ttk.Spinbox(frm_controls,
+                                command=lambda s: self.root.scaler(s, self.root.auto_success))
+            spinbox_4 = ttk.Spinbox(frm,
                                     from_=0,
                                     to=5,
-                                    textvariable=self.auto_success,
+                                    textvariable=self.root.auto_success,
                                     width=3,
                                     style="my.TSpinbox")
-            frm_controls_placement.append([lbl4, scale_4, spinbox_4])
+            self.placement['frm_controls'].append([lbl4, scale_4, spinbox_4])
 
-            chk_specialisations = ttk.Checkbutton(frm_controls,
+            chk_specialisations = ttk.Checkbutton(frm,
                                                   text="Specialisation",
-                                                  variable=self.specialisation,
+                                                  variable=self.root.specialisation,
                                                   style="my.TCheckbutton")
-            frm_controls_placement.append([chk_specialisations])
+            self.placement['frm_controls'].append([chk_specialisations])
 
-        # frm_result
-        lbl_result_calc = ttk.Label(frm_results, textvariable=self.result, width=14, anchor="center", style="L.TLabel")
-        lbl_result_roll_1 = ttk.Label(frm_results,
-                                      textvariable=self.roll_result_1,
+        return frm
+
+    def frm_main_buttons(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        self.placement['frm_main_buttons'] = []
+        btn_calkulate = ttk.Button(frm, text='Calculate & Roll!', style='L.TButton',
+                                   command=self.root.roll_and_calculate)
+        btn_initiative = ttk.Button(frm, text='Roll initiative', style='M.TButton',
+                                    command=self.root.roll_initiative)
+
+        self.placement['frm_main_buttons'].append([btn_calkulate, btn_initiative])
+
+        return frm
+
+    def frm_results(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        self.placement['frm_results'] = []
+        lbl_result_calc = ttk.Label(frm, textvariable=self.root.result, width=14, anchor="center", style="L.TLabel")
+        self.placement['frm_results'].append([lbl_result_calc])
+        lbl_result_roll_1 = ttk.Label(frm,
+                                      textvariable=self.root.roll_result_1,
                                       style="S.TLabel",
                                       width=20,
                                       anchor='n')
-        lbl_result_roll_2 = ttk.Label(frm_results,
-                                      textvariable=self.roll_result_2,
+        self.placement['frm_results'].append([lbl_result_roll_1])
+        lbl_result_roll_2 = ttk.Label(frm,
+                                      textvariable=self.root.roll_result_2,
                                       style="S.TLabel",
                                       width=20,
                                       anchor='n')
-        lbl_result_roll_spec = ttk.Label(frm_results,
-                                         textvariable=self.roll_result_spec,
+        self.placement['frm_results'].append([lbl_result_roll_2])
+        lbl_result_roll_spec = ttk.Label(frm,
+                                         textvariable=self.root.roll_result_spec,
                                          style="S.TLabel",
                                          width=20,
                                          anchor='n')
-        lbl_successes = ttk.Label(frm_results,
-                                  textvariable=self.successes,
+        self.placement['frm_results'].append([lbl_result_roll_spec])
+        lbl_successes = ttk.Label(frm,
+                                  textvariable=self.root.successes,
                                   style="L.TLabel",
                                   width=5,
                                   anchor='n')
-        lbl_initiative = ttk.Label(frm_results,
-                                   textvariable=self.initiative,
+        self.placement['frm_results'].append([lbl_successes])
+        lbl_initiative = ttk.Label(frm,
+                                   textvariable=self.root.initiative,
                                    style="M.TLabel",
                                    width=10,
                                    anchor='n')
-        frm_results_placement = [[lbl_result_calc],
-                                 [lbl_result_roll_1],
-                                 [lbl_result_roll_2],
-                                 [lbl_result_roll_spec],
-                                 [lbl_successes],
-                                 [lbl_initiative]]
 
-        # frm_scale
-        chk_expand_options = ttk.Checkbutton(frm_scale,
+        self.placement['frm_results'].append([lbl_initiative])
+
+        return frm
+
+    def frm_scale(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        self.placement['frm_scale'] = []
+
+        chk_expand_options = ttk.Checkbutton(frm,
                                              text='Options >',
-                                             variable=self.expand_options,
-                                             command=self.redraw_interface,
+                                             variable=self.root.expand_options,
+                                             command=self.root.redraw_interface,
                                              style='my.TCheckbutton')
-        chk_expand_blood = ttk.Checkbutton(frm_scale,
+        self.placement['frm_scale'].append([chk_expand_options])
+        chk_expand_blood = ttk.Checkbutton(frm,
                                            text='Blood >',
-                                           variable=self.expand_blood,
-                                           command=self.redraw_interface,
+                                           variable=self.root.expand_blood,
+                                           command=self.root.redraw_interface,
                                            style='my.TCheckbutton')
-        chk_expand_wounds = ttk.Checkbutton(frm_scale,
+        self.placement['frm_scale'].append([chk_expand_blood])
+        chk_expand_wounds = ttk.Checkbutton(frm,
                                             text='Wounds >',
-                                            variable=self.expand_wounds,
-                                            command=self.redraw_interface,
+                                            variable=self.root.expand_wounds,
+                                            command=self.root.redraw_interface,
                                             style='my.TCheckbutton')
-        btn_plus = ttk.Button(frm_scale, width=2, text='+', style='L.TButton',
-                              command=lambda: self.scale_up(True))
-        btn_minus = ttk.Button(frm_scale, width=2, text='-', style='L.TButton',
-                               command=lambda: self.scale_up(False))
-        frm_scale_placement = [[chk_expand_options],
-                               [chk_expand_blood],
-                               [chk_expand_wounds],
-                               [btn_plus],
-                               [btn_minus]]
+        self.placement['frm_scale'].append([chk_expand_wounds])
+        btn_plus = ttk.Button(frm, width=2, text='+', style='L.TButton',
+                              command=lambda: self.root.scale_up(True))
+        self.placement['frm_scale'].append([btn_plus])
+        btn_minus = ttk.Button(frm, width=2, text='-', style='L.TButton',
+                               command=lambda: self.root.scale_up(False))
+        self.placement['frm_scale'].append([btn_minus])
 
-        # frm_expand_options
-        frm_expand_options_placement = []
-        frm_expand_options_initiative_placement = []
-        if self.expand_options.get():
-            lbl_name = ttk.Label(frm_expand_options, text="Character name:", width=12, anchor='e', style="M.TLabel")
-            frm_expand_options_placement.append([lbl_name])
-            entr_name = ttk.Entry(frm_expand_options, textvariable=self.name, width=15,
-                                  font=("Javanese text", self.font_size))
-            frm_expand_options_placement.append([entr_name])
+        return frm
 
-            frm_expand_initiative = ttk.Frame(frm_expand_options, padding=5, style='my.TFrame')
+    def frm_expand_options(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        self.placement['frm_expand_options'] = []
+        self.placement['frm_expand_options_initiative'] = []
+        if self.root.expand_options.get():
+            lbl_name = ttk.Label(frm, text="Character name:", width=12, anchor='e', style="M.TLabel")
+            self.placement['frm_expand_options'].append([lbl_name])
+            entr_name = ttk.Entry(frm, textvariable=self.root.name, width=15,
+                                  font=("Javanese text", self.root.font_size))
+            self.placement['frm_expand_options'].append([entr_name])
+
+            frm_expand_initiative = ttk.Frame(frm, padding=5, style='my.TFrame')
             lbl_expand_initiative_dex = ttk.Label(frm_expand_initiative, text='Dex', width=5, anchor='e',
                                                   style='S.TLabel')
             spinbox_expand_initiative_dex = ttk.Spinbox(frm_expand_initiative,
                                                         from_=0,
                                                         to=10,
-                                                        textvariable=self.initiative_bonus_dex,
+                                                        textvariable=self.root.initiative_bonus_dex,
                                                         width=3,
                                                         style='my.TSpinbox')
+            self.placement['frm_expand_options_initiative'].append(
+                [lbl_expand_initiative_dex, spinbox_expand_initiative_dex])
             lbl_expand_initiative_wits = ttk.Label(frm_expand_initiative, text='Wits', width=5, anchor='e',
                                                    style='S.TLabel')
             spinbox_expand_initiative_wits = ttk.Spinbox(frm_expand_initiative,
                                                          from_=0,
                                                          to=10,
-                                                         textvariable=self.initiative_bonus_wits,
+                                                         textvariable=self.root.initiative_bonus_wits,
                                                          width=3,
                                                          style='my.TSpinbox')
+            self.placement['frm_expand_options_initiative'].append(
+                [lbl_expand_initiative_wits, spinbox_expand_initiative_wits])
 
-            frm_expand_options_initiative_placement = [
-                [lbl_expand_initiative_dex, spinbox_expand_initiative_dex],
-                [lbl_expand_initiative_wits, spinbox_expand_initiative_wits],
-            ]
-            frm_expand_options_placement.append([frm_expand_initiative])
+            self.placement['frm_expand_options'].append([frm_expand_initiative])
 
-            btn_connect = ttk.Button(frm_expand_options, textvariable=self.pooling_state, style='S.TButton',
-                                     command=self.run_bot_polling)
-            frm_expand_options_placement.append([btn_connect])
+            btn_connect = ttk.Button(frm, textvariable=self.root.pooling_state, style='S.TButton',
+                                     command=self.root.run_bot_polling)
+            self.placement['frm_expand_options'].append([btn_connect])
 
-            btn_save = ttk.Button(frm_expand_options, text='Save User Data', style='S.TButton',
-                                  command=self.save_to_file)
-            frm_expand_options_placement.append([btn_save])
+            btn_save = ttk.Button(frm, text='Save', style='S.TButton',
+                                  command=self.root.save_to_file)
+            self.placement['frm_expand_options'].append([btn_save])
 
-        frm_expand_blood_placement = []
-        frm_expand_blood_cells_placement = []
-        if self.expand_blood.get():
-            lbl_blood_title = ttk.Label(frm_expand_blood, text='Blood', width=12, anchor='n', style="M.TLabel")
-            frm_expand_blood_placement.append([lbl_blood_title])
-            frm_expand_blood_cells = ttk.Frame(frm_expand_blood, style="my.TFrame")
+        return frm
+
+    def disable_blood_cells(self):
+        r = self.root.blood_max_value.get() // 10
+        c = self.root.blood_max_value.get() % 10
+        for i in range(4):
+            for j in range(10):
+                if i < r:
+                    self.placement['frm_expand_blood_cells'][i][j].config(state='normal')
+                elif i <= r and j < c:
+                    self.placement['frm_expand_blood_cells'][i][j].config(state='normal')
+                else:
+                    self.placement['frm_expand_blood_cells'][i][j].config(state='disabled')
+                    self.root.blood[i][j].set(False)
+
+    def frm_expand_blood(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        self.placement['frm_expand_blood'] = []
+        self.placement['frm_expand_blood_cells'] = []
+        if self.root.expand_blood.get():
+            lbl_blood_title = ttk.Label(frm, text='Blood', width=12, anchor='n', style="M.TLabel")
+            self.placement['frm_expand_blood'].append([lbl_blood_title])
+            frm_expand_blood_cells = ttk.Frame(frm, style="my.TFrame")
             for i in range(4):
-                frm_expand_blood_cells_placement.append([])
+                self.placement['frm_expand_blood_cells'].append([])
                 for j in range(10):
                     blood_cell = ttk.Checkbutton(frm_expand_blood_cells,
-                                                 variable=self.blood[i][j],
-                                                 command=lambda r=i, c=j: self.set_blood(r, c),
+                                                 variable=self.root.blood[i][j],
+                                                 command=lambda r=i, c=j: self.root.set_blood(r, c),
                                                  style="my.TCheckbutton")
-                    frm_expand_blood_cells_placement[i].append(blood_cell)
-            frm_expand_blood_placement.append([frm_expand_blood_cells])
+                    self.placement['frm_expand_blood_cells'][i].append(blood_cell)
+            self.placement['frm_expand_blood'].append([frm_expand_blood_cells])
 
-        frm_expand_wounds_placement = []
-        frm_expand_wounds_cells_placement = []
-        if self.expand_wounds.get():
-            lbl_wounds_title = ttk.Label(frm_expand_wounds, text='Wounds', width=12, anchor='n', style="M.TLabel")
-            frm_expand_wounds_placement.append([lbl_wounds_title])
-            frm_expand_wounds_cells = ttk.Frame(frm_expand_wounds, style="my.TFrame")
+            frm_max_blood = ttk.Frame(frm, style="my.TFrame")
+            self.placement['frm_expand_max_blood'] = []
+            lbl_max_blood = ttk.Label(frm_max_blood, text="Max Blood", width=12, anchor='n', style='S.TLabel')
+            spinbox_max_blood = ttk.Spinbox(frm_max_blood,
+                                            from_=1,
+                                            to=40,
+                                            textvariable=self.root.blood_max_value,
+                                            command=self.disable_blood_cells,
+                                            width=3,
+                                            style="my.TSpinbox")
+            self.placement['frm_expand_max_blood'].append([lbl_max_blood, spinbox_max_blood])
+            self.disable_blood_cells()
+            self.placement['frm_expand_blood'].append([frm_max_blood])
+
+        return frm
+
+    def frm_expand_wounds(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        self.placement['frm_expand_wounds'] = []
+        self.placement['frm_expand_wounds_cells'] = []
+        if self.root.expand_wounds.get():
+            lbl_wounds_title = ttk.Label(frm, text='Wounds', width=12, anchor='n', style="M.TLabel")
+            self.placement['frm_expand_wounds'].append([lbl_wounds_title])
+            frm_expand_wounds_cells = ttk.Frame(frm, style="my.TFrame")
             for i in range(9):
                 wound_name = ttk.Label(frm_expand_wounds_cells, text=WOUNDS[i][0], width=10, anchor='e',
                                        style="S.TLabel")
                 wound_penalty = ttk.Label(frm_expand_wounds_cells, text=WOUNDS[i][1], anchor='w', style="S.TLabel")
                 wound_cell = ttk.Checkbutton(frm_expand_wounds_cells,
-                                             variable=self.wounds[i],
-                                             command=lambda y=i: self.set_wounds(y),
+                                             variable=self.root.wounds[i],
+                                             command=lambda y=i: self.root.set_wounds(y),
                                              style="my.TCheckbutton")
-                frm_expand_wounds_cells_placement.append([wound_name, wound_penalty, wound_cell])
-            frm_expand_wounds_placement.append([frm_expand_wounds_cells])
+                self.placement['frm_expand_wounds_cells'].append([wound_name, wound_penalty, wound_cell])
+            self.placement['frm_expand_wounds'].append([frm_expand_wounds_cells])
 
-        root_placement = [[frm_main, frm_results, frm_scale, frm_expand_options, frm_expand_blood, frm_expand_wounds]]
+        return frm
 
-        for obj in (root_placement, frm_main_placement, frm_main_buttons_placement, frm_results_placement,
-                    frm_controls_placement, frm_scale_placement,
-                    frm_expand_options_placement, frm_expand_options_initiative_placement,
-                    frm_expand_blood_placement, frm_expand_blood_cells_placement,
-                    frm_expand_wounds_placement, frm_expand_wounds_cells_placement):
-            self.place_widgets(obj)
+    def place_objects(self):
+        for obj in self.placement.values():
+            place_widgets(obj)
+
+    def main(self):
+        pass
+
+
+class InterfaceFrame(ttk.Frame):
+    def __init__(self, root, *args, **kwargs):
+        super().__init__(root, *args, **kwargs)
 
 
 class TgBot:
@@ -722,5 +811,5 @@ class Roller:
 
 if __name__ == '__main__':
     set_appdata_settings()
-    root = Root()
-    root.mainloop()
+    app = Root()
+    app.mainloop()
