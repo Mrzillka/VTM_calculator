@@ -265,8 +265,12 @@ class Root(Tk):
         message += f"<i>{', '.join(roll)}</i>\n"
         message += f"on <b>{self.dice_number.get()} dices</b> with <b>difficulty {self.difficulty.get()}</b>.\n"
 
-        message += f"<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>\n"
-        message += f"<b><u>Total successes: {int(self.successes.get()) - int(self.auto_success.get())} + {self.auto_success.get()} - {-self.roll_penalty.get()} = {self.successes.get()}</u></b>\n"
+        message += f"<b>It's a {'SUCCESS' if int(self.successes.get()) >= 1 else 'BOCH' if int(self.successes.get()) < 0 else 'FAILURE'}!</b>\n\n"
+        message += f"<b><u>Total successes: {self.successes.get()}</u></b>\n"
+        message += f"        Auto successes: {self.auto_success.get()}\n"
+        message += f"        Wounds penalty: {self.roll_penalty.get()} die(s)\n"
+        message += f"        Needed at least {self.success_needed.get()} successes\n"
+        # total_successes = f"{int(self.successes.get()) - int(self.auto_success.get())} + {self.auto_success.get()} - {-self.roll_penalty.get()} = {self.successes.get()}"
 
         message += f"Succeed {self.result.get()}"
 
@@ -388,88 +392,88 @@ class Interface(ttk.Frame):
         frm.grid_columnconfigure(1, pad=5)
         self.placement['frm_controls'] = []
 
-        lbl1 = ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
-        scale_1 = ttk.Scale(frm,
-                            from_=1,
-                            to=15,
-                            length=125 * self.root.scale,
-                            variable=self.root.dice_number,
-                            style="my.Horizontal.TScale",
-                            command=lambda s: self.root.scaler(s, self.root.dice_number))
-        spinbox_1 = ttk.Spinbox(frm,
-                                from_=1,
-                                to=15,
-                                textvariable=self.root.dice_number,
-                                width=3,
-                                style="my.TSpinbox")
+        lbl_number_of_dice = ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
+        scale_number_of_dice = ttk.Scale(frm,
+                                         from_=1,
+                                         to=15,
+                                         length=125 * self.root.scale,
+                                         variable=self.root.dice_number,
+                                         style="my.Horizontal.TScale",
+                                         command=lambda s: self.root.scaler(s, self.root.dice_number))
+        spinbox_number_of_dice = ttk.Spinbox(frm,
+                                             from_=1,
+                                             to=15,
+                                             textvariable=self.root.dice_number,
+                                             width=3,
+                                             style="my.TSpinbox")
         lbl_penalty = ttk.Label(frm, textvariable=self.root.roll_penalty, width=3, style="S.TLabel")
-        self.placement['frm_controls'].append([lbl1, scale_1, spinbox_1, lbl_penalty])
+        self.placement['frm_controls'].append(
+            [lbl_number_of_dice, scale_number_of_dice, spinbox_number_of_dice, lbl_penalty])
 
-        lbl2 = ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor='e')
-        scale_2 = ttk.Scale(frm,
-                            from_=2,
-                            to=10,
-                            length=125 * self.root.scale,
-                            variable=self.root.difficulty,
-                            style="my.Horizontal.TScale",
-                            command=lambda s: self.root.scaler(s, self.root.difficulty))
-        spinbox_2 = ttk.Spinbox(frm,
-                                from_=2,
-                                to=10,
-                                textvariable=self.root.difficulty,
-                                width=3,
-                                style="my.TSpinbox")
-        self.placement['frm_controls'].append([lbl2, scale_2, spinbox_2])
+        lbl_difficulty = ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor='e')
+        scale_difficulty = ttk.Scale(frm,
+                                     from_=2,
+                                     to=10,
+                                     length=125 * self.root.scale,
+                                     variable=self.root.difficulty,
+                                     style="my.Horizontal.TScale",
+                                     command=lambda s: self.root.scaler(s, self.root.difficulty))
+        spinbox_difficulty = ttk.Spinbox(frm,
+                                         from_=2,
+                                         to=10,
+                                         textvariable=self.root.difficulty,
+                                         width=3,
+                                         style="my.TSpinbox")
+        self.placement['frm_controls'].append([lbl_difficulty, scale_difficulty, spinbox_difficulty])
 
-        chk_additional_options = ttk.Checkbutton(frm,
-                                                 text="Additional options",
-                                                 variable=self.root.additional_options,
-                                                 command=self.root.redraw_interface,
-                                                 style="my.TCheckbutton")
+        lbl_auto_success = ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor='e')
+        scale_auto_success = ttk.Scale(frm,
+                                       from_=0,
+                                       to=5,
+                                       length=125 * self.root.scale,
+                                       variable=self.root.auto_success,
+                                       style="my.Horizontal.TScale",
+                                       command=lambda s: self.root.scaler(s, self.root.auto_success))
+        spinbox_auto_success = ttk.Spinbox(frm,
+                                           from_=0,
+                                           to=5,
+                                           textvariable=self.root.auto_success,
+                                           width=3,
+                                           style="my.TSpinbox")
+        self.placement['frm_controls'].append([lbl_auto_success, scale_auto_success, spinbox_auto_success])
+
+        chk_specialisations = ttk.Checkbutton(frm,
+                                              text="Specialisation",
+                                              variable=self.root.specialisation,
+                                              style="my.TCheckbutton")
         chk_is_send_to_telegram = ttk.Checkbutton(frm,
                                                   text="Send to Telegram",
                                                   variable=self.root.is_send_to_telegram,
                                                   style="my.TCheckbutton")
-        self.placement['frm_controls'].append([chk_additional_options, chk_is_send_to_telegram])
+        chk_additional_options = ttk.Checkbutton(frm,
+                                                 text="∨",
+                                                 variable=self.root.additional_options,
+                                                 command=self.root.redraw_interface,
+                                                 style="my.TCheckbutton")
+        self.placement['frm_controls'].append([chk_specialisations, chk_is_send_to_telegram, chk_additional_options])
+        # self.placement['frm_controls'].append([])
 
         if self.root.additional_options.get():
-            lbl3 = ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor='e')
-            scale_3 = ttk.Scale(frm,
-                                from_=1,
-                                to=10,
-                                length=125 * self.root.scale,
-                                variable=self.root.success_needed,
-                                style="my.Horizontal.TScale",
-                                command=lambda s: self.root.scaler(s, self.root.success_needed))
-            spinbox_3 = ttk.Spinbox(frm,
-                                    from_=1,
-                                    to=10,
-                                    textvariable=self.root.success_needed,
-                                    width=3,
-                                    style="my.TSpinbox")
-            self.placement['frm_controls'].append([lbl3, scale_3, spinbox_3])
-
-            lbl4 = ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor='e')
-            scale_4 = ttk.Scale(frm,
-                                from_=0,
-                                to=5,
-                                length=125 * self.root.scale,
-                                variable=self.root.auto_success,
-                                style="my.Horizontal.TScale",
-                                command=lambda s: self.root.scaler(s, self.root.auto_success))
-            spinbox_4 = ttk.Spinbox(frm,
-                                    from_=0,
-                                    to=5,
-                                    textvariable=self.root.auto_success,
-                                    width=3,
-                                    style="my.TSpinbox")
-            self.placement['frm_controls'].append([lbl4, scale_4, spinbox_4])
-
-            chk_specialisations = ttk.Checkbutton(frm,
-                                                  text="Specialisation",
-                                                  variable=self.root.specialisation,
-                                                  style="my.TCheckbutton")
-            self.placement['frm_controls'].append([chk_specialisations])
+            lbl_success_needed = ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor='e')
+            scale_success_needed = ttk.Scale(frm,
+                                             from_=1,
+                                             to=10,
+                                             length=125 * self.root.scale,
+                                             variable=self.root.success_needed,
+                                             style="my.Horizontal.TScale",
+                                             command=lambda s: self.root.scaler(s, self.root.success_needed))
+            spinbox_success_needed = ttk.Spinbox(frm,
+                                                 from_=1,
+                                                 to=10,
+                                                 textvariable=self.root.success_needed,
+                                                 width=3,
+                                                 style="my.TSpinbox")
+            self.placement['frm_controls'].append([lbl_success_needed, scale_success_needed, spinbox_success_needed])
 
         return frm
 
@@ -671,14 +675,6 @@ class Interface(ttk.Frame):
     def place_objects(self):
         for obj in self.placement.values():
             place_widgets(obj)
-
-    def main(self):
-        pass
-
-
-class InterfaceFrame(ttk.Frame):
-    def __init__(self, root, *args, **kwargs):
-        super().__init__(root, *args, **kwargs)
 
 
 class TgBot:
