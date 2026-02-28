@@ -96,6 +96,8 @@ class Root(Tk):
         self.successes = StringVar(value="0")
         self.initiative = StringVar(value="")
 
+        self.trackers = BooleanVar(value=False)
+
         self.expand_options = BooleanVar(value=False)
         self.name = StringVar(value=choice(NAMES))
         self.pooling_state = StringVar(value='Connect to Telegram')
@@ -121,6 +123,7 @@ class Root(Tk):
 
         self.styles = {
             "my.TFrame": ttk.Style(),
+            "solid.TFrame": ttk.Style(),
             "first.TFrame": ttk.Style(),
             "second.TFrame": ttk.Style(),
             "third.TFrame": ttk.Style(),
@@ -147,7 +150,8 @@ class Root(Tk):
 
     def styles_configure(self):
         # TODO: test styles functionality
-        self.styles["my.TFrame"].configure("my.TFrame", relief='solid')
+        self.styles["my.TFrame"].configure("my.TFrame", relief='bland')
+        self.styles["solid.TFrame"].configure("solid.TFrame", relief='solid')
         self.styles["first.TFrame"].configure("first.TFrame", background='#A0A0A0')
         self.styles["second.TFrame"].configure("second.TFrame", background='#010101')
         self.styles["third.TFrame"].configure("third.TFrame", background='#FFFFFF')
@@ -353,21 +357,30 @@ class Root(Tk):
         roll_penalty = WOUNDS[self.wounds_value.get()][1]
         self.roll_penalty.set(int(roll_penalty) if roll_penalty else 0)
 
+    def heal(self):
+        if self.wounds_value.get() > 0 and self.blood_value.get() > 0:
+            self.blood_value.set(self.blood_value.get() - 1)
+            self.wounds_value.set(self.wounds_value.get() - 1)
+            self.set_blood(load=True)
+            self.set_wounds(load=True)
+
     def set_humanity(self, x=0, load=False):
+        x += 1
         if load:
             x = self.humanity_value.get()
         for i in range(10):
-            if i <= x:
+            if i < x:
                 self.humanity[i].set(True)
             else:
                 self.humanity[i].set(False)
         self.humanity_value.set(x)
 
     def set_will(self, x=0, load=False):
+        x += 1
         if load:
             x = self.will_value.get()
         for i in range(10):
-            if i <= x:
+            if i < x:
                 self.will[i].set(True)
             else:
                 self.will[i].set(False)
@@ -394,26 +407,47 @@ class Interface(ttk.Frame):
         self.place_objects()
 
     def frm_center(self, root_frm):
-        frm = ttk.Frame(root_frm, padding=4, style='my.TFrame')
+        frm = ttk.Frame(root_frm, padding=4, style='solid.TFrame')
+        name = self.frm_center.__name__
 
-        self.placement['frm_center'] = [
+        self.placement[name] = [
             [
                 self.frm_main(frm),
                 self.frm_results(frm),
                 self.frm_scale(frm),
-                self.frm_expand_options(frm),
-                self.frm_expand_blood(frm),
-                self.frm_expand_wounds(frm),
+                self.frm_trackers(frm),
             ]
         ]
 
         return frm
 
+    def frm_trackers(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='solid.TFrame')
+        name = self.frm_trackers.__name__
+        self.placement[name] = []
+
+        if self.root.trackers.get():
+            self.placement[name].append([self.frm_blood_humanity_will(frm), self.frm_wounds(frm)])
+
+        return frm
+
+    def frm_blood_humanity_will(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=0, style='my.TFrame')
+        name = self.frm_blood_humanity_will.__name__
+        self.placement[name] = []
+
+        self.placement[name].append([self.frm_blood(frm)])
+        self.placement[name].append([self.frm_humanity(frm)])
+        self.placement[name].append([self.frm_will(frm)])
+
+        return frm
+
     def frm_main(self, root_frm):
         frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        name = self.frm_main.__name__
         lbl_title = ttk.Label(frm, text='VTM calculator', anchor='n', style='L.TLabel')
 
-        self.placement['frm_main'] = [
+        self.placement[name] = [
             [lbl_title],
             [self.frm_controls(root_frm=frm)],
             [self.frm_main_buttons(root_frm=frm)]
@@ -423,8 +457,9 @@ class Interface(ttk.Frame):
 
     def frm_controls(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style="my.TFrame")
+        name = self.frm_controls.__name__
         frm.grid_columnconfigure(1, pad=5)
-        self.placement['frm_controls'] = []
+        self.placement[name] = []
 
         lbl_number_of_dice = ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor='e')
         scale_number_of_dice = ttk.Scale(frm,
@@ -441,7 +476,7 @@ class Interface(ttk.Frame):
                                              width=3,
                                              style="my.TSpinbox")
         lbl_penalty = ttk.Label(frm, textvariable=self.root.roll_penalty, width=3, style="S.TLabel")
-        self.placement['frm_controls'].append(
+        self.placement[name].append(
             [lbl_number_of_dice, scale_number_of_dice, spinbox_number_of_dice, lbl_penalty])
 
         lbl_difficulty = ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor='e')
@@ -458,7 +493,7 @@ class Interface(ttk.Frame):
                                          textvariable=self.root.difficulty,
                                          width=3,
                                          style="my.TSpinbox")
-        self.placement['frm_controls'].append([lbl_difficulty, scale_difficulty, spinbox_difficulty])
+        self.placement[name].append([lbl_difficulty, scale_difficulty, spinbox_difficulty])
 
         lbl_auto_success = ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor='e')
         scale_auto_success = ttk.Scale(frm,
@@ -474,7 +509,7 @@ class Interface(ttk.Frame):
                                            textvariable=self.root.auto_success,
                                            width=3,
                                            style="my.TSpinbox")
-        self.placement['frm_controls'].append([lbl_auto_success, scale_auto_success, spinbox_auto_success])
+        self.placement[name].append([lbl_auto_success, scale_auto_success, spinbox_auto_success])
 
         chk_specialisations = ttk.Checkbutton(frm,
                                               text="Specialisation",
@@ -489,8 +524,7 @@ class Interface(ttk.Frame):
                                                  variable=self.root.additional_options,
                                                  command=self.root.redraw_interface,
                                                  style="my.TCheckbutton")
-        self.placement['frm_controls'].append([chk_specialisations, chk_is_send_to_telegram, chk_additional_options])
-        # self.placement['frm_controls'].append([])
+        self.placement[name].append([chk_specialisations, chk_is_send_to_telegram, chk_additional_options])
 
         if self.root.additional_options.get():
             lbl_success_needed = ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor='e')
@@ -507,134 +541,84 @@ class Interface(ttk.Frame):
                                                  textvariable=self.root.success_needed,
                                                  width=3,
                                                  style="my.TSpinbox")
-            self.placement['frm_controls'].append([lbl_success_needed, scale_success_needed, spinbox_success_needed])
+            self.placement[name].append([lbl_success_needed, scale_success_needed, spinbox_success_needed])
 
         return frm
 
     def frm_main_buttons(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_main_buttons'] = []
+        name = self.frm_main_buttons.__name__
+        self.placement[name] = []
+
         btn_calkulate = ttk.Button(frm, text='Calculate & Roll!', style='L.TButton',
                                    command=self.root.roll_and_calculate)
         btn_initiative = ttk.Button(frm, text='Roll initiative', style='M.TButton',
                                     command=self.root.roll_initiative)
 
-        self.placement['frm_main_buttons'].append([btn_calkulate, btn_initiative])
+        self.placement[name].append([btn_calkulate, btn_initiative])
 
         return frm
 
     def frm_results(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_results'] = []
+        name = self.frm_results.__name__
+        self.placement[name] = []
+
         lbl_result_calc = ttk.Label(frm, textvariable=self.root.result, width=14, anchor="center", style="L.TLabel")
-        self.placement['frm_results'].append([lbl_result_calc])
+        self.placement[name].append([lbl_result_calc])
         lbl_result_roll_1 = ttk.Label(frm,
                                       textvariable=self.root.roll_result_1,
                                       style="S.TLabel",
                                       width=20,
                                       anchor='n')
-        self.placement['frm_results'].append([lbl_result_roll_1])
+        self.placement[name].append([lbl_result_roll_1])
         lbl_result_roll_2 = ttk.Label(frm,
                                       textvariable=self.root.roll_result_2,
                                       style="S.TLabel",
                                       width=20,
                                       anchor='n')
-        self.placement['frm_results'].append([lbl_result_roll_2])
+        self.placement[name].append([lbl_result_roll_2])
         lbl_result_roll_spec = ttk.Label(frm,
                                          textvariable=self.root.roll_result_spec,
                                          style="S.TLabel",
                                          width=20,
                                          anchor='n')
-        self.placement['frm_results'].append([lbl_result_roll_spec])
+        self.placement[name].append([lbl_result_roll_spec])
         lbl_successes = ttk.Label(frm,
                                   textvariable=self.root.successes,
                                   style="L.TLabel",
                                   width=5,
                                   anchor='n')
-        self.placement['frm_results'].append([lbl_successes])
+        self.placement[name].append([lbl_successes])
         lbl_initiative = ttk.Label(frm,
                                    textvariable=self.root.initiative,
                                    style="M.TLabel",
                                    width=10,
                                    anchor='n')
 
-        self.placement['frm_results'].append([lbl_initiative])
+        self.placement[name].append([lbl_initiative])
 
         return frm
 
     def frm_scale(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_scale'] = []
+        name = self.frm_scale.__name__
+        self.placement[name] = []
 
-        chk_expand_options = ttk.Checkbutton(frm,
-                                             text='Options >',
-                                             variable=self.root.expand_options,
-                                             command=self.root.redraw_interface,
-                                             style='my.TCheckbutton')
-        self.placement['frm_scale'].append([chk_expand_options])
-        chk_expand_blood = ttk.Checkbutton(frm,
-                                           text='Blood >',
-                                           variable=self.root.expand_blood,
-                                           command=self.root.redraw_interface,
-                                           style='my.TCheckbutton')
-        self.placement['frm_scale'].append([chk_expand_blood])
-        chk_expand_wounds = ttk.Checkbutton(frm,
-                                            text='Wounds >',
-                                            variable=self.root.expand_wounds,
-                                            command=self.root.redraw_interface,
-                                            style='my.TCheckbutton')
-        self.placement['frm_scale'].append([chk_expand_wounds])
+        chk_trackers = ttk.Checkbutton(frm,
+                                       text='Trackers ►',
+                                       variable=self.root.trackers,
+                                       command=self.root.redraw_interface,
+                                       style='my.TCheckbutton')
+        self.placement[name].append([chk_trackers])
+
         btn_plus = ttk.Button(frm, width=2, text='+', style='L.TButton',
                               command=lambda: self.root.scale_up(True))
-        self.placement['frm_scale'].append([btn_plus])
+        self.placement[name].append([btn_plus])
+
         btn_minus = ttk.Button(frm, width=2, text='-', style='L.TButton',
                                command=lambda: self.root.scale_up(False))
-        self.placement['frm_scale'].append([btn_minus])
-
-        return frm
-
-    def frm_expand_options(self, root_frm):
-        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_expand_options'] = []
-        self.placement['frm_expand_options_initiative'] = []
-        if self.root.expand_options.get():
-            lbl_name = ttk.Label(frm, text="Character name:", width=12, anchor='e', style="M.TLabel")
-            self.placement['frm_expand_options'].append([lbl_name])
-            entr_name = ttk.Entry(frm, textvariable=self.root.name, width=15,
-                                  font=("Javanese text", self.root.font_size))
-            self.placement['frm_expand_options'].append([entr_name])
-
-            frm_expand_initiative = ttk.Frame(frm, padding=5, style='my.TFrame')
-            lbl_expand_initiative_dex = ttk.Label(frm_expand_initiative, text='Dex', width=5, anchor='e',
-                                                  style='S.TLabel')
-            spinbox_expand_initiative_dex = ttk.Spinbox(frm_expand_initiative,
-                                                        from_=0,
-                                                        to=10,
-                                                        textvariable=self.root.initiative_bonus_dex,
-                                                        width=3,
-                                                        style='my.TSpinbox')
-            self.placement['frm_expand_options_initiative'].append(
-                [lbl_expand_initiative_dex, spinbox_expand_initiative_dex])
-            lbl_expand_initiative_wits = ttk.Label(frm_expand_initiative, text='Wits', width=5, anchor='e',
-                                                   style='S.TLabel')
-            spinbox_expand_initiative_wits = ttk.Spinbox(frm_expand_initiative,
-                                                         from_=0,
-                                                         to=10,
-                                                         textvariable=self.root.initiative_bonus_wits,
-                                                         width=3,
-                                                         style='my.TSpinbox')
-            self.placement['frm_expand_options_initiative'].append(
-                [lbl_expand_initiative_wits, spinbox_expand_initiative_wits])
-
-            self.placement['frm_expand_options'].append([frm_expand_initiative])
-
-            btn_connect = ttk.Button(frm, textvariable=self.root.pooling_state, style='S.TButton',
-                                     command=self.root.run_bot_polling)
-            self.placement['frm_expand_options'].append([btn_connect])
-
-            btn_save = ttk.Button(frm, text='Save', style='S.TButton',
-                                  command=self.root.save_to_file)
-            self.placement['frm_expand_options'].append([btn_save])
+        self.placement[name].append([btn_minus])
 
         return frm
 
@@ -644,47 +628,50 @@ class Interface(ttk.Frame):
         for i in range(4):
             for j in range(10):
                 if i < r:
-                    self.placement['frm_expand_blood_cells'][i][j].config(state='normal')
+                    self.placement[self.frm_blood_cells.__name__][i][j].config(state='normal')
                 elif i <= r and j < c:
-                    self.placement['frm_expand_blood_cells'][i][j].config(state='normal')
+                    self.placement[self.frm_blood_cells.__name__][i][j].config(state='normal')
                 else:
-                    self.placement['frm_expand_blood_cells'][i][j].config(state='disabled')
+                    self.placement[self.frm_blood_cells.__name__][i][j].config(state='disabled')
                     self.root.blood[i][j].set(False)
 
-    def frm_expand_blood(self, root_frm):
+    def frm_blood(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_expand_blood'] = []
-        if self.root.expand_blood.get():
-            lbl_blood_title = ttk.Label(frm, text='Blood', width=12, anchor='n', style="M.TLabel")
-            self.placement['frm_expand_blood'].append([lbl_blood_title])
+        name = self.frm_blood.__name__
+        self.placement[self.frm_blood.__name__] = []
 
-            frm_cells = self.frm_expand_blood_cells(frm)
-            self.placement['frm_expand_blood'].append([frm_cells])
+        lbl_blood_title = ttk.Label(frm, text='Blood', width=12, anchor='n', style="M.TLabel")
+        self.placement[name].append([lbl_blood_title])
 
-            frm_max_blood = self.frm_max_blood(frm)
-            self.disable_blood_cells()
-            self.placement['frm_expand_blood'].append([frm_max_blood])
+        frm_cells = self.frm_blood_cells(frm)
+        self.placement[name].append([frm_cells])
+
+        frm_max_blood = self.frm_max_blood(frm)
+        self.disable_blood_cells()
+        self.placement[name].append([frm_max_blood])
 
         return frm
 
-    def frm_expand_blood_cells(self, root_frm):
+    def frm_blood_cells(self, root_frm):
         frm = ttk.Frame(root_frm, style="my.TFrame")
-        self.placement['frm_expand_blood_cells'] = []
+        name = self.frm_blood_cells.__name__
+        self.placement[name] = []
 
         for i in range(4):
-            self.placement['frm_expand_blood_cells'].append([])
+            self.placement[name].append([])
             for j in range(10):
                 blood_cell = ttk.Checkbutton(frm,
                                              variable=self.root.blood[i][j],
                                              command=lambda r=i, c=j: self.root.set_blood(r, c),
                                              style="my.TCheckbutton")
-                self.placement['frm_expand_blood_cells'][i].append(blood_cell)
+                self.placement[name][i].append(blood_cell)
 
         return frm
 
     def frm_max_blood(self, root_frm):
         frm = ttk.Frame(root_frm, style="my.TFrame")
-        self.placement['frm_expand_max_blood'] = []
+        name = self.frm_max_blood.__name__
+        self.placement[name] = []
 
         lbl = ttk.Label(frm, text="Max Blood", width=12, anchor='n', style='S.TLabel')
 
@@ -695,24 +682,32 @@ class Interface(ttk.Frame):
                               command=self.disable_blood_cells,
                               width=3,
                               style="my.TSpinbox")
-        self.placement['frm_expand_max_blood'].append([lbl, spinbox])
+        self.placement[name].append([lbl, spinbox])
 
         return frm
 
-    def frm_expand_wounds(self, root_frm):
+    def frm_wounds(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_expand_wounds'] = []
-        if self.root.expand_wounds.get():
-            lbl_wounds_title = ttk.Label(frm, text='Wounds', width=12, anchor='n', style="M.TLabel")
-            self.placement['frm_expand_wounds'].append([lbl_wounds_title])
-            frm_cells = self.frm_expand_wounds_cells(frm)
-            self.placement['frm_expand_wounds'].append([frm_cells])
+        name = self.frm_wounds.__name__
+        self.placement[name] = []
+
+        lbl_title = ttk.Label(frm, text='Wounds', width=12, anchor='n', style="M.TLabel")
+        self.placement[name].append([lbl_title])
+
+        frm_cells = self.frm_wounds_cells(frm)
+        self.placement[name].append([frm_cells])
+
+        btn_heal = ttk.Button(frm, text='HEAL',
+                              command=self.root.heal,
+                              style='M.TButton')
+        self.placement[name].append([btn_heal])
 
         return frm
 
-    def frm_expand_wounds_cells(self, root_frm):
+    def frm_wounds_cells(self, root_frm):
         frm = ttk.Frame(root_frm, padding=0, style='my.TFrame')
-        self.placement['frm_expand_wounds_cells'] = []
+        name = self.frm_wounds_cells.__name__
+        self.placement[name] = []
 
         for i in range(9):
             wound_name = ttk.Label(frm, text=WOUNDS[i][0], width=10, anchor='e',
@@ -722,102 +717,206 @@ class Interface(ttk.Frame):
                                          variable=self.root.wounds[i],
                                          command=lambda y=i: self.root.set_wounds(y),
                                          style="my.TCheckbutton")
-            self.placement['frm_expand_wounds_cells'].append([wound_name, wound_penalty, wound_cell])
+            self.placement[name].append([wound_name, wound_penalty, wound_cell])
 
         return frm
 
-    def frm_bottom(self, root_frm):
-        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_bottom'] = []
-
-        frm_blood = self.frm_bottom_blood(frm)
-        frm_wounds = self.frm_bottom_wounds(frm)
-        frm_humanity = self.frm_bottom_humanity(frm)
-        frm_will = self.frm_bottom_will(frm)
-
-        self.placement['frm_bottom'].append([frm_blood, frm_wounds, frm_humanity, frm_will])
-
-        return frm
-
-    def frm_bottom_blood(self, root_frm):
-        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_bottom_blood'] = []
-
-        lbl = ttk.Label(frm, text='Blood', style='M.TLabel')
-        self.placement['frm_bottom_blood'].append([lbl])
-
-        lbl_var = ttk.Label(frm, textvariable=self.root.blood_value, style = 'S.TLabel')
-        self.placement['frm_bottom_blood'].append([lbl_var])
-
-        return frm
-
-    def frm_bottom_wounds(self, root_frm):
-        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_bottom_wounds'] = []
-
-        lbl = ttk.Label(frm, text='Wounds', style='M.TLabel')
-        self.placement['frm_bottom_wounds'].append([lbl])
-
-        lbl_var = ttk.Label(frm, textvariable=self.root.wounds_value, style = 'S.TLabel')
-        self.placement['frm_bottom_wounds'].append([lbl_var])
-
-        return frm
-
-    def frm_bottom_humanity(self, root_frm):
+    def frm_humanity(self, root_frm):
         frm = ttk.Frame(root_frm, padding=0, style='my.TFrame')
-        self.placement['frm_humanity'] = []
+        name = self.frm_humanity.__name__
+        self.placement[name] = []
 
         lbl = ttk.Label(frm, text='Humanity/Path', style='M.TLabel')
-        self.placement['frm_humanity'].append([lbl])
+
+        self.placement[name].append([lbl])
 
         frm_humanity_cells = self.frm_humanity_cells(frm)
-        self.placement['frm_humanity'].append([frm_humanity_cells])
+        self.placement[name].append([frm_humanity_cells])
         self.root.set_humanity(load=True)
 
         return frm
 
     def frm_humanity_cells(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_humanity_cells'] = [[],
-                                                []]
+        name = self.frm_humanity_cells.__name__
+        self.placement[name] = [[],
+                                []]
 
         for i in range(10):
             point = ttk.Label(frm, text=f'{i + 1}', width=2, anchor='w', style='my.TLabel')
-            self.placement['frm_humanity_cells'][0].append(point)
+            self.placement[name][0].append(point)
             cell = ttk.Checkbutton(frm,
                                    variable=self.root.humanity[i],
                                    command=lambda x=i: self.root.set_humanity(x),
                                    style='my.TCheckbutton')
-            self.placement['frm_humanity_cells'][1].append(cell)
+            self.placement[name][1].append(cell)
 
         return frm
 
-    def frm_bottom_will(self, root_frm):
+    def frm_will(self, root_frm):
         frm = ttk.Frame(root_frm, padding=0, style='my.TFrame')
-        self.placement['frm_will'] = []
+        name = self.frm_will.__name__
+        self.placement[name] = []
 
         lbl = ttk.Label(frm, text='Will', style='M.TLabel')
-        self.placement['frm_will'].append([lbl])
+        self.placement[name].append([lbl])
 
         frm_will_cells = self.frm_will_cells(frm)
-        self.placement['frm_will'].append([frm_will_cells])
+        self.placement[name].append([frm_will_cells])
         self.root.set_will(load=True)
 
         return frm
 
     def frm_will_cells(self, root_frm):
         frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
-        self.placement['frm_will_cells'] = [[],
-                                            []]
+        name = self.frm_will_cells.__name__
+        self.placement[name] = [[],
+                                []]
 
         for i in range(10):
             point = ttk.Label(frm, text=f'{i + 1}', width=2, anchor='w', style='my.TLabel')
-            self.placement['frm_will_cells'][0].append(point)
+            self.placement[name][0].append(point)
             cell = ttk.Checkbutton(frm,
                                    variable=self.root.will[i],
                                    command=lambda x=i: self.root.set_will(x),
                                    style='my.TCheckbutton')
-            self.placement['frm_will_cells'][1].append(cell)
+            self.placement[name][1].append(cell)
+
+        return frm
+
+    def frm_bottom(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='solid.TFrame')
+        name = self.frm_bottom.__name__
+        self.placement[name] = []
+
+        frm_options = self.frm_options(frm)
+        frm_blood = self.frm_blood_value(frm)
+        frm_wounds = self.frm_wounds_value(frm)
+        frm_humanity = self.frm_humanity_value(frm)
+        frm_will = self.frm_will_value(frm)
+
+        self.placement[name].append([frm_options, frm_blood, frm_wounds, frm_humanity, frm_will])
+
+        return frm
+
+    def frm_options(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='solid.TFrame')
+        name = self.frm_options.__name__
+        self.placement[name] = []
+
+        frm_name = self.frm_name(frm)
+        frm_initiative = self.frm_initiative(frm)
+        frm_buttons = self.frm_buttons(frm)
+
+        self.placement[name].append([frm_name, frm_initiative, frm_buttons])
+
+        return frm
+
+    def frm_name(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        name = self.frm_name.__name__
+        self.placement[name] = []
+
+        lbl_name = ttk.Label(frm, text="Character name:", width=12, anchor='e', style="M.TLabel")
+        self.placement[name].append([lbl_name])
+        entr_name = ttk.Entry(frm, textvariable=self.root.name, width=15,
+                              font=("Javanese text", self.root.font_size))
+        self.placement[name].append([entr_name])
+
+        return frm
+
+    def frm_initiative(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        name = self.frm_initiative.__name__
+        self.placement[name] = []
+
+        lbl_dex = ttk.Label(frm, text='Dex', width=5, anchor='e', style='S.TLabel')
+        spinbox_dex = ttk.Spinbox(frm,
+                                  from_=0,
+                                  to=10,
+                                  textvariable=self.root.initiative_bonus_dex,
+                                  width=3,
+                                  style='my.TSpinbox')
+        self.placement[name].append([lbl_dex, spinbox_dex])
+
+        lbl_wits = ttk.Label(frm, text='Wits', width=5, anchor='e',
+                             style='S.TLabel')
+        spinbox_wits = ttk.Spinbox(frm,
+                                   from_=0,
+                                   to=10,
+                                   textvariable=self.root.initiative_bonus_wits,
+                                   width=3,
+                                   style='my.TSpinbox')
+        self.placement[name].append([lbl_wits, spinbox_wits])
+
+        return frm
+
+    def frm_buttons(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=10, style='my.TFrame')
+        name = self.frm_buttons.__name__
+        self.placement[name] = []
+
+        btn_connect = ttk.Button(frm, textvariable=self.root.pooling_state,
+                                 command=self.root.run_bot_polling,
+                                 style='S.TButton')
+        self.placement[name].append([btn_connect])
+
+        btn_save = ttk.Button(frm, text='Save',
+                              command=self.root.save_to_file,
+                              style='S.TButton')
+        self.placement[name].append([btn_save])
+
+        return frm
+
+    def frm_blood_value(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        name = self.frm_blood_value.__name__
+        self.placement[name] = []
+
+        lbl = ttk.Label(frm, text='Blood', style='M.TLabel')
+        self.placement[name].append([lbl])
+
+        lbl_var = ttk.Label(frm, textvariable=self.root.blood_value, style='S.TLabel')
+        self.placement[name].append([lbl_var])
+
+        return frm
+
+    def frm_wounds_value(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        name = self.frm_wounds_value.__name__
+        self.placement[name] = []
+
+        lbl = ttk.Label(frm, text='Wounds', style='M.TLabel')
+        self.placement[name].append([lbl])
+
+        lbl_var = ttk.Label(frm, textvariable=self.root.wounds_value, style='S.TLabel')
+        self.placement[name].append([lbl_var])
+
+        return frm
+
+    def frm_humanity_value(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        name = self.frm_humanity_value.__name__
+        self.placement[name] = []
+
+        lbl = ttk.Label(frm, text='Humanity', style='M.TLabel')
+        self.placement[name].append([lbl])
+
+        lbl_var = ttk.Label(frm, textvariable=self.root.humanity_value, style='S.TLabel')
+        self.placement[name].append([lbl_var])
+
+        return frm
+
+    def frm_will_value(self, root_frm):
+        frm = ttk.Frame(root_frm, padding=5, style='my.TFrame')
+        name = self.frm_will_value.__name__
+        self.placement[name] = []
+
+        lbl = ttk.Label(frm, text='Will', style='M.TLabel')
+        self.placement[name].append([lbl])
+
+        lbl_var = ttk.Label(frm, textvariable=self.root.will_value, style='S.TLabel')
+        self.placement[name].append([lbl_var])
 
         return frm
 
