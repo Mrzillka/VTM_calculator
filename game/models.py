@@ -1,0 +1,24 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import NamedTuple
+
+
+@dataclass(frozen=True)
+class RollResult:
+    """Результат броска кубиков."""
+    dice: list[int]
+    specialisation_dice: list[int]
+    successes: int
+
+    @property
+    def all_dice(self) -> list[int]:
+        return self.dice + self.specialisation_dice
+
+    @property
+    def outcome(self) -> str:
+        if self.successes >= 1:
+            return "SUCCESS"
+        if self.successes < 0:
+            return "BOTCH"
+        return "FAILURE"
