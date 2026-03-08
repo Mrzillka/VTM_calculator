@@ -86,14 +86,14 @@ class Root(Tk):
             "my.TFrame": {"relief": "flat"},
             "solid.TFrame": {"relief": "solid"},
             "L.TButton": {"font": (FONT, 15)},
-            "M.TButton": {"font": (FONT, 12)},
+            "M.TButton": {"font": (FONT, 12, "italic")},
             "S.TButton": {"font": (FONT, 10)},
             "my.TEntry": {"font": (FONT, 10)},
             "my.Horizontal.TScale": {"font": (FONT, 10)},
             "my.TSpinbox": {"font": (FONT, 10)},
             "my.TCheckbutton": {"font": (FONT, 10)},
-            "L.TLabel": {"font": (FONT, 20)},
-            "M.TLabel": {"font": (FONT, 15)},
+            "L.TLabel": {"font": (FONT, 20, "bold")},
+            "M.TLabel": {"font": (FONT, 15, 'italic')},
             "S.TLabel": {"font": (FONT, 10)},
         }
         for name, opts in definitions.items():

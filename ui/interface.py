@@ -130,7 +130,7 @@ class Interface(ttk.Frame):
             ttk.Scale(frm, from_=1, to=15, length=125,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
-            ttk.Spinbox(frm, from_=1, to=15, textvariable=root.dice_number,
+            ttk.Spinbox(frm, from_=1, to=50, textvariable=root.dice_number,
                         width=3, style="my.TSpinbox"),
             ttk.Label(frm, textvariable=root.character.roll_penalty, width=3, style="S.TLabel"),
         ])
