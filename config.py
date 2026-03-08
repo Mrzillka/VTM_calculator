@@ -7,8 +7,6 @@ from typing import NamedTuple
 
 import dotenv
 
-# ── Константы ────────────────────────────────────────────────────────────────
-
 NAMES: tuple[str, ...] = (
     "Alex", "Greg", "John", "Bill", "Emma", "Richard",
     "Anna", "Thomas", "Andrew", "Maria", "Caren", "Carl",
@@ -34,8 +32,6 @@ WOUND_LEVELS: tuple[WoundLevel, ...] = (
 )
 
 
-# ── Пути к файлам ─────────────────────────────────────────────────────────────
-
 def _get_app_data_dir() -> Path:
     """Возвращает кроссплатформенный путь к каталогу приложения."""
     if sys.platform == "win32":
@@ -57,8 +53,6 @@ def ensure_app_data_dir() -> None:
     ENV_FILE_PATH.touch(exist_ok=True)
     dotenv.load_dotenv(ENV_FILE_PATH)
 
-
-# ── Настройки Telegram ────────────────────────────────────────────────────────
 
 def get_bot_token() -> str:
     """

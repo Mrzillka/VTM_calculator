@@ -33,22 +33,18 @@ class Roller:
         self.specialisation = specialisation
         self.penalty = penalty
 
-    # ── Публичный API ──────────────────────────────────────────────────────────
-
     def roll(self) -> RollResult:
         """Выполняет бросок и возвращает результат."""
         pool_size = max(1, self.dice_number + self.penalty)
         dice = [randint(1, self.SIDES) for _ in range(pool_size)]
         spec_dice = self._roll_specialisation(dice)
 
-        successes = self._count_successes(dice + spec_dice)
+        successes = self._count_successes(dice, spec_dice)
         return RollResult(
             dice=sorted(dice, reverse=True),
             specialisation_dice=spec_dice,
             successes=successes,
         )
-
-    # ── Вспомогательные методы ─────────────────────────────────────────────────
 
     def _roll_specialisation(self, dice: list[int]) -> list[int]:
         """Дополнительные броски за каждую выпавшую 10 при специализации."""
@@ -65,8 +61,8 @@ class Roller:
                     extra.append(result)
         return extra
 
-    def _count_successes(self, all_dice: list[int]) -> int:
+    def _count_successes(self, roll_dice: list[int], spec_dice: list[int]) -> int:
         """Подсчитывает нетто-успехи: (успехи + авто) - провалы (единицы)."""
-        hits = sum(1 for d in all_dice if d >= self.difficulty)
-        botches = all_dice.count(1)
+        hits = sum(1 for d in roll_dice + spec_dice if d >= self.difficulty)
+        botches = roll_dice.count(1)
         return hits + self.auto_success - botches

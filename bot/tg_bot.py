@@ -51,8 +51,6 @@ class TgBot:
         self._application.add_handler(CommandHandler("debug", self._on_debug))
         self._application.run_polling()
 
-    # ── Handlers ───────────────────────────────────────────────────────────────
-
     async def _on_start(self, update: Update, context) -> None:  # type: ignore[type-arg]
         self.chat_id = update.effective_chat.id
         self.thread_id = update.message.message_thread_id
@@ -87,8 +85,6 @@ class TgBot:
             )
         except TelegramError as exc:
             logger.error("Ошибка Telegram при /debug: %s", exc)
-
-    # ── Отправка сообщений ─────────────────────────────────────────────────────
 
     def send_async(self, text: str) -> None:
         """Отправляет сообщение в фоновом потоке; показывает ошибку в GUI."""

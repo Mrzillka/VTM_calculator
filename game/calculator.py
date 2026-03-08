@@ -1,4 +1,3 @@
-# game/calculator.py
 from __future__ import annotations
 
 from collections import defaultdict
@@ -6,10 +5,6 @@ from collections import defaultdict
 
 class Calculator:
     """
-    Вычисляет вероятность успеха в системе VTM.
-
-    Использует динамическое программирование для точного расчёта
-    вероятности по независимым кубикам d10.
 
     Args:
         dice_number:    количество кубиков.

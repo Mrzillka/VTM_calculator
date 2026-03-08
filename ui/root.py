@@ -1,4 +1,3 @@
-# ui/root.py
 from __future__ import annotations
 
 import logging
@@ -26,24 +25,16 @@ _FONT = "Javanese text"
 
 class Root(Tk):
     """
-    Главное окно приложения VTM Calculator.
+    Main application window for VTM Calculator.
 
-    Хранит все переменные состояния (tkinter Var) и содержит логику
-    взаимодействия с игровыми компонентами и Telegram-ботом.
+    Holds all tkinter state variables and contains interaction logic
+    for game components and the Telegram bot.
     """
-
-    START_FONT_SIZE: int = 10
-    MIN_SCALE: int = 1
-    MAX_SCALE: int = 3
 
     def __init__(self) -> None:
         super().__init__()
         self.title("VTM calculator")
         self.resizable(True, True)
-
-        # ── Масштаб ────────────────────────────────────────────────────────────
-        self.scale: int = 1
-        self.font_size: int = self.START_FONT_SIZE
 
         # ── Telegram ───────────────────────────────────────────────────────────
         try:
@@ -54,19 +45,19 @@ class Root(Tk):
         self.bot = TgBot(token)
         self.chat_id = StringVar(value=str(self.bot.chat_id or ""))
 
-        # ── Параметры броска ───────────────────────────────────────────────────
+        # ── Roll parameters ────────────────────────────────────────────────────
         self.dice_number = IntVar(value=5)
         self.difficulty = IntVar(value=6)
         self.success_needed = IntVar(value=1)
         self.auto_success = IntVar(value=0)
         self.specialisation = BooleanVar(value=False)
 
-        # ── Флаги UI ───────────────────────────────────────────────────────────
+        # ── UI flags ───────────────────────────────────────────────────────────
         self.additional_options = BooleanVar(value=False)
         self.is_send_to_telegram = BooleanVar(value=False)
         self.trackers = BooleanVar(value=False)
 
-        # ── Результаты ─────────────────────────────────────────────────────────
+        # ── Roll results ───────────────────────────────────────────────────────
         self.result = StringVar(value="Chance: -.--%")
         self.roll_result_1 = StringVar(value="")
         self.roll_result_2 = StringVar(value="")
@@ -76,13 +67,13 @@ class Root(Tk):
         self._last_roll: list[int] = []
         self._last_spec: list[int] = []
 
-        # ── Опции персонажа ────────────────────────────────────────────────────
+        # ── Character options ──────────────────────────────────────────────────
         self.name = StringVar(value=choice(NAMES))
         self.pooling_state = StringVar(value="Connect to Telegram")
         self.initiative_bonus_dex = IntVar(value=0)
         self.initiative_bonus_wits = IntVar(value=0)
 
-        # ── Трекеры ────────────────────────────────────────────────────────────
+        # ── Trackers ───────────────────────────────────────────────────────────
         self.blood_max_value = IntVar(value=10)
         self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(4)]
         self.blood_value = IntVar(value=10)
@@ -102,7 +93,7 @@ class Root(Tk):
         self._build_interface()
         self.load_from_file()
 
-    # ── Настройка ──────────────────────────────────────────────────────────────
+    # ── Setup ──────────────────────────────────────────────────────────────────
 
     def _configure_grid(self) -> None:
         for col in range(4):
@@ -110,67 +101,34 @@ class Root(Tk):
         self.grid_rowconfigure(0, pad=10)
 
     def _configure_styles(self) -> None:
-        """Настраивает ttk-стили с учётом текущего масштаба."""
+        """Configure ttk styles."""
         s = ttk.Style()
-        fs = self.font_size
-        fsl = fs * 2
-        fsm = int(fs * 1.5)
 
         definitions = {
             "my.TFrame": {"relief": "flat"},
             "solid.TFrame": {"relief": "solid"},
-            "L.TButton": {"font": (_FONT, fsm)},
-            "S.TButton": {"font": (_FONT, fs)},
-            "M.TButton": {"font": (_FONT, fsm)},
-            "my.TEntry": {"font": (_FONT, fs)},
-            "my.Horizontal.TScale": {"font": (_FONT, fs)},
-            "my.TSpinbox": {"font": (_FONT, fs)},
-            "my.TCheckbutton": {"font": (_FONT, fs)},
-            "L.TLabel": {"font": (_FONT, fsl)},
-            "M.TLabel": {"font": (_FONT, fsm)},
-            "S.TLabel": {"font": (_FONT, fs)},
+            "L.TButton": {"font": (_FONT, 15)},
+            "S.TButton": {"font": (_FONT, 10)},
+            "M.TButton": {"font": (_FONT, 15)},
+            "my.TEntry": {"font": (_FONT, 10)},
+            "my.Horizontal.TScale": {"font": (_FONT, 10)},
+            "my.TSpinbox": {"font": (_FONT, 10)},
+            "my.TCheckbutton": {"font": (_FONT, 10)},
+            "L.TLabel": {"font": (_FONT, 20)},
+            "M.TLabel": {"font": (_FONT, 15)},
+            "S.TLabel": {"font": (_FONT, 10)},
         }
         for name, opts in definitions.items():
             s.configure(name, **opts)
 
     def _build_interface(self) -> None:
-        iface = Interface(self)
-        place_widgets([[iface]])
+        self._interface = Interface(self)
+        place_widgets([[self._interface]])
 
-    # ── Масштабирование ────────────────────────────────────────────────────────
-
-    def scale_up(self, increase: bool = True) -> None:
-        """Увеличивает или уменьшает масштаб интерфейса."""
-        if increase and self.scale < self.MAX_SCALE:
-            self.scale += 1
-        elif not increase and self.scale > self.MIN_SCALE:
-            self.scale -= 1
-        else:
-            return
-        self.font_size = self.START_FONT_SIZE * self.scale
-        self._configure_styles()
-        self.redraw_interface()
-
-    def redraw_interface(self) -> None:
-        """Пересоздаёт все виджеты интерфейса."""
-        for widget in self.winfo_children():
-            widget.destroy()
-        self._configure_grid()
-        self._build_interface()
-        self._update_window_size()
-
-    def _update_window_size(self) -> None:
-        children = self.winfo_children()
-        if not children:
-            return
-        width = sum(w.winfo_width() for w in children) + 30
-        height = max(w.winfo_height() for w in children) + 10
-        self.geometry(f"{width}x{height}")
-
-    # ── Игровая логика ─────────────────────────────────────────────────────────
+    # ── Game logic ─────────────────────────────────────────────────────────────
 
     def calculate(self) -> None:
-        """Вычисляет вероятность и обновляет метку."""
+        """Calculate roll probability and update the label."""
         calc = Calculator(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
@@ -180,7 +138,7 @@ class Root(Tk):
         self.result.set(f"Chance: {calc.get_probability():.2f}%")
 
     def roll(self) -> None:
-        """Делает бросок и обновляет результаты."""
+        """Perform a dice roll and update result display."""
         roller = Roller(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
@@ -250,7 +208,7 @@ class Root(Tk):
         )
         self.bot.send_async(msg)
 
-    # ── Трекеры ────────────────────────────────────────────────────────────────
+    # ── Trackers ───────────────────────────────────────────────────────────────
 
     def set_blood(self, row: int = 0, col: int = 0, *, load: bool = False) -> None:
         if load:
@@ -269,7 +227,7 @@ class Root(Tk):
         if load:
             level = self.wounds_value.get()
         for i in range(9):
-            self.wounds[i].set(i <= level)  # ← включаем текущий уровень
+            self.wounds[i].set(i <= level)
         self.wounds_value.set(level)
         self.roll_penalty.set(WOUND_LEVELS[level].penalty)
 
@@ -280,7 +238,6 @@ class Root(Tk):
             self.set_blood(load=True)
             self.set_wounds(load=True)
 
-    # СТАЛО:
     def set_humanity(self, level: int = 0, *, load: bool = False) -> None:
         if load:
             level = self.humanity_value.get()
@@ -299,10 +256,10 @@ class Root(Tk):
             self.will[i].set(i < level)
         self.will_value.set(level)
 
-    # ── Сохранение / загрузка ──────────────────────────────────────────────────
+    # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        """Сохраняет настройки персонажа в .env-файл."""
+        """Save character settings to the .env file."""
         kv = {
             "CHAT_ID": str(self.bot.chat_id),
             "THREAD_ID": str(self.bot.thread_id),
@@ -319,7 +276,7 @@ class Root(Tk):
             dotenv.set_key(str(ENV_FILE_PATH), key, value)
 
     def load_from_file(self) -> None:
-        """Загружает сохранённые настройки из .env-файла."""
+        """Load saved character settings from the .env file."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
         try:
             self.bot.chat_id = env["CHAT_ID"]
@@ -327,8 +284,9 @@ class Root(Tk):
             self.name.set(env["NAME"])
             self.initiative_bonus_dex.set(int(env["DEX"]))
             self.initiative_bonus_wits.set(int(env["WITS"]))
-            self.blood_value.set(int(env["BLOOD"]))
             self.blood_max_value.set(int(env["MAX_BLOOD"]))
+            self._interface.refresh_blood_cells()
+            self.blood_value.set(int(env["BLOOD"]))
             self.set_blood(load=True)
             self.wounds_value.set(int(env["WOUNDS"]))
             self.set_wounds(load=True)
@@ -339,10 +297,11 @@ class Root(Tk):
         except KeyError:
             self.save_to_file()
 
-    # ── Вспомогательные методы ─────────────────────────────────────────────────
+    # ── Helpers ────────────────────────────────────────────────────────────────
 
     @staticmethod
     def scaler(value: str, var: IntVar) -> None:
+        """Convert float slider value to int and assign to variable."""
         var.set(int(float(value)))
 
     def _update_roll_display(self) -> None:

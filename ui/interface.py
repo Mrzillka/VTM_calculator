@@ -1,4 +1,3 @@
-# ui/interface.py
 from __future__ import annotations
 
 from functools import wraps
@@ -12,10 +11,10 @@ if TYPE_CHECKING:
     from ui.root import Root
 
 
-# ── Утилиты ───────────────────────────────────────────────────────────────────
+# ── Utilities ─────────────────────────────────────────────────────────────────
 
 def place_widgets(grid: list[list[Widget | None]]) -> None:
-    """Размещает виджеты по сетке (row=y, column=x)."""
+    """Place widgets in a grid layout (row=y, column=x)."""
     for row_idx, row in enumerate(grid):
         for col_idx, widget in enumerate(row):
             widget.grid(column=col_idx, row=row_idx)
@@ -34,18 +33,25 @@ def frm(padding: int = 5, style: str = "my.TFrame", *args, **kwargs) -> Callable
     return decorator
 
 
-# ── Интерфейс ─────────────────────────────────────────────────────────────────
+# ── Interface ─────────────────────────────────────────────────────────────────
 
 class Interface(ttk.Frame):
     """
-    Корневой виджет интерфейса приложения.
+    Root widget of the application interface.
 
-    Компонует все дочерние фреймы и делегирует логику объекту Root.
+    Composes all child frames and delegates logic to the Root object.
+    Toggle-able sections (trackers, additional options) are built once
+    and shown/hidden via grid_remove() / grid() to avoid full redraws.
     """
 
     def __init__(self, root: Root) -> None:
         super().__init__(root)
         self.root = root
+
+        # References to toggle-able widgets
+        self._trackers_frame: ttk.Frame | None = None
+        self._additional_row: list[Widget] = []
+
         self._build()
 
     def _build(self) -> None:
@@ -54,16 +60,45 @@ class Interface(ttk.Frame):
             [self._frm_bottom()],
         ])
 
-    # ── Центральный блок ───────────────────────────────────────────────────────
+    def refresh_blood_cells(self) -> None:
+        """Re-evaluate which blood cells are active based on current blood_max_value."""
+        self._disable_blood_cells()
+
+    # ── Toggle handlers ───────────────────────────────────────────────────────
+
+    def _toggle_trackers(self) -> None:
+        """Show or hide the trackers panel without rebuilding it."""
+        if self._trackers_frame is None:
+            return
+        if self.root.trackers.get():
+            self._trackers_frame.grid()
+        else:
+            self._trackers_frame.grid_remove()
+
+    def _toggle_additional_options(self) -> None:
+        """Show or hide the 'Success needed' row without rebuilding it."""
+        if self.root.additional_options.get():
+            for col_idx, widget in enumerate(self._additional_row):
+                widget.grid(column=col_idx, row=4)
+                widget.update()
+        else:
+            for widget in self._additional_row:
+                widget.grid_remove()
+
+    # ── Center block ──────────────────────────────────────────────────────────
 
     @frm(padding=4, style='solid.TFrame')
     def _frm_center(self, frm: ttk.Frame) -> None:
-        place_widgets([[
+        self._trackers_frame = self._frm_trackers(frm)
+        widgets = [
             self._frm_main(frm),
             self._frm_results(frm),
-            self._frm_scale(frm),
-            self._frm_trackers(frm),
-        ]])
+            self._frm_sidebar(frm),
+            self._trackers_frame,
+        ]
+        place_widgets([widgets])
+        if not self.root.trackers.get():
+            self._trackers_frame.grid_remove()
 
     @frm(padding=5)
     def _frm_main(self, frm: ttk.Frame) -> None:
@@ -76,14 +111,12 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_controls(self, frm: ttk.Frame) -> None:
         root = self.root
-        sc = root.scale
 
         rows: list[list[Any]] = []
 
-        # Число кубиков
         rows.append([
             ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=15, length=125 * sc,
+            ttk.Scale(frm, from_=1, to=15, length=125,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
             ttk.Spinbox(frm, from_=1, to=15, textvariable=root.dice_number,
@@ -91,20 +124,18 @@ class Interface(ttk.Frame):
             ttk.Label(frm, textvariable=root.roll_penalty, width=3, style="S.TLabel"),
         ])
 
-        # Сложность
         rows.append([
             ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=2, to=10, length=125 * sc,
+            ttk.Scale(frm, from_=2, to=10, length=125,
                       variable=root.difficulty, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.difficulty)),
             ttk.Spinbox(frm, from_=2, to=10, textvariable=root.difficulty,
                         width=3, style="my.TSpinbox"),
         ])
 
-        # Авто-успехи
         rows.append([
             ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=0, to=5, length=125 * sc,
+            ttk.Scale(frm, from_=0, to=5, length=125,
                       variable=root.auto_success, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.auto_success)),
             ttk.Spinbox(frm, from_=0, to=5, textvariable=root.auto_success,
@@ -118,20 +149,28 @@ class Interface(ttk.Frame):
                             variable=root.is_send_to_telegram, style="my.TCheckbutton"),
             ttk.Checkbutton(frm, text="∨",
                             variable=root.additional_options,
-                            command=root.redraw_interface, style="my.TCheckbutton"),
+                            command=self._toggle_additional_options,
+                            style="my.TCheckbutton"),
         ])
 
-        if root.additional_options.get():
-            rows.append([
-                ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor="e"),
-                ttk.Scale(frm, from_=1, to=10, length=125 * sc,
-                          variable=root.success_needed, style="my.Horizontal.TScale",
-                          command=lambda s: root.scaler(s, root.success_needed)),
-                ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
-                            width=3, style="my.TSpinbox"),
-            ])
-
         place_widgets(rows)
+
+        # Always build the additional row; show or hide based on current state.
+        self._additional_row = [
+            ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor="e"),
+            ttk.Scale(frm, from_=1, to=10, length=125,
+                      variable=root.success_needed, style="my.Horizontal.TScale",
+                      command=lambda s: root.scaler(s, root.success_needed)),
+            ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
+                        width=3, style="my.TSpinbox"),
+        ]
+        # Place at row 4 first so tkinter knows the grid position, then hide if needed.
+        for col_idx, widget in enumerate(self._additional_row):
+            widget.grid(column=col_idx, row=4)
+            widget.update()
+        if not root.additional_options.get():
+            for widget in self._additional_row:
+                widget.grid_remove()
 
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
@@ -155,23 +194,19 @@ class Interface(ttk.Frame):
         ])
 
     @frm(padding=5)
-    def _frm_scale(self, frm: ttk.Frame) -> None:
+    def _frm_sidebar(self, frm: ttk.Frame) -> None:
         place_widgets([
             [ttk.Checkbutton(frm, text="Trackers ►", variable=self.root.trackers,
-                             command=self.root.redraw_interface, style="my.TCheckbutton")],
-            [ttk.Button(frm, width=2, text="+", style="L.TButton",
-                        command=lambda: self.root.scale_up(True))],
-            [ttk.Button(frm, width=2, text="-", style="L.TButton",
-                        command=lambda: self.root.scale_up(False))],
+                             command=self._toggle_trackers, style="my.TCheckbutton")],
         ])
 
     @frm(padding=5, style='solid.TFrame')
     def _frm_trackers(self, frm: ttk.Frame) -> None:
-        if self.root.trackers.get():
-            place_widgets([[
-                self._frm_blood_humanity_will(frm),
-                self._frm_wounds(frm),
-            ]])
+        """Tracker panel — always built, visibility controlled externally."""
+        place_widgets([[
+            self._frm_blood_humanity_will(frm),
+            self._frm_wounds(frm),
+        ]])
 
     @frm(padding=5)
     def _frm_blood_humanity_will(self, frm: ttk.Frame) -> None:
@@ -209,13 +244,16 @@ class Interface(ttk.Frame):
             self._blood_cells.append(row_widgets)
 
     def _disable_blood_cells(self) -> None:
-        max_row, max_col = divmod(self.root.blood_max_value.get(), 10)
+        max_blood = self.root.blood_max_value.get()
         for i, row in enumerate(self._blood_cells):
             for j, cell in enumerate(row):
-                active = i < max_row or (i == max_row and j < max_col)
+                active = i * 10 + j < max_blood
                 cell.configure(state="normal" if active else "disabled")
                 if not active:
                     self.root.blood[i][j].set(False)
+        if self.root.blood_value.get() > max_blood:
+            self.root.blood_value.set(max_blood)
+            self.root.set_blood(load=True)
 
     @frm(padding=5)
     def _frm_max_blood(self, frm: ttk.Frame) -> None:
@@ -270,7 +308,7 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_dot_tracker(self, frm: ttk.Frame, variables: list, command) -> None:
-        """Универсальный виджет для трекера с точками (Humanity, Will)."""
+        """Generic dot-tracker widget (Humanity, Will)."""
         labels = [ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
                   for i in range(10)]
         cells = [ttk.Checkbutton(frm, variable=variables[i],
@@ -279,7 +317,7 @@ class Interface(ttk.Frame):
                  for i in range(10)]
         place_widgets([labels, cells])
 
-    # ── Нижний блок ────────────────────────────────────────────────────────────
+    # ── Bottom block ──────────────────────────────────────────────────────────
 
     @frm(padding=5, style='solid.TFrame')
     def _frm_bottom(self, frm) -> None:
@@ -304,7 +342,7 @@ class Interface(ttk.Frame):
         place_widgets([
             [ttk.Label(frm, text="Character name:", width=12, anchor="e", style="M.TLabel")],
             [ttk.Entry(frm, textvariable=self.root.name, width=15,
-                       font=("Javanese text", self.root.font_size))],
+                       style="my.TEntry")],
         ])
 
     @frm(padding=5)
@@ -329,7 +367,7 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_stat_label(self, frm: ttk.Frame, title: str, var) -> None:
-        """Маленький виджет для отображения одного числового трекера."""
+        """Small widget for displaying a single numeric tracker value."""
         place_widgets([
             [ttk.Label(frm, text=title, style="M.TLabel")],
             [ttk.Label(frm, textvariable=var, style="S.TLabel")],
