@@ -66,7 +66,7 @@ class Interface(ttk.Frame):
             self._sheet_window.focus_force()
             return
         from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet()
+        self._sheet_window = CharacterSheet(self.root)
 
     # ── Center block ──────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tkinter import BooleanVar, IntVar, StringVar, Tk
+from tkinter import BooleanVar, IntVar, StringVar, Toplevel
 from tkinter import ttk
 
 import dotenv
@@ -10,13 +10,13 @@ from game.character import Character
 from ui.charsheet.interface import Interface, place_widgets
 
 
-class Root(Tk):
+class Root(Toplevel):
     """
 
     """
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
         self.title('Character Sheet')
         self.resizable(True, True)
 

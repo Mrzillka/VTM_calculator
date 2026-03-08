@@ -103,7 +103,7 @@ class Interface(ttk.Frame):
             self._frm_dots(frm, variables),
         ]])
 
-    @frm(padding=20)
+    @frm(padding=5)
     def _frm_dots(self, frm: ttk.Frame, variables: list[BooleanVar]) -> None:
         row = []
         for idx, var in enumerate(variables):
