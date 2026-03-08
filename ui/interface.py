@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tkinter import Widget
+from tkinter import BooleanVar, Widget
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
@@ -27,6 +27,7 @@ class Interface(ttk.Frame):
         self._trackers_frame: ttk.Frame | None = None
         self._additional_row: list[Widget] = []
         self._sheet_window = None
+        self._blood_cells: list[list[ttk.Label]] = []
 
         self._build()
 
@@ -39,6 +40,33 @@ class Interface(ttk.Frame):
     def refresh_blood_cells(self) -> None:
         """Re-evaluate which blood cells are active based on current blood_max_value."""
         self._disable_blood_cells()
+
+    # ── Dot helpers ───────────────────────────────────────────────────────────
+
+    def _dot_toggle(
+            self,
+            parent: ttk.Frame,
+            text: str,
+            var: BooleanVar,
+            command=None,
+    ) -> ttk.Frame:
+        """Dot-label toggle — a click-driven replacement for ttk.Checkbutton."""
+        frame = ttk.Frame(parent, style="my.TFrame")
+        dot = ttk.Label(frame, text="●" if var.get() else "○", style="S.TLabel", cursor="hand2")
+        lbl = ttk.Label(frame, text=text, style="S.TLabel", cursor="hand2")
+
+        def _toggle(e=None) -> None:
+            var.set(not var.get())
+            if command:
+                command()
+
+        var.trace_add("write", lambda *_: dot.configure(text="●" if var.get() else "○"))
+        dot.bind("<Button-1>", _toggle)
+        lbl.bind("<Button-1>", _toggle)
+
+        dot.grid(row=0, column=0, padx=(0, 2))
+        lbl.grid(row=0, column=1)
+        return frame
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
 
@@ -66,7 +94,7 @@ class Interface(ttk.Frame):
             self._sheet_window.focus_force()
             return
         from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet(self.root)
+        self._sheet_window = CharacterSheet()
 
     # ── Center block ──────────────────────────────────────────────────────────
 
@@ -126,14 +154,10 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            ttk.Checkbutton(frm, text="Specialisation",
-                            variable=root.specialisation, style="my.TCheckbutton"),
-            ttk.Checkbutton(frm, text="Send to Telegram",
-                            variable=root.is_send_to_telegram, style="my.TCheckbutton"),
-            ttk.Checkbutton(frm, text="∨",
-                            variable=root.additional_options,
-                            command=self._toggle_additional_options,
-                            style="my.TCheckbutton"),
+            self._dot_toggle(frm, "Specialisation", root.specialisation),
+            self._dot_toggle(frm, "Send to Telegram", root.is_send_to_telegram),
+            self._dot_toggle(frm, "∨", root.additional_options,
+                             command=self._toggle_additional_options),
         ])
 
         place_widgets(rows)
@@ -177,8 +201,8 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_sidebar(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Checkbutton(frm, text="Trackers ►", variable=self.root.trackers,
-                             command=self._toggle_trackers, style="my.TCheckbutton")],
+            [self._dot_toggle(frm, "Trackers ►", self.root.trackers,
+                              command=self._toggle_trackers)],
             [ttk.Button(frm, text="Sheet", style="S.TButton",
                         command=self._open_character_sheet)],
         ])
@@ -212,30 +236,40 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_blood_cells(self, frm: ttk.Frame) -> None:
-        self._blood_cells: list[list[ttk.Checkbutton]] = []
+        self._blood_cells = []
         char = self.root.character
 
         for i in range(4):
-            row_widgets = []
+            row_labels: list[ttk.Label] = []
             for j in range(10):
-                cell = ttk.Checkbutton(
+                var = char.blood[i][j]
+                lbl = ttk.Label(
                     frm,
-                    variable=char.blood[i][j],
-                    command=lambda r=i, c=j: char.set_blood(r, c),
-                    style="my.TCheckbutton",
+                    text="●" if var.get() else "○",
+                    style="S.TLabel",
+                    cursor="hand2",
                 )
-                cell.grid(row=i, column=j)
-                row_widgets.append(cell)
-            self._blood_cells.append(row_widgets)
+                lbl.grid(row=i, column=j)
+                var.trace_add(
+                    "write",
+                    lambda *_, l=lbl, v=var: l.configure(text="●" if v.get() else "○"),
+                )
+                lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
+                row_labels.append(lbl)
+            self._blood_cells.append(row_labels)
 
     def _disable_blood_cells(self) -> None:
         char = self.root.character
         max_blood = char.blood_max_value.get()
         for i, row in enumerate(self._blood_cells):
-            for j, cell in enumerate(row):
+            for j, lbl in enumerate(row):
                 active = i * 10 + j < max_blood
-                cell.configure(state="normal" if active else "disabled")
-                if not active:
+                if active:
+                    lbl.configure(cursor="hand2", foreground="")
+                    lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
+                else:
+                    lbl.configure(cursor="", foreground="gray")
+                    lbl.unbind("<Button-1>")
                     char.blood[i][j].set(False)
         if char.blood_value.get() > max_blood:
             char.blood_value.set(max_blood)
@@ -267,12 +301,22 @@ class Interface(ttk.Frame):
         char = self.root.character
         rows = []
         for i, level in enumerate(WOUND_LEVELS):
+            var = char.wounds[i]
+            dot = ttk.Label(
+                frm,
+                text="●" if var.get() else "○",
+                style="S.TLabel",
+                cursor="hand2",
+            )
+            var.trace_add(
+                "write",
+                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
+            )
+            dot.bind("<Button-1>", lambda e, y=i: char.set_wounds(y))
             rows.append([
                 ttk.Label(frm, text=level.name, width=10, anchor="e", style="S.TLabel"),
                 ttk.Label(frm, text=str(level.penalty or ""), anchor="w", style="S.TLabel"),
-                ttk.Checkbutton(frm, variable=char.wounds[i],
-                                command=lambda y=i: char.set_wounds(y),
-                                style="my.TCheckbutton"),
+                dot,
             ])
         place_widgets(rows)
 
@@ -295,15 +339,27 @@ class Interface(ttk.Frame):
         char.set_will(load=True)
 
     @frm(padding=5)
-    def _frm_dot_tracker(self, frm: ttk.Frame, variables: list, command) -> None:
+    def _frm_dot_tracker(self, frm: ttk.Frame, variables: list[BooleanVar], command) -> None:
         """Generic dot-tracker widget (Humanity, Will)."""
-        labels = [ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
-                  for i in range(10)]
-        cells = [ttk.Checkbutton(frm, variable=variables[i],
-                                 command=lambda x=i: command(x),
-                                 style="my.TCheckbutton")
-                 for i in range(10)]
-        place_widgets([labels, cells])
+        labels = [
+            ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
+            for i in range(10)
+        ]
+        dots = []
+        for i, var in enumerate(variables):
+            dot = ttk.Label(
+                frm,
+                text="●" if var.get() else "○",
+                style="S.TLabel",
+                cursor="hand2",
+            )
+            var.trace_add(
+                "write",
+                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
+            )
+            dot.bind("<Button-1>", lambda e, x=i: command(x))
+            dots.append(dot)
+        place_widgets([labels, dots])
 
     # ── Bottom block ──────────────────────────────────────────────────────────
 
@@ -313,7 +369,7 @@ class Interface(ttk.Frame):
         place_widgets([[
             self._frm_options(frm),
             self._frm_stat_label(frm, "Blood", char.blood_value),
-            self._frm_stat_label(frm, "Wounds", char.wounds_value),
+            self._frm_stat_label(frm, "Wounds", char.wounds_display),
             self._frm_stat_label(frm, "Humanity", char.humanity_value),
             self._frm_stat_label(frm, "Will", char.will_value),
         ]])
@@ -355,10 +411,10 @@ class Interface(ttk.Frame):
                         command=self.root.save_to_file, style="S.TButton")],
         ])
 
-    @frm(padding=5)
+    @frm(padding=2, style='solid.TFrame')
     def _frm_stat_label(self, frm: ttk.Frame, title: str, var) -> None:
         """Small widget for displaying a single numeric tracker value."""
         place_widgets([
-            [ttk.Label(frm, text=title, style="M.TLabel")],
-            [ttk.Label(frm, textvariable=var, style="S.TLabel")],
+            [ttk.Label(frm, text=title, width=8, anchor='center', style="M.TLabel")],
+            [ttk.Label(frm, textvariable=var, width=10, anchor='center', style="S.TLabel")],
         ])

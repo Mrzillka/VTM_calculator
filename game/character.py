@@ -50,7 +50,6 @@ class Character:
 
         self._init_vars()
 
-        #
         self.initiative_bonus_dex = IntVar(value=0)
         self.initiative_bonus_wits = IntVar(value=0)
 
@@ -58,8 +57,10 @@ class Character:
         self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(4)]
         self.blood_value = IntVar(value=10)
 
-        self.wounds = [BooleanVar(value=False) for _ in range(9)]
-        self.wounds_value = IntVar(value=0)
+        # -1 = unharmed; 0..len(WOUND_LEVELS)-1 = index into WOUND_LEVELS
+        self.wounds = [BooleanVar(value=False) for _ in range(len(WOUND_LEVELS))]
+        self.wounds_value = IntVar(value=-1)
+        self.wounds_display = StringVar(value="Unharmed")
         self.roll_penalty = IntVar(value=0)
 
         self.humanity = [BooleanVar(value=False) for _ in range(10)]
@@ -88,18 +89,21 @@ class Character:
             for category, abilities in _ABILITIES.items()
         }
 
-        # self.attributes["Physical"]["Strength"]['spec'] = StringVar()
-        # self.attributes["Physical"]["Strength"]['vars'] = [IntVar(value=1) for _ in range(n)]
-
     # ── Trackers ───────────────────────────────────────────────────────────────
 
     def set_blood(self, row: int = 0, col: int = 0, *, load: bool = False) -> None:
-        """Fill blood cells up to the given position, or reload from blood_value."""
+        """
+        Fill blood cells up to the given position, or reload from blood_value.
+
+        Clicking the currently last filled cell toggles it off.
+        """
         if load:
             val = self.blood_value.get()
             row, col = divmod(val, 10)
         else:
-            col += 1
+            if self.blood_value.get() != row * 10 + col + 1:
+                col += 1
+            # else: toggle off — col stays as-is, clearing that cell
 
         for i in range(4):
             for j in range(10):
@@ -107,39 +111,61 @@ class Character:
 
         self.blood_value.set(row * 10 + col)
 
-    def set_wounds(self, level: int = 0, *, load: bool = False) -> None:
-        """Set wound level and update the roll penalty accordingly."""
+    def set_wounds(self, clicked: int = 0, *, load: bool = False) -> None:
+        """
+        Set wound level with toggle-off support.
+
+        When load=True, restores state from wounds_value.
+        Otherwise, clicking the last filled dot clears it;
+        clicking any other dot fills up to that level.
+        wounds_value of -1 means unharmed (no dots filled).
+        """
         if load:
             level = self.wounds_value.get()
-        for i in range(9):
-            self.wounds[i].set(i <= level)
+            for i, var in enumerate(self.wounds):
+                var.set(i <= level)
+        else:
+            filled = sum(v.get() for v in self.wounds)
+            threshold = clicked if filled == clicked + 1 else clicked + 1
+            for i, var in enumerate(self.wounds):
+                var.set(i < threshold)
+            level = threshold - 1
+
         self.wounds_value.set(level)
-        self.roll_penalty.set(WOUND_LEVELS[level].penalty)
+        if level < 0:
+            self.wounds_display.set("Unharmed")
+            self.roll_penalty.set(0)
+        else:
+            wl = WOUND_LEVELS[level]
+            self.wounds_display.set(f"{wl.name} {wl.penalty}")
+            self.roll_penalty.set(wl.penalty)
 
     def heal(self) -> None:
         """Spend one blood point to heal one wound level."""
-        if self.wounds_value.get() > 0 and self.blood_value.get() > 0:
+        if self.wounds_value.get() >= 0 and self.blood_value.get() > 0:
             self.blood_value.set(self.blood_value.get() - 1)
             self.wounds_value.set(self.wounds_value.get() - 1)
             self.set_blood(load=True)
             self.set_wounds(load=True)
 
-    def set_humanity(self, level: int = 0, *, load: bool = False) -> None:
-        """Fill humanity dots up to the given level."""
+    def set_humanity(self, clicked: int = 0, *, load: bool = False) -> None:
+        """Fill humanity dots up to the given level, with toggle-off support."""
         if load:
             level = self.humanity_value.get()
         else:
-            level += 1
+            filled = self.humanity_value.get()
+            level = clicked if filled == clicked + 1 else clicked + 1
         for i in range(10):
             self.humanity[i].set(i < level)
         self.humanity_value.set(level)
 
-    def set_will(self, level: int = 0, *, load: bool = False) -> None:
-        """Fill willpower dots up to the given level."""
+    def set_will(self, clicked: int = 0, *, load: bool = False) -> None:
+        """Fill willpower dots up to the given level, with toggle-off support."""
         if load:
             level = self.will_value.get()
         else:
-            level += 1
+            filled = self.will_value.get()
+            level = clicked if filled == clicked + 1 else clicked + 1
         for i in range(10):
             self.will[i].set(i < level)
         self.will_value.set(level)

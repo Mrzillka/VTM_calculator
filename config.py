@@ -14,14 +14,14 @@ NAMES: tuple[str, ...] = (
 
 FONT = "Javanese text"
 
+
 class WoundLevel(NamedTuple):
-    """Уровень ранения и его штраф к броскам."""
+    """Wound level and its dice-pool penalty."""
     name: str
     penalty: int
 
 
 WOUND_LEVELS: tuple[WoundLevel, ...] = (
-    WoundLevel("", 0),
     WoundLevel("Bruised", 0),
     WoundLevel("Hurt", -1),
     WoundLevel("Injured", -1),
@@ -34,7 +34,7 @@ WOUND_LEVELS: tuple[WoundLevel, ...] = (
 
 
 def _get_app_data_dir() -> Path:
-    """Возвращает кроссплатформенный путь к каталогу приложения."""
+    """Return cross-platform application data directory path."""
     if sys.platform == "win32":
         base = Path(os.environ["APPDATA"])
     elif sys.platform == "darwin":
@@ -49,7 +49,7 @@ ENV_FILE_PATH: Path = APP_DATA_DIR / ".env"
 
 
 def ensure_app_data_dir() -> None:
-    """Создаёт каталог и .env-файл приложения, если они не существуют."""
+    """Create application data directory and .env file if they do not exist."""
     APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
     ENV_FILE_PATH.touch(exist_ok=True)
     dotenv.load_dotenv(ENV_FILE_PATH)
@@ -57,15 +57,15 @@ def ensure_app_data_dir() -> None:
 
 def get_bot_token() -> str:
     """
-    Читает токен бота из переменных окружения.
+    Read the bot token from environment variables.
 
     Raises:
-        EnvironmentError: если токен не задан.
+        EnvironmentError: if BOT_TOKEN is not set.
     """
     token = os.getenv("BOT_TOKEN")
     if not token:
         raise EnvironmentError(
-            "Переменная окружения BOT_TOKEN не задана. "
-            f"Добавьте BOT_TOKEN=<ваш_токен> в файл {ENV_FILE_PATH}"
+            "Environment variable BOT_TOKEN is not set. "
+            f"Add BOT_TOKEN=<your_token> to {ENV_FILE_PATH}"
         )
     return token
