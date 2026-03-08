@@ -8,15 +8,13 @@ from tkinter import ttk
 import dotenv
 
 from bot.tg_bot import TgBot
-from config import ENV_FILE_PATH, get_bot_token
+from config import ENV_FILE_PATH, get_bot_token, FONT
 from game.calculator import Calculator
 from game.character import Character
 from game.roller import Roller
 from ui.interface import Interface, place_widgets
 
 logger = logging.getLogger(__name__)
-
-_FONT = "Javanese text"
 
 
 class Root(Tk):
@@ -87,16 +85,16 @@ class Root(Tk):
         definitions = {
             "my.TFrame": {"relief": "flat"},
             "solid.TFrame": {"relief": "solid"},
-            "L.TButton": {"font": (_FONT, 15)},
-            "S.TButton": {"font": (_FONT, 10)},
-            "M.TButton": {"font": (_FONT, 15)},
-            "my.TEntry": {"font": (_FONT, 10)},
-            "my.Horizontal.TScale": {"font": (_FONT, 10)},
-            "my.TSpinbox": {"font": (_FONT, 10)},
-            "my.TCheckbutton": {"font": (_FONT, 10)},
-            "L.TLabel": {"font": (_FONT, 20)},
-            "M.TLabel": {"font": (_FONT, 15)},
-            "S.TLabel": {"font": (_FONT, 10)},
+            "L.TButton": {"font": (FONT, 15)},
+            "S.TButton": {"font": (FONT, 10)},
+            "M.TButton": {"font": (FONT, 15)},
+            "my.TEntry": {"font": (FONT, 10)},
+            "my.Horizontal.TScale": {"font": (FONT, 10)},
+            "my.TSpinbox": {"font": (FONT, 10)},
+            "my.TCheckbutton": {"font": (FONT, 10)},
+            "L.TLabel": {"font": (FONT, 20)},
+            "M.TLabel": {"font": (FONT, 15)},
+            "S.TLabel": {"font": (FONT, 10)},
         }
         for name, opts in definitions.items():
             s.configure(name, **opts)
@@ -142,9 +140,9 @@ class Root(Tk):
         from random import randint
         raw = randint(1, 10) + self.character.roll_penalty.get()
         total = (
-            raw
-            + self.character.initiative_bonus_dex.get()
-            + self.character.initiative_bonus_wits.get()
+                raw
+                + self.character.initiative_bonus_dex.get()
+                + self.character.initiative_bonus_wits.get()
         )
         self.initiative.set(f"Initiative: {total}")
         if self.is_send_to_telegram.get():
@@ -169,7 +167,7 @@ class Root(Tk):
         outcome = "SUCCESS" if net >= 1 else ("BOTCH" if net < 0 else "FAILURE")
 
         msg = (
-            f"<b><i>{self.character.name.get()}</i> rolled:</b>\n"
+            f"<b><i>{self.character.character_name.get()}</i> rolled:</b>\n"
             f"<i>{', '.join(map(str, all_dice))}</i>\n"
             f"on <b>{self.dice_number.get()} dices</b> "
             f"with <b>difficulty {self.difficulty.get()}</b>.\n"
@@ -188,7 +186,7 @@ class Root(Tk):
         wits = self.character.initiative_bonus_wits.get()
         raw = total - dex - wits
         msg = (
-            f"<b><i>{self.character.name.get()}</i> rolled #INITIATIVE</b>\n"
+            f"<b><i>{self.character.character_name.get()}</i> rolled #INITIATIVE</b>\n"
             f"Result: <b>{total}</b>\n"
             f"<i>Rolled {raw} + {dex} Dex + {wits} Wits</i>"
         )

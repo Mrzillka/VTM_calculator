@@ -1,39 +1,15 @@
 from __future__ import annotations
 
-from functools import wraps
 from tkinter import Widget
 from tkinter import ttk
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from config import WOUND_LEVELS
+from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
     from ui.root import Root
 
-
-# ── Utilities ─────────────────────────────────────────────────────────────────
-
-def place_widgets(grid: list[list[Widget | None]]) -> None:
-    """Place widgets in a grid layout (row=y, column=x)."""
-    for row_idx, row in enumerate(grid):
-        for col_idx, widget in enumerate(row):
-            widget.grid(column=col_idx, row=row_idx)
-            widget.update()
-
-
-def frm(padding: int = 5, style: str = "my.TFrame", *args, **kwargs) -> Callable:
-    def decorator(method: Callable) -> Callable:
-        @wraps(method)
-        def wrapper(self: "Interface", parent: ttk.Frame | None = None, *args, **kwargs) -> ttk.Frame:
-            frame = ttk.Frame(parent if parent is not None else self,
-                              padding=padding, style=style)
-            method(self, frame, *args, **kwargs)
-            return frame
-        return wrapper
-    return decorator
-
-
-# ── Interface ─────────────────────────────────────────────────────────────────
 
 class Interface(ttk.Frame):
     """
@@ -44,12 +20,13 @@ class Interface(ttk.Frame):
     and shown/hidden via grid_remove() / grid() to avoid full redraws.
     """
 
-    def __init__(self, root: Root) -> None:
+    def __init__(self, root: "Root") -> None:
         super().__init__(root)
         self.root = root
 
         self._trackers_frame: ttk.Frame | None = None
         self._additional_row: list[Widget] = []
+        self._sheet_window = None
 
         self._build()
 
@@ -82,9 +59,18 @@ class Interface(ttk.Frame):
             for widget in self._additional_row:
                 widget.grid_remove()
 
+    def _open_character_sheet(self) -> None:
+        """Open or focus the character sheet window."""
+        if self._sheet_window is not None and self._sheet_window.winfo_exists():
+            self._sheet_window.lift()
+            self._sheet_window.focus_force()
+            return
+        from ui.character_sheet import CharacterSheet
+        self._sheet_window = CharacterSheet(self.root.character)
+
     # ── Center block ──────────────────────────────────────────────────────────
 
-    @frm(padding=4, style='solid.TFrame')
+    @frm(padding=4, style="solid.TFrame")
     def _frm_center(self, frm: ttk.Frame) -> None:
         self._trackers_frame = self._frm_trackers(frm)
         widgets = [
@@ -193,9 +179,13 @@ class Interface(ttk.Frame):
         place_widgets([
             [ttk.Checkbutton(frm, text="Trackers ►", variable=self.root.trackers,
                              command=self._toggle_trackers, style="my.TCheckbutton")],
+            [ttk.Button(frm, text="Sheet", style="S.TButton",
+                        command=self._open_character_sheet)],
         ])
 
-    @frm(padding=5, style='solid.TFrame')
+    # ── Trackers ──────────────────────────────────────────────────────────────
+
+    @frm(padding=5, style="solid.TFrame")
     def _frm_trackers(self, frm: ttk.Frame) -> None:
         place_widgets([[
             self._frm_blood_humanity_will(frm),
@@ -317,7 +307,7 @@ class Interface(ttk.Frame):
 
     # ── Bottom block ──────────────────────────────────────────────────────────
 
-    @frm(padding=5, style='solid.TFrame')
+    @frm(padding=5, style="solid.TFrame")
     def _frm_bottom(self, frm) -> None:
         char = self.root.character
         place_widgets([[
@@ -340,7 +330,7 @@ class Interface(ttk.Frame):
     def _frm_name(self, frm: ttk.Frame) -> None:
         place_widgets([
             [ttk.Label(frm, text="Character name:", width=12, anchor="e", style="M.TLabel")],
-            [ttk.Entry(frm, textvariable=self.root.character.name, width=15,
+            [ttk.Entry(frm, textvariable=self.root.character.character_name, width=15,
                        style="my.TEntry")],
         ])
 

@@ -7,6 +7,21 @@ import dotenv
 
 from config import ENV_FILE_PATH, NAMES, WOUND_LEVELS
 
+_ATTRIBUTES = {
+    "Physical": ("Strength", "Dexterity", "Stamina"),
+    "Social": ("Charisma", "Manipulation", "Appearance"),
+    "Mental": ("Perception", "Intelligence", "Wits"),
+}
+
+_ABILITIES = {
+    "Talents": ("Alertness", "Athletics", "Brawl", "Dodge", "Empathy",
+                "Expression", "Intimidation", "Leadership", "Streetwise", "Subterfuge"),
+    "Skills": ("Animal Ken", "Crafts", "Drive", "Etiquette", "Firearms",
+               "Melee", "Performance", "Security", "Stealth", "Survival"),
+    "Knowledges": ("Academics", "Computer", "Finance", "Investigation", "Law",
+                   "Linguistics", "Medicine", "Occult", "Politics", "Science"),
+}
+
 
 class Character:
     """
@@ -17,8 +32,25 @@ class Character:
     to widgets without going through the root window.
     """
 
+    _DOTS = 8
+
     def __init__(self) -> None:
-        self.name = StringVar(value=choice(NAMES))
+        # Header
+        self.character_name = StringVar(value=choice(NAMES))
+        self.player = StringVar()
+        self.chronicle = StringVar()
+
+        self.nature = StringVar()
+        self.demeanor = StringVar()
+        self.clan = StringVar()
+
+        self.generation = StringVar(value="13th")
+        self.heaven = StringVar()
+        self.concept = StringVar()
+
+        self._init_vars()
+
+        #
         self.initiative_bonus_dex = IntVar(value=0)
         self.initiative_bonus_wits = IntVar(value=0)
 
@@ -35,6 +67,29 @@ class Character:
 
         self.will = [BooleanVar(value=False) for _ in range(10)]
         self.will_value = IntVar(value=0)
+
+    def _init_vars(self) -> None:
+        def _dot_row(n: int = self._DOTS) -> list[BooleanVar]:
+            return [BooleanVar(value=False) for _ in range(n)]
+
+        self.attributes: dict[str, dict[str, dict[str, StringVar | list[BooleanVar]]]] = {
+            category: {
+                attribute: {'spec': StringVar(), 'vars': _dot_row()}
+                for attribute in attributes
+            }
+            for category, attributes in _ATTRIBUTES.items()
+        }
+
+        self.abilities: dict[str, dict[str, dict[str, StringVar | list[BooleanVar]]]] = {
+            category: {
+                ability: {'spec': StringVar(), 'vars': _dot_row()}
+                for ability in abilities
+            }
+            for category, abilities in _ABILITIES.items()
+        }
+
+        # self.attributes["Physical"]["Strength"]['spec'] = StringVar()
+        # self.attributes["Physical"]["Strength"]['vars'] = [IntVar(value=1) for _ in range(n)]
 
     # ── Trackers ───────────────────────────────────────────────────────────────
 
@@ -94,7 +149,7 @@ class Character:
     def save(self) -> None:
         """Write character fields to the .env file."""
         kv = {
-            "NAME": self.name.get(),
+            "NAME": self.character_name.get(),
             "DEX": str(self.initiative_bonus_dex.get()),
             "WITS": str(self.initiative_bonus_wits.get()),
             "BLOOD": str(self.blood_value.get()),
@@ -113,7 +168,7 @@ class Character:
         Note: callers must invoke the interface's refresh_blood_cells() between
         blood_max_value being set and blood_value being applied.
         """
-        self.name.set(env["NAME"])
+        self.character_name.set(env["NAME"])
         self.initiative_bonus_dex.set(int(env["DEX"]))
         self.initiative_bonus_wits.set(int(env["WITS"]))
         self.blood_max_value.set(int(env["MAX_BLOOD"]))

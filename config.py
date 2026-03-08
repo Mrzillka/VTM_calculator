@@ -12,6 +12,7 @@ NAMES: tuple[str, ...] = (
     "Anna", "Thomas", "Andrew", "Maria", "Caren", "Carl",
 )
 
+FONT = "Javanese text"
 
 class WoundLevel(NamedTuple):
     """Уровень ранения и его штраф к броскам."""
