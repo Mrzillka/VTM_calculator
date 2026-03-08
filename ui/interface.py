@@ -48,7 +48,6 @@ class Interface(ttk.Frame):
         super().__init__(root)
         self.root = root
 
-        # References to toggle-able widgets
         self._trackers_frame: ttk.Frame | None = None
         self._additional_row: list[Widget] = []
 
@@ -67,7 +66,6 @@ class Interface(ttk.Frame):
     # ── Toggle handlers ───────────────────────────────────────────────────────
 
     def _toggle_trackers(self) -> None:
-        """Show or hide the trackers panel without rebuilding it."""
         if self._trackers_frame is None:
             return
         if self.root.trackers.get():
@@ -76,7 +74,6 @@ class Interface(ttk.Frame):
             self._trackers_frame.grid_remove()
 
     def _toggle_additional_options(self) -> None:
-        """Show or hide the 'Success needed' row without rebuilding it."""
         if self.root.additional_options.get():
             for col_idx, widget in enumerate(self._additional_row):
                 widget.grid(column=col_idx, row=4)
@@ -121,7 +118,7 @@ class Interface(ttk.Frame):
                       command=lambda s: root.scaler(s, root.dice_number)),
             ttk.Spinbox(frm, from_=1, to=15, textvariable=root.dice_number,
                         width=3, style="my.TSpinbox"),
-            ttk.Label(frm, textvariable=root.roll_penalty, width=3, style="S.TLabel"),
+            ttk.Label(frm, textvariable=root.character.roll_penalty, width=3, style="S.TLabel"),
         ])
 
         rows.append([
@@ -155,7 +152,6 @@ class Interface(ttk.Frame):
 
         place_widgets(rows)
 
-        # Always build the additional row; show or hide based on current state.
         self._additional_row = [
             ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=10, length=125,
@@ -164,7 +160,6 @@ class Interface(ttk.Frame):
             ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
         ]
-        # Place at row 4 first so tkinter knows the grid position, then hide if needed.
         for col_idx, widget in enumerate(self._additional_row):
             widget.grid(column=col_idx, row=4)
             widget.update()
@@ -202,7 +197,6 @@ class Interface(ttk.Frame):
 
     @frm(padding=5, style='solid.TFrame')
     def _frm_trackers(self, frm: ttk.Frame) -> None:
-        """Tracker panel — always built, visibility controlled externally."""
         place_widgets([[
             self._frm_blood_humanity_will(frm),
             self._frm_wounds(frm),
@@ -229,14 +223,15 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_blood_cells(self, frm: ttk.Frame) -> None:
         self._blood_cells: list[list[ttk.Checkbutton]] = []
+        char = self.root.character
 
         for i in range(4):
             row_widgets = []
             for j in range(10):
                 cell = ttk.Checkbutton(
                     frm,
-                    variable=self.root.blood[i][j],
-                    command=lambda r=i, c=j: self.root.set_blood(r, c),
+                    variable=char.blood[i][j],
+                    command=lambda r=i, c=j: char.set_blood(r, c),
                     style="my.TCheckbutton",
                 )
                 cell.grid(row=i, column=j)
@@ -244,16 +239,17 @@ class Interface(ttk.Frame):
             self._blood_cells.append(row_widgets)
 
     def _disable_blood_cells(self) -> None:
-        max_blood = self.root.blood_max_value.get()
+        char = self.root.character
+        max_blood = char.blood_max_value.get()
         for i, row in enumerate(self._blood_cells):
             for j, cell in enumerate(row):
                 active = i * 10 + j < max_blood
                 cell.configure(state="normal" if active else "disabled")
                 if not active:
-                    self.root.blood[i][j].set(False)
-        if self.root.blood_value.get() > max_blood:
-            self.root.blood_value.set(max_blood)
-            self.root.set_blood(load=True)
+                    char.blood[i][j].set(False)
+        if char.blood_value.get() > max_blood:
+            char.blood_value.set(max_blood)
+            char.set_blood(load=True)
 
     @frm(padding=5)
     def _frm_max_blood(self, frm: ttk.Frame) -> None:
@@ -261,7 +257,7 @@ class Interface(ttk.Frame):
             ttk.Label(frm, text="Max Blood", width=12, anchor="n", style="S.TLabel"),
             ttk.Spinbox(
                 frm, from_=1, to=40,
-                textvariable=self.root.blood_max_value,
+                textvariable=self.root.character.blood_max_value,
                 command=self._disable_blood_cells,
                 width=3, style="my.TSpinbox",
             ),
@@ -269,42 +265,44 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_wounds(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         place_widgets([
             [ttk.Label(frm, text="Wounds", width=12, anchor="n", style="M.TLabel")],
             [self._frm_wounds_cells(frm)],
-            [ttk.Button(frm, text="HEAL", command=self.root.heal, style="M.TButton")],
+            [ttk.Button(frm, text="HEAL", command=char.heal, style="M.TButton")],
         ])
 
     @frm(padding=5)
     def _frm_wounds_cells(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         rows = []
         for i, level in enumerate(WOUND_LEVELS):
             rows.append([
                 ttk.Label(frm, text=level.name, width=10, anchor="e", style="S.TLabel"),
                 ttk.Label(frm, text=str(level.penalty or ""), anchor="w", style="S.TLabel"),
-                ttk.Checkbutton(frm, variable=self.root.wounds[i],
-                                command=lambda y=i: self.root.set_wounds(y),
+                ttk.Checkbutton(frm, variable=char.wounds[i],
+                                command=lambda y=i: char.set_wounds(y),
                                 style="my.TCheckbutton"),
             ])
         place_widgets(rows)
 
     @frm(padding=5)
     def _frm_humanity(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         place_widgets([
             [ttk.Label(frm, text="Humanity/Path", style="M.TLabel")],
-            [self._frm_dot_tracker(frm, self.root.humanity,
-                                   lambda x: self.root.set_humanity(x))],
+            [self._frm_dot_tracker(frm, char.humanity, lambda x: char.set_humanity(x))],
         ])
-        self.root.set_humanity(load=True)
+        char.set_humanity(load=True)
 
     @frm(padding=5)
     def _frm_will(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         place_widgets([
             [ttk.Label(frm, text="Will", style="M.TLabel")],
-            [self._frm_dot_tracker(frm, self.root.will,
-                                   lambda x: self.root.set_will(x))],
+            [self._frm_dot_tracker(frm, char.will, lambda x: char.set_will(x))],
         ])
-        self.root.set_will(load=True)
+        char.set_will(load=True)
 
     @frm(padding=5)
     def _frm_dot_tracker(self, frm: ttk.Frame, variables: list, command) -> None:
@@ -321,12 +319,13 @@ class Interface(ttk.Frame):
 
     @frm(padding=5, style='solid.TFrame')
     def _frm_bottom(self, frm) -> None:
+        char = self.root.character
         place_widgets([[
             self._frm_options(frm),
-            self._frm_stat_label(frm, "Blood", self.root.blood_value),
-            self._frm_stat_label(frm, "Wounds", self.root.wounds_value),
-            self._frm_stat_label(frm, "Humanity", self.root.humanity_value),
-            self._frm_stat_label(frm, "Will", self.root.will_value),
+            self._frm_stat_label(frm, "Blood", char.blood_value),
+            self._frm_stat_label(frm, "Wounds", char.wounds_value),
+            self._frm_stat_label(frm, "Humanity", char.humanity_value),
+            self._frm_stat_label(frm, "Will", char.will_value),
         ]])
 
     @frm(padding=5)
@@ -341,18 +340,19 @@ class Interface(ttk.Frame):
     def _frm_name(self, frm: ttk.Frame) -> None:
         place_widgets([
             [ttk.Label(frm, text="Character name:", width=12, anchor="e", style="M.TLabel")],
-            [ttk.Entry(frm, textvariable=self.root.name, width=15,
+            [ttk.Entry(frm, textvariable=self.root.character.name, width=15,
                        style="my.TEntry")],
         ])
 
     @frm(padding=5)
     def _frm_initiative_spinboxes(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         place_widgets([
             [ttk.Label(frm, text="Dex", width=5, anchor="e", style="S.TLabel"),
-             ttk.Spinbox(frm, from_=0, to=10, textvariable=self.root.initiative_bonus_dex,
+             ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_dex,
                          width=3, style="my.TSpinbox")],
             [ttk.Label(frm, text="Wits", width=5, anchor="e", style="S.TLabel"),
-             ttk.Spinbox(frm, from_=0, to=10, textvariable=self.root.initiative_bonus_wits,
+             ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_wits,
                          width=3, style="my.TSpinbox")],
         ])
 
