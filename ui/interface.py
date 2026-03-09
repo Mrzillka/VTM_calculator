@@ -246,6 +246,7 @@ class Interface(ttk.Frame):
                 lbl = ttk.Label(
                     frm,
                     text="●" if var.get() else "○",
+                    width=2,
                     style="S.TLabel",
                     cursor="hand2",
                 )
@@ -350,6 +351,7 @@ class Interface(ttk.Frame):
             dot = ttk.Label(
                 frm,
                 text="●" if var.get() else "○",
+                width=2,
                 style="S.TLabel",
                 cursor="hand2",
             )
