@@ -492,9 +492,24 @@ class Interface(ttk.Frame):
         variables: list[BooleanVar],
         spec_var: StringVar,
     ) -> None:
+        spec_entry = ttk.Entry(frm, textvariable=spec_var,
+                               width=15, style="sheet.TEntry")
+
+        def _update_spec_state(*_) -> None:
+            filled = sum(v.get() for v in variables)
+            if filled >= 4:
+                spec_entry.configure(state="normal")
+            else:
+                spec_var.set("")
+                spec_entry.configure(state="disabled")
+
+        for var in variables:
+            var.trace_add("write", _update_spec_state)
+        _update_spec_state()
+
         place_widgets([[
             ttk.Label(frm, text=label, width=10, style="sheet.S.TLabel"),
-            ttk.Entry(frm, textvariable=spec_var, width=15, style="sheet.TEntry"),
+            spec_entry,
             self._frm_dots(frm, variables),
         ]])
 
