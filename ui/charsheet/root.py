@@ -69,7 +69,13 @@ class Root(Toplevel):
         self._interface.pack(fill="both", expand=True)
 
     def _setup_mousewheel(self, canvas: tk.Canvas) -> None:
-        """Bind mousewheel scrolling to the canvas while the cursor is inside the window."""
+        """
+        Bind mousewheel scrolling while the cursor is anywhere inside the window.
+
+        Binds to the Toplevel (self) rather than the canvas so that the
+        <Enter> event fires reliably when the window is opened or re-opened,
+        regardless of where the cursor happens to be at that moment.
+        """
 
         def _scroll_win(e: tk.Event) -> None:
             canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
@@ -81,17 +87,17 @@ class Root(Toplevel):
             canvas.yview_scroll(1, "units")
 
         def _bind(e: tk.Event = None) -> None:
-            canvas.bind_all("<MouseWheel>", _scroll_win)
-            canvas.bind_all("<Button-4>", _scroll_up)
-            canvas.bind_all("<Button-5>", _scroll_down)
+            self.bind_all("<MouseWheel>", _scroll_win)
+            self.bind_all("<Button-4>", _scroll_up)
+            self.bind_all("<Button-5>", _scroll_down)
 
         def _unbind(e: tk.Event = None) -> None:
-            canvas.unbind_all("<MouseWheel>")
-            canvas.unbind_all("<Button-4>")
-            canvas.unbind_all("<Button-5>")
+            self.unbind_all("<MouseWheel>")
+            self.unbind_all("<Button-4>")
+            self.unbind_all("<Button-5>")
 
-        canvas.bind("<Enter>", _bind)
-        canvas.bind("<Leave>", _unbind)
+        self.bind("<Enter>", _bind)
+        self.bind("<Leave>", _unbind)
 
     def load_from_file(self) -> None:
         pass

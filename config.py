@@ -21,6 +21,20 @@ class WoundLevel(NamedTuple):
     penalty: int
 
 
+BACKGROUNDS: tuple[str, ...] = (
+    "Allies", "Alternate Identity", "Contacts", "Domain",
+    "Fame", "Generation", "Herd", "Influence", "Mentor",
+    "Resources", "Retainers", "Status",
+)
+
+DISCIPLINES: tuple[str, ...] = (
+    "Animalism", "Auspex", "Celerity", "Chimerstry",
+    "Dementation", "Dominate", "Fortitude", "Mortis",
+    "Mytherceria", "Necromancy", "Obfuscate", "Obtenebration",
+    "Potence", "Presence", "Protean", "Quietus",
+    "Serpentis", "Thaumaturgy", "Vicissitude", "Visceratika",
+)
+
 WOUND_LEVELS: tuple[WoundLevel, ...] = (
     WoundLevel("Bruised", 0),
     WoundLevel("Hurt", -1),

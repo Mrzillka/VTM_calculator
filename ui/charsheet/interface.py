@@ -3,6 +3,7 @@ from __future__ import annotations
 from tkinter import BooleanVar, StringVar
 from tkinter import ttk
 
+from config import BACKGROUNDS, DISCIPLINES
 from game.character import Character
 from ui.utils import frm, place_widgets
 
@@ -107,11 +108,63 @@ class Interface(ttk.Frame):
             for label, values in data.items()
         ])
 
-    # ── Advantages / Bottom ──────────────────────────────────────────────────
+    # ── Advantages ────────────────────────────────────────────────────────────
 
     @frm(padding=5)
     def _frm_advantages(self, frm: ttk.Frame) -> None:
-        pass
+        headers = [
+            ttk.Label(frm, text=t, style="sheet.M.TLabel")
+            for t in ("Backgrounds", "Disciplines", "Virtues")
+        ]
+        cols = [
+            self._frm_adv_backgrounds(frm),
+            self._frm_adv_disciplines(frm),
+            self._frm_adv_virtues(frm),
+        ]
+        place_widgets([headers, cols])
+
+    @frm(padding=2)
+    def _frm_adv_backgrounds(self, frm: ttk.Frame) -> None:
+        """
+        Backgrounds column: editable Combobox per row so the user can
+        either pick a predefined background or type a custom one.
+        """
+        for i, entry in enumerate(self.character.backgrounds):
+            ttk.Combobox(
+                frm,
+                textvariable=entry["name"],
+                values=list(BACKGROUNDS),
+                width=16,
+            ).grid(row=i, column=0, padx=(0, 4), pady=1, sticky="w")
+            self._frm_dots(frm, entry["vars"]).grid(row=i, column=1, pady=1, sticky="w")
+
+    @frm(padding=2)
+    def _frm_adv_disciplines(self, frm: ttk.Frame) -> None:
+        """Disciplines column: read-only Combobox, selection only."""
+        for i, entry in enumerate(self.character.disciplines):
+            ttk.Combobox(
+                frm,
+                textvariable=entry["name"],
+                values=list(DISCIPLINES),
+                width=16,
+                state="readonly",
+            ).grid(row=i, column=0, padx=(0, 4), pady=1, sticky="w")
+            self._frm_dots(frm, entry["vars"]).grid(row=i, column=1, pady=1, sticky="w")
+
+    @frm(padding=2)
+    def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
+        """Virtues column: three fixed rows defined by VtM rules."""
+        for i, entry in enumerate(self.character.virtues):
+            ttk.Label(
+                frm,
+                textvariable=entry["name"],
+                width=22,
+                style="sheet.S.TLabel",
+                anchor="w",
+            ).grid(row=i, column=0, pady=1, sticky="w")
+            self._frm_dots(frm, entry["vars"]).grid(row=i, column=1, pady=1, sticky="w")
+
+    # ── Bottom ────────────────────────────────────────────────────────────────
 
     @frm(padding=5)
     def _frm_bottom(self, frm: ttk.Frame) -> None:
@@ -132,11 +185,11 @@ class Interface(ttk.Frame):
         name_widget = (
             ttk.Entry(frm, textvariable=label_custom, width=10, style="sheet.TEntry")
             if fillable else
-            [ttk.Label(frm, text=label, width=10, style="sheet.S.TLabel"),
-             ttk.Entry(frm, textvariable=spec_var, width=15, style="sheet.TEntry"),]
+            ttk.Label(frm, text=label, width=10, style="sheet.S.TLabel")
         )
         place_widgets([[
-            *name_widget,
+            name_widget,
+            ttk.Entry(frm, textvariable=spec_var, width=15, style="sheet.TEntry"),
             self._frm_dots(frm, variables),
         ]])
 

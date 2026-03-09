@@ -22,6 +22,14 @@ _ABILITIES = {
                    "Linguistics", "Medicine", "Occult", "Politics", "Science"),
 }
 
+_VIRTUE_NAMES: tuple[str, ...] = (
+    "Conscience / Conviction",
+    "Self-Control / Instinct",
+    "Courage",
+)
+
+_ADVANTAGE_ROWS: int = 7
+
 
 class Character:
     """
@@ -88,6 +96,20 @@ class Character:
             }
             for category, abilities in _ABILITIES.items()
         }
+
+        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]} with 5 dots
+        self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
+            {'name': StringVar(), 'vars': _dot_row(5)}
+            for _ in range(_ADVANTAGE_ROWS)
+        ]
+        self.disciplines: list[dict[str, StringVar | list[BooleanVar]]] = [
+            {'name': StringVar(), 'vars': _dot_row(5)}
+            for _ in range(_ADVANTAGE_ROWS)
+        ]
+        self.virtues: list[dict[str, StringVar | list[BooleanVar]]] = [
+            {'name': StringVar(value=vname), 'vars': _dot_row(5)}
+            for vname in _VIRTUE_NAMES
+        ]
 
     # ── Trackers ───────────────────────────────────────────────────────────────
 
@@ -220,6 +242,20 @@ class Character:
                 }
                 for category, abilities in self.abilities.items()
             },
+            "advantages": {
+                "backgrounds": [
+                    {"name": e["name"].get(), "dots": [v.get() for v in e["vars"]]}
+                    for e in self.backgrounds
+                ],
+                "disciplines": [
+                    {"name": e["name"].get(), "dots": [v.get() for v in e["vars"]]}
+                    for e in self.disciplines
+                ],
+                "virtues": [
+                    {"dots": [v.get() for v in e["vars"]]}
+                    for e in self.virtues
+                ],
+            },
         }
 
         with open(CHARACTER_FILE_PATH, "w", encoding="utf-8") as f:
@@ -269,6 +305,28 @@ class Character:
                     for i, dot in enumerate(values.get("dots", [])):
                         if i < len(self.abilities[category][ability]["vars"]):
                             self.abilities[category][ability]["vars"][i].set(dot)
+
+        advantages = data.get("advantages", {})
+
+        for i, entry in enumerate(advantages.get("backgrounds", [])):
+            if i < len(self.backgrounds):
+                self.backgrounds[i]["name"].set(entry.get("name", ""))
+                for j, dot in enumerate(entry.get("dots", [])):
+                    if j < len(self.backgrounds[i]["vars"]):
+                        self.backgrounds[i]["vars"][j].set(dot)
+
+        for i, entry in enumerate(advantages.get("disciplines", [])):
+            if i < len(self.disciplines):
+                self.disciplines[i]["name"].set(entry.get("name", ""))
+                for j, dot in enumerate(entry.get("dots", [])):
+                    if j < len(self.disciplines[i]["vars"]):
+                        self.disciplines[i]["vars"][j].set(dot)
+
+        for i, entry in enumerate(advantages.get("virtues", [])):
+            if i < len(self.virtues):
+                for j, dot in enumerate(entry.get("dots", [])):
+                    if j < len(self.virtues[i]["vars"]):
+                        self.virtues[i]["vars"][j].set(dot)
 
     def load_from_file(self) -> bool:
         """
