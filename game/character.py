@@ -172,6 +172,8 @@ class Character:
 
     # ── Persistence ────────────────────────────────────────────────────────────
 
+    # ── Persistence ────────────────────────────────────────────────────────────────
+
     def save(self) -> None:
         """Write all character data to a JSON file."""
         import json
