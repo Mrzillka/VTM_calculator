@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import json
 from random import choice
 from tkinter import BooleanVar, IntVar, StringVar
 
-import dotenv
-
-from config import ENV_FILE_PATH, NAMES, WOUND_LEVELS
+from config import CHARACTER_FILE_PATH, NAMES, WOUND_LEVELS
 
 _ATTRIBUTES = {
     "Physical": ("Strength", "Dexterity", "Stamina"),
@@ -29,6 +28,7 @@ _VIRTUE_NAMES: tuple[str, ...] = (
 )
 
 _ADVANTAGE_ROWS: int = 7
+_MERIT_FLAW_ROWS: int = 7
 
 
 class Character:
@@ -76,6 +76,7 @@ class Character:
 
         self.will = [BooleanVar(value=False) for _ in range(10)]
         self.will_value = IntVar(value=0)
+        self.willpower_max = IntVar(value=10)
 
     def _init_vars(self) -> None:
         def _dot_row(n: int = self._DOTS) -> list[BooleanVar]:
@@ -97,18 +98,28 @@ class Character:
             for category, abilities in _ABILITIES.items()
         }
 
-        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]} with 5 dots
+        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]} with _DOTS dots
         self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
-            {'name': StringVar(), 'vars': _dot_row(5)}
+            {'name': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
         ]
         self.disciplines: list[dict[str, StringVar | list[BooleanVar]]] = [
-            {'name': StringVar(), 'vars': _dot_row(5)}
+            {'name': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
         ]
         self.virtues: list[dict[str, StringVar | list[BooleanVar]]] = [
             {'name': StringVar(value=vname), 'vars': _dot_row(5)}
             for vname in _VIRTUE_NAMES
+        ]
+
+        # Each entry: {'name': StringVar, 'cost': IntVar}
+        self.merits: list[dict[str, StringVar | IntVar]] = [
+            {'name': StringVar(), 'cost': IntVar(value=0)}
+            for _ in range(_MERIT_FLAW_ROWS)
+        ]
+        self.flaws: list[dict[str, StringVar | IntVar]] = [
+            {'name': StringVar(), 'cost': IntVar(value=0)}
+            for _ in range(_MERIT_FLAW_ROWS)
         ]
 
     # ── Trackers ───────────────────────────────────────────────────────────────
@@ -196,8 +207,6 @@ class Character:
 
     def save(self) -> None:
         """Write all character data to a JSON file."""
-        import json
-        from config import CHARACTER_FILE_PATH
 
         data = {
             "header": {
@@ -221,6 +230,7 @@ class Character:
                 "wounds_value": self.wounds_value.get(),
                 "humanity_value": self.humanity_value.get(),
                 "will_value": self.will_value.get(),
+                "willpower_max": self.willpower_max.get(),
             },
             "attributes": {
                 category: {
@@ -254,6 +264,14 @@ class Character:
                 "virtues": [
                     {"dots": [v.get() for v in e["vars"]]}
                     for e in self.virtues
+                ],
+                "merits": [
+                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    for e in self.merits
+                ],
+                "flaws": [
+                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    for e in self.flaws
                 ],
             },
         }
@@ -289,6 +307,7 @@ class Character:
         self.wounds_value.set(trackers.get("wounds_value", -1))
         self.humanity_value.set(trackers.get("humanity_value", 0))
         self.will_value.set(trackers.get("will_value", 0))
+        self.willpower_max.set(trackers.get("willpower_max", 10))
 
         for category, attrs in data.get("attributes", {}).items():
             for attr, values in attrs.items():
@@ -328,6 +347,16 @@ class Character:
                     if j < len(self.virtues[i]["vars"]):
                         self.virtues[i]["vars"][j].set(dot)
 
+        for i, entry in enumerate(advantages.get("merits", [])):
+            if i < len(self.merits):
+                self.merits[i]["name"].set(entry.get("name", ""))
+                self.merits[i]["cost"].set(entry.get("cost", 0))
+
+        for i, entry in enumerate(advantages.get("flaws", [])):
+            if i < len(self.flaws):
+                self.flaws[i]["name"].set(entry.get("name", ""))
+                self.flaws[i]["cost"].set(entry.get("cost", 0))
+
     def load_from_file(self) -> bool:
         """
         Load character data from the JSON file.
@@ -335,9 +364,6 @@ class Character:
         Returns True if the file was found and loaded, False otherwise.
         Does not call apply_trackers(); the caller is responsible for sequencing.
         """
-        import json
-        from config import CHARACTER_FILE_PATH
-
         if not CHARACTER_FILE_PATH.exists():
             return False
 

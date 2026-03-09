@@ -32,12 +32,14 @@ class Root(Toplevel):
             "solid.TFrame": {"relief": "solid"},
             "sheet.TButton": {"font": (FONT, 15)},
             "sheet.TEntry": {"font": (FONT, 10)},
+            "sheet.TSpinbox": {"font": (FONT, 10)},
             "sheet.TCheckbutton": {"font": (FONT, 10)},
             "sheet.title.TLabel": {"font": (FONT, 15, "bold", "italic")},
             "sheet.L.TLabel": {"font": (FONT, 15, "italic")},
             "sheet.M.TLabel": {"font": (FONT, 12, "italic")},
             "sheet.S.TLabel": {"font": (FONT, 10)},
             "sheet.Dot.TLabel": {"font": (FONT, 12)},
+            "sheet.Sep.TLabel": {"font": (FONT, 8), "foreground": "gray"},
         }
         for name, opts in definitions.items():
             s.configure(name, **opts)
@@ -96,6 +98,8 @@ class Root(Toplevel):
             self.unbind_all("<Button-4>")
             self.unbind_all("<Button-5>")
 
+        # Bind to the Toplevel so <Enter> fires as soon as the mouse
+        # enters anywhere in the window, not just the canvas widget.
         self.bind("<Enter>", _bind)
         self.bind("<Leave>", _unbind)
 

@@ -35,6 +35,60 @@ DISCIPLINES: tuple[str, ...] = (
     "Serpentis", "Thaumaturgy", "Vicissitude", "Visceratika",
 )
 
+# Merits: name → freebie point cost
+MERITS: dict[str, int] = {
+    "Acute Senses": 1,
+    "Ambidextrous": 1,
+    "Calm Heart": 3,
+    "Common Sense": 1,
+    "Concentration": 1,
+    "Early Riser": 1,
+    "Eat Food": 1,
+    "Eidetic Memory": 2,
+    "Enchanting Voice": 2,
+    "Holistic Awareness": 2,
+    "Iron Will": 3,
+    "Light Sleeper": 2,
+    "Lucky": 3,
+    "Medium": 2,
+    "Natural Linguist": 2,
+    "Pitiable": 1,
+    "Sanctity": 2,
+    "Scholar of Enemies": 2,
+    "Self-Confident": 5,
+    "True Faith": 7,
+    "True Love": 1,
+}
+
+# Flaws: name → freebie points gained
+FLAWS: dict[str, int] = {
+    "Addiction": 1,
+    "Allergic": 2,
+    "Amnesia": 2,
+    "Bard's Tongue": 1,
+    "Clan Enmity": 2,
+    "Dark Secret": 1,
+    "Deep Sleeper": 1,
+    "Deformity": 3,
+    "Enemy": 3,
+    "Flashbacks": 2,
+    "Hatred": 3,
+    "Hunted": 4,
+    "Infamy": 2,
+    "Intolerance": 1,
+    "Lifesaver": 3,
+    "Lunacy": 2,
+    "Monstrous": 3,
+    "Nightmares": 1,
+    "Notoriety": 3,
+    "Overconfident": 1,
+    "Phobia": 2,
+    "Prey Exclusion": 1,
+    "Slow Healing": 3,
+    "Speech Impediment": 1,
+    "Weak Willed": 3,
+}
+
 WOUND_LEVELS: tuple[WoundLevel, ...] = (
     WoundLevel("Bruised", 0),
     WoundLevel("Hurt", -1),
