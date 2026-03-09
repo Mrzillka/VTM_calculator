@@ -43,15 +43,15 @@ class Interface(ttk.Frame):
 
     # ── Dot helpers ───────────────────────────────────────────────────────────
 
+    @staticmethod
     def _dot_toggle(
-            self,
             parent: ttk.Frame,
             text: str,
             var: BooleanVar,
             command=None,
     ) -> ttk.Frame:
         """Dot-label toggle — a click-driven replacement for ttk.Checkbutton."""
-        frame = ttk.Frame(parent, style="my.TFrame")
+        frame = ttk.Frame(parent, style="flat.TFrame")
         dot = ttk.Label(frame, text="●" if var.get() else "○", style="S.TLabel", cursor="hand2")
         lbl = ttk.Label(frame, text=text, style="S.TLabel", cursor="hand2")
 
@@ -114,7 +114,7 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_main(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Label(frm, text="VTM calculator", anchor="n", style="L.TLabel")],
+            [ttk.Label(frm, text="VTM calculator", anchor="n", style="title.TLabel")],
             [self._frm_controls(frm)],
             [self._frm_main_buttons(frm)],
         ])
@@ -126,7 +126,7 @@ class Interface(ttk.Frame):
         rows: list[list[Any]] = []
 
         rows.append([
-            ttk.Label(frm, text="Number of dice:", width=12, style="M.TLabel", anchor="e"),
+            ttk.Label(frm, text="Number of dice:", width=15, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=15, length=125,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
@@ -136,7 +136,7 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            ttk.Label(frm, text="Difficulty:", width=12, style="M.TLabel", anchor="e"),
+            ttk.Label(frm, text="Difficulty:", width=15, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=2, to=10, length=125,
                       variable=root.difficulty, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.difficulty)),
@@ -145,7 +145,7 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            ttk.Label(frm, text="Auto success:", width=12, style="M.TLabel", anchor="e"),
+            ttk.Label(frm, text="Auto success:", width=15, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=0, to=5, length=125,
                       variable=root.auto_success, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.auto_success)),
@@ -180,9 +180,9 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
         place_widgets([[
-            ttk.Button(frm, text="Calculate & Roll!", style="L.TButton",
+            ttk.Button(frm, text="Roll!", style="L.TButton",
                        command=self.root.roll_and_calculate),
-            ttk.Button(frm, text="Roll initiative", style="M.TButton",
+            ttk.Button(frm, text="Initiative", style="M.TButton",
                        command=self.root.roll_initiative),
         ]])
 
@@ -195,7 +195,7 @@ class Interface(ttk.Frame):
             [ttk.Label(frm, textvariable=root.roll_result_2, width=20, anchor="n", style="S.TLabel")],
             [ttk.Label(frm, textvariable=root.roll_result_spec, width=20, anchor="n", style="S.TLabel")],
             [ttk.Label(frm, textvariable=root.successes, width=5, anchor="n", style="L.TLabel")],
-            [ttk.Label(frm, textvariable=root.initiative, width=10, anchor="n", style="M.TLabel")],
+            [ttk.Label(frm, textvariable=root.initiative, anchor="n", style="M.TLabel")],
         ])
 
     @frm(padding=5)
@@ -387,8 +387,8 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_name(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Label(frm, text="Character name:", width=12, anchor="e", style="M.TLabel")],
-            [ttk.Entry(frm, textvariable=self.root.character.character_name, width=15,
+            [ttk.Label(frm, text="Character name:", anchor="e", style="M.TLabel")],
+            [ttk.Entry(frm, textvariable=self.root.character.character_name, width=20,
                        style="my.TEntry")],
         ])
 
@@ -417,6 +417,6 @@ class Interface(ttk.Frame):
     def _frm_stat_label(self, frm: ttk.Frame, title: str, var) -> None:
         """Small widget for displaying a single numeric tracker value."""
         place_widgets([
-            [ttk.Label(frm, text=title, width=8, anchor='center', style="M.TLabel")],
+            [ttk.Label(frm, text=title, width=10, anchor='center', style="M.TLabel")],
             [ttk.Label(frm, textvariable=var, width=10, anchor='center', style="S.TLabel")],
         ])

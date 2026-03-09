@@ -12,7 +12,7 @@ NAMES: tuple[str, ...] = (
     "Anna", "Thomas", "Andrew", "Maria", "Caren", "Carl",
 )
 
-FONT = "Javanese text"
+FONT = "Book Antiqua"
 
 
 class WoundLevel(NamedTuple):

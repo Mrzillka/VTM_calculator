@@ -14,7 +14,7 @@ def place_widgets(grid: list[list[Widget | None]]) -> None:
             widget.update()
 
 
-def frm(padding: int = 5, style: str = "my.TFrame") -> Callable:
+def frm(padding: int = 5, style: str = "flat.TFrame") -> Callable:
     """
     Decorator that wraps a method in a ttk.Frame.
 

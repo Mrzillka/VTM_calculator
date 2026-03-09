@@ -83,7 +83,7 @@ class Root(Tk):
     def _configure_styles(self) -> None:
         s = ttk.Style()
         definitions = {
-            "my.TFrame": {"relief": "flat"},
+            "flat.TFrame": {"relief": "flat"},
             "solid.TFrame": {"relief": "solid"},
             "L.TButton": {"font": (FONT, 15)},
             "M.TButton": {"font": (FONT, 12, "italic")},
@@ -92,7 +92,8 @@ class Root(Tk):
             "my.Horizontal.TScale": {"font": (FONT, 10)},
             "my.TSpinbox": {"font": (FONT, 10)},
             "my.TCheckbutton": {"font": (FONT, 10)},
-            "L.TLabel": {"font": (FONT, 20, "bold")},
+            "title.TLabel": {"font": (FONT, 20, "bold", "italic")},
+            "L.TLabel": {"font": (FONT, 18, "bold")},
             "M.TLabel": {"font": (FONT, 15, 'italic')},
             "S.TLabel": {"font": (FONT, 10)},
         }

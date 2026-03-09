@@ -38,8 +38,9 @@ class Root(Toplevel):
             "sheet.TButton": {"font": (FONT, 15)},
             "sheet.TEntry": {"font": (FONT, 10)},
             "sheet.TCheckbutton": {"font": (FONT, 10)},
-            "sheet.L.TLabel": {"font": (FONT, 20, "bold")},
-            "sheet.M.TLabel": {"font": (FONT, 15, "italic")},
+            "sheet.title.TLabel": {"font": (FONT, 15, "bold", "italic")},
+            "sheet.L.TLabel": {"font": (FONT, 15, "italic")},
+            "sheet.M.TLabel": {"font": (FONT, 12, "italic")},
             "sheet.S.TLabel": {"font": (FONT, 10)},
             "sheet.Dot.TLabel": {"font": (FONT, 12)},
         }
