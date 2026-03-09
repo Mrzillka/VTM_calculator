@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import Toplevel
+from tkinter import BooleanVar, Toplevel
 from tkinter import ttk
 
 from config import FONT
@@ -12,18 +12,18 @@ from ui.charsheet.interface import Interface
 class Root(Toplevel):
     """Character sheet window with a vertically scrollable interface."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, character: Character | None = None) -> None:
         super().__init__(parent)
         self.title("Character Sheet")
         self.resizable(True, True)
         self.geometry("960x700")
         self.minsize(600, 400)
 
-        self.character = Character()
+        self.character = character if character is not None else Character()
+        self.locked = BooleanVar(value=False)
 
         self._configure_styles()
         self._build_scrollable()
-        self.load_from_file()
 
     def _configure_styles(self) -> None:
         s = ttk.Style()
@@ -31,6 +31,7 @@ class Root(Toplevel):
             "flat.TFrame": {"relief": "flat"},
             "solid.TFrame": {"relief": "solid"},
             "sheet.TButton": {"font": (FONT, 15)},
+            "sheet.save.TButton": {"font": (FONT, 12)},
             "sheet.TEntry": {"font": (FONT, 10)},
             "sheet.TSpinbox": {"font": (FONT, 10)},
             "sheet.TCheckbutton": {"font": (FONT, 10)},
@@ -74,9 +75,8 @@ class Root(Toplevel):
         """
         Bind mousewheel scrolling while the cursor is anywhere inside the window.
 
-        Binds to the Toplevel (self) rather than the canvas so that the
-        <Enter> event fires reliably when the window is opened or re-opened,
-        regardless of where the cursor happens to be at that moment.
+        Binds to the Toplevel rather than the canvas so that the <Enter> event
+        fires reliably when the window is opened or re-focused.
         """
 
         def _scroll_win(e: tk.Event) -> None:
@@ -98,10 +98,9 @@ class Root(Toplevel):
             self.unbind_all("<Button-4>")
             self.unbind_all("<Button-5>")
 
-        # Bind to the Toplevel so <Enter> fires as soon as the mouse
-        # enters anywhere in the window, not just the canvas widget.
         self.bind("<Enter>", _bind)
         self.bind("<Leave>", _unbind)
 
-    def load_from_file(self) -> None:
-        pass
+    def save(self) -> None:
+        """Persist character data to JSON."""
+        self.character.save()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from tkinter import BooleanVar, IntVar, StringVar
 from tkinter import ttk
+from typing import Callable
 
 from config import BACKGROUNDS, DISCIPLINES, FLAWS, MERITS, WOUND_LEVELS
 from game.character import Character
@@ -20,6 +21,13 @@ class Interface(ttk.Frame):
         self.root = root
         self.character: Character = root.character
 
+        # Editable widgets toggled by the lock checkbox (Entry, Spinbox, Combobox).
+        # Tracker max spinboxes are included; tracker dot labels are NOT.
+        self._lockable: list[ttk.Widget] = []
+
+        # Callbacks that restore spec-entry enabled state after unlock.
+        self._spec_refreshers: list[Callable] = []
+
         # Cached label lists for virtue-aware trackers, populated during build
         self._wp_labels: list[ttk.Label] = []
         self._humanity_labels: list[ttk.Label] = []
@@ -34,6 +42,7 @@ class Interface(ttk.Frame):
             ("Advantages", self._frm_advantages()),
         ]
         rows: list[list] = [
+            [self._frm_toolbar()],
             [ttk.Label(self, text="Vampire the Masquerade", style="sheet.title.TLabel")],
             [self._frm_header()],
         ]
@@ -44,6 +53,34 @@ class Interface(ttk.Frame):
                                               bottom := self._frm_bottom())])
         rows.append([bottom])
         place_widgets(rows)
+
+    # ── Toolbar ───────────────────────────────────────────────────────────────
+
+    @frm(padding=4, style="solid.TFrame")
+    def _frm_toolbar(self, frm: ttk.Frame) -> None:
+        save_btn = ttk.Button(frm, text="💾 Save", style="sheet.save.TButton",
+                              command=self.root.save)
+        lock_cb = ttk.Checkbutton(
+            frm,
+            text="🔒 Lock",
+            variable=self.root.locked,
+            style="sheet.TCheckbutton",
+            command=self._apply_lock,
+        )
+        save_btn.grid(row=0, column=0, sticky="w", padx=(0, 8))
+        lock_cb.grid(row=0, column=1, sticky="w")
+
+    # ── Lock ──────────────────────────────────────────────────────────────────
+
+    def _apply_lock(self) -> None:
+        """Disable or restore all lockable widgets based on the locked flag."""
+        locked = self.root.locked.get()
+        state = "disabled" if locked else "normal"
+        for widget in self._lockable:
+            widget.configure(state=state)
+        if not locked:
+            for refresh in self._spec_refreshers:
+                refresh()
 
     def _collapsible_header(self, title: str, content: ttk.Frame) -> ttk.Label:
         """Return a clickable label that toggles visibility of *content*."""
@@ -81,11 +118,15 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_field_group(self, frm: ttk.Frame, fields: list[tuple[str, StringVar]]) -> None:
-        place_widgets([
-            [ttk.Label(frm, text=label, width=10, anchor="e", style="sheet.S.TLabel"),
-             ttk.Entry(frm, textvariable=var, width=20, style="sheet.TEntry")]
-            for label, var in fields
-        ])
+        rows = []
+        for label, var in fields:
+            entry = ttk.Entry(frm, textvariable=var, width=20, style="sheet.TEntry")
+            self._lockable.append(entry)
+            rows.append([
+                ttk.Label(frm, text=label, width=10, anchor="e", style="sheet.S.TLabel"),
+                entry,
+            ])
+        place_widgets(rows)
 
     # ── Attributes & Abilities ────────────────────────────────────────────────
 
@@ -139,22 +180,24 @@ class Interface(ttk.Frame):
         Backgrounds column: editable Combobox per row so the user can
         either pick a predefined background or type a custom one.
         """
-        place_widgets([
-            [ttk.Combobox(frm, textvariable=e["name"],
-                          values=list(BACKGROUNDS), width=16),
-             self._frm_dots(frm, e["vars"])]
-            for e in self.character.backgrounds
-        ])
+        rows = []
+        for e in self.character.backgrounds:
+            cb = ttk.Combobox(frm, textvariable=e["name"],
+                              values=list(BACKGROUNDS), width=16)
+            self._lockable.append(cb)
+            rows.append([cb, self._frm_dots(frm, e["vars"])])
+        place_widgets(rows)
 
     @frm(padding=2)
     def _frm_adv_disciplines(self, frm: ttk.Frame) -> None:
         """Disciplines column: read-only Combobox, selection only."""
-        place_widgets([
-            [ttk.Combobox(frm, textvariable=e["name"],
-                          values=list(DISCIPLINES), width=16, state="readonly"),
-             self._frm_dots(frm, e["vars"])]
-            for e in self.character.disciplines
-        ])
+        rows = []
+        for e in self.character.disciplines:
+            cb = ttk.Combobox(frm, textvariable=e["name"],
+                              values=list(DISCIPLINES), width=16, state="readonly")
+            self._lockable.append(cb)
+            rows.append([cb, self._frm_dots(frm, e["vars"])])
+        place_widgets(rows)
 
     @frm(padding=2)
     def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
@@ -213,20 +256,19 @@ class Interface(ttk.Frame):
         max_cost: int,
     ) -> None:
         """Single Merits or Flaws column: header + rows of (combobox, spinbox)."""
-        header_row = [
+        rows: list[list] = [[
             ttk.Label(frm, text=title, style="sheet.M.TLabel"),
             ttk.Label(frm, text="pts", style="sheet.S.TLabel"),
-        ]
-        rows: list[list] = [header_row]
+        ]]
         for entry in entries:
             self._bind_autofill(entry["name"], entry["cost"], lookup)
-            rows.append([
-                ttk.Combobox(frm, textvariable=entry["name"],
-                             values=names, width=15),
-                ttk.Spinbox(frm, from_=0, to=max_cost,
-                            textvariable=entry["cost"],
-                            width=3, style="sheet.TSpinbox"),
-            ])
+            cb = ttk.Combobox(frm, textvariable=entry["name"],
+                              values=names, width=15)
+            sp = ttk.Spinbox(frm, from_=0, to=max_cost,
+                             textvariable=entry["cost"],
+                             width=3, style="sheet.TSpinbox")
+            self._lockable.extend([cb, sp])
+            rows.append([cb, sp])
         place_widgets(rows)
 
     @staticmethod
@@ -317,12 +359,14 @@ class Interface(ttk.Frame):
         refresh_cmd,
         max_to: int = 40,
     ) -> None:
-        """Label + 'Max:' label + spinbox in a single row."""
+        """Label + 'Max:' label + spinbox in a single row. Spinbox is lockable."""
+        sp = ttk.Spinbox(frm, from_=1, to=max_to, textvariable=max_var,
+                         command=refresh_cmd, width=3, style="sheet.TSpinbox")
+        self._lockable.append(sp)
         place_widgets([[
             ttk.Label(frm, text=title, style="sheet.M.TLabel"),
             ttk.Label(frm, text="Max:", style="sheet.S.TLabel"),
-            ttk.Spinbox(frm, from_=1, to=max_to, textvariable=max_var,
-                        command=refresh_cmd, width=3, style="sheet.TSpinbox"),
+            sp,
         ]])
 
     # ── Virtue-colored tracker helpers ───────────────────────────────────────
@@ -337,7 +381,7 @@ class Interface(ttk.Frame):
         Build *count* dot labels in a single row inside *parent* and return them.
 
         click_fn(index) is called when the user clicks a dot.
-        The caller is responsible for wiring trace callbacks and the initial paint.
+        These labels are intentionally excluded from _lockable.
         """
         labels = [
             ttk.Label(parent, text="○", style="sheet.Dot.TLabel", cursor="hand2")
@@ -494,14 +538,20 @@ class Interface(ttk.Frame):
     ) -> None:
         spec_entry = ttk.Entry(frm, textvariable=spec_var,
                                width=15, style="sheet.TEntry")
+        self._lockable.append(spec_entry)
 
         def _update_spec_state(*_) -> None:
+            # Do not re-enable while the sheet is locked.
+            if self.root.locked.get():
+                return
             filled = sum(v.get() for v in variables)
             if filled >= 4:
                 spec_entry.configure(state="normal")
             else:
                 spec_var.set("")
                 spec_entry.configure(state="disabled")
+
+        self._spec_refreshers.append(_update_spec_state)
 
         for var in variables:
             var.trace_add("write", _update_spec_state)
@@ -522,7 +572,12 @@ class Interface(ttk.Frame):
             var.trace_add("write",
                           lambda *_, l=lbl, v=var: l.configure(
                               text="●" if v.get() else "○"))
-            lbl.bind("<Button-1>", lambda e, i=idx, v=variables: self._set_dots(v, i))
+            lbl.bind(
+                "<Button-1>",
+                lambda e, i=idx, v=variables: (
+                    None if self.root.locked.get() else self._set_dots(v, i)
+                ),
+            )
             row.append(lbl)
             if idx == 4:
                 row.append(ttk.Label(frm, text="·", style="sheet.Sep.TLabel"))

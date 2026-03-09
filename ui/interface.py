@@ -94,7 +94,7 @@ class Interface(ttk.Frame):
             self._sheet_window.focus_force()
             return
         from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet()
+        self._sheet_window = CharacterSheet(character=self.root.character)
 
     # ── Center block ──────────────────────────────────────────────────────────
 
@@ -335,13 +335,50 @@ class Interface(ttk.Frame):
         char = self.root.character
         place_widgets([
             [ttk.Label(frm, text="Will", style="M.TLabel")],
-            [self._frm_dot_tracker(frm, char.will, lambda x: char.set_will(x))],
+            [self._frm_will_cells(frm)],
         ])
         char.set_will(load=True)
 
     @frm(padding=5)
+    def _frm_will_cells(self, frm: ttk.Frame) -> None:
+        """Will dot tracker that respects willpower_max."""
+        char = self.root.character
+        labels = [
+            ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
+            for i in range(10)
+        ]
+        self._will_dots: list[ttk.Label] = []
+        for i, var in enumerate(char.will):
+            dot = ttk.Label(frm, text="●" if var.get() else "○",
+                            width=2, style="S.TLabel", cursor="hand2")
+            var.trace_add(
+                "write",
+                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
+            )
+            self._will_dots.append(dot)
+        place_widgets([labels, self._will_dots])
+
+        char.will_value.trace_add("write", lambda *_: self._refresh_will_dots())
+        char.willpower_max.trace_add("write", lambda *_: self._refresh_will_dots())
+        self._refresh_will_dots()
+
+    def _refresh_will_dots(self) -> None:
+        """Enable or disable will dots based on willpower_max."""
+        if not hasattr(self, "_will_dots"):
+            return
+        char = self.root.character
+        max_val = char.willpower_max.get()
+        for i, dot in enumerate(self._will_dots):
+            if i >= max_val:
+                dot.configure(cursor="", foreground="gray")
+                dot.unbind("<Button-1>")
+            else:
+                dot.configure(cursor="hand2", foreground="")
+                dot.bind("<Button-1>", lambda e, x=i: char.set_will(x))
+
+    @frm(padding=5)
     def _frm_dot_tracker(self, frm: ttk.Frame, variables: list[BooleanVar], command) -> None:
-        """Generic dot-tracker widget (Humanity, Will)."""
+        """Generic dot-tracker widget (Humanity)."""
         labels = [
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
             for i in range(10)
@@ -409,7 +446,7 @@ class Interface(ttk.Frame):
         place_widgets([
             [ttk.Button(frm, textvariable=self.root.pooling_state,
                         command=self.root.start_bot_polling, style="S.TButton")],
-            [ttk.Button(frm, text="Save",
+            [ttk.Button(frm, text="💾 Save",
                         command=self.root.save_to_file, style="S.TButton")],
         ])
 
