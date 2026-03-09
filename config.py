@@ -46,6 +46,7 @@ def _get_app_data_dir() -> Path:
 
 APP_DATA_DIR: Path = _get_app_data_dir()
 ENV_FILE_PATH: Path = APP_DATA_DIR / ".env"
+CHARACTER_FILE_PATH: Path = APP_DATA_DIR / "character.json"
 
 
 def ensure_app_data_dir() -> None:

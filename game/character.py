@@ -173,28 +173,127 @@ class Character:
     # ── Persistence ────────────────────────────────────────────────────────────
 
     def save(self) -> None:
-        """Write character fields to the .env file."""
-        kv = {
-            "NAME": self.character_name.get(),
-            "DEX": str(self.initiative_bonus_dex.get()),
-            "WITS": str(self.initiative_bonus_wits.get()),
-            "BLOOD": str(self.blood_value.get()),
-            "MAX_BLOOD": str(self.blood_max_value.get()),
-            "WOUNDS": str(self.wounds_value.get()),
-            "HUMANITY": str(self.humanity_value.get()),
-            "WILL": str(self.will_value.get()),
+        """Write all character data to a JSON file."""
+        import json
+        from config import CHARACTER_FILE_PATH
+
+        data = {
+            "header": {
+                "character_name": self.character_name.get(),
+                "player": self.player.get(),
+                "chronicle": self.chronicle.get(),
+                "nature": self.nature.get(),
+                "demeanor": self.demeanor.get(),
+                "clan": self.clan.get(),
+                "generation": self.generation.get(),
+                "heaven": self.heaven.get(),
+                "concept": self.concept.get(),
+            },
+            "initiative": {
+                "dex": self.initiative_bonus_dex.get(),
+                "wits": self.initiative_bonus_wits.get(),
+            },
+            "trackers": {
+                "blood_value": self.blood_value.get(),
+                "blood_max_value": self.blood_max_value.get(),
+                "wounds_value": self.wounds_value.get(),
+                "humanity_value": self.humanity_value.get(),
+                "will_value": self.will_value.get(),
+            },
+            "attributes": {
+                category: {
+                    attr: {
+                        "spec": values["spec"].get(),
+                        "dots": [v.get() for v in values["vars"]],
+                    }
+                    for attr, values in attrs.items()
+                }
+                for category, attrs in self.attributes.items()
+            },
+            "abilities": {
+                category: {
+                    ability: {
+                        "spec": values["spec"].get(),
+                        "dots": [v.get() for v in values["vars"]],
+                    }
+                    for ability, values in abilities.items()
+                }
+                for category, abilities in self.abilities.items()
+            },
         }
-        for key, value in kv.items():
-            dotenv.set_key(str(ENV_FILE_PATH), key, value)
 
-    def load(self, env: dict[str, str | None]) -> None:
-        """
-        Restore character state from a dotenv mapping.
+        with open(CHARACTER_FILE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
-        Note: callers must invoke the interface's refresh_blood_cells() between
-        blood_max_value being set and blood_value being applied.
+    def load(self, data: dict) -> None:
         """
-        self.character_name.set(env["NAME"])
-        self.initiative_bonus_dex.set(int(env["DEX"]))
-        self.initiative_bonus_wits.set(int(env["WITS"]))
-        self.blood_max_value.set(int(env["MAX_BLOOD"]))
+        Restore character state from a dictionary.
+
+        Does not call apply_trackers(); the caller must invoke it
+        after any required UI refresh (e.g. refresh_blood_cells).
+        """
+        header = data.get("header", {})
+        self.character_name.set(header.get("character_name", choice(NAMES)))
+        self.player.set(header.get("player", ""))
+        self.chronicle.set(header.get("chronicle", ""))
+        self.nature.set(header.get("nature", ""))
+        self.demeanor.set(header.get("demeanor", ""))
+        self.clan.set(header.get("clan", ""))
+        self.generation.set(header.get("generation", "13th"))
+        self.heaven.set(header.get("heaven", ""))
+        self.concept.set(header.get("concept", ""))
+
+        initiative = data.get("initiative", {})
+        self.initiative_bonus_dex.set(initiative.get("dex", 0))
+        self.initiative_bonus_wits.set(initiative.get("wits", 0))
+
+        trackers = data.get("trackers", {})
+        self.blood_max_value.set(trackers.get("blood_max_value", 10))
+        self.blood_value.set(trackers.get("blood_value", 10))
+        self.wounds_value.set(trackers.get("wounds_value", -1))
+        self.humanity_value.set(trackers.get("humanity_value", 0))
+        self.will_value.set(trackers.get("will_value", 0))
+
+        for category, attrs in data.get("attributes", {}).items():
+            for attr, values in attrs.items():
+                if category in self.attributes and attr in self.attributes[category]:
+                    self.attributes[category][attr]["spec"].set(values.get("spec", ""))
+                    for i, dot in enumerate(values.get("dots", [])):
+                        if i < len(self.attributes[category][attr]["vars"]):
+                            self.attributes[category][attr]["vars"][i].set(dot)
+
+        for category, abilities in data.get("abilities", {}).items():
+            for ability, values in abilities.items():
+                if category in self.abilities and ability in self.abilities[category]:
+                    self.abilities[category][ability]["spec"].set(values.get("spec", ""))
+                    for i, dot in enumerate(values.get("dots", [])):
+                        if i < len(self.abilities[category][ability]["vars"]):
+                            self.abilities[category][ability]["vars"][i].set(dot)
+
+    def load_from_file(self) -> bool:
+        """
+        Load character data from the JSON file.
+
+        Returns True if the file was found and loaded, False otherwise.
+        Does not call apply_trackers(); the caller is responsible for sequencing.
+        """
+        import json
+        from config import CHARACTER_FILE_PATH
+
+        if not CHARACTER_FILE_PATH.exists():
+            return False
+
+        with open(CHARACTER_FILE_PATH, encoding="utf-8") as f:
+            self.load(json.load(f))
+
+        return True
+
+    def apply_trackers(self) -> None:
+        """Apply tracker values to their BooleanVar dot arrays.
+
+        Must be called after load() and after any UI cell refresh.
+        """
+        self.set_blood(load=True)
+        self.set_wounds(load=True)
+        self.set_humanity(load=True)
+        self.set_will(load=True)
