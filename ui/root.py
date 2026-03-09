@@ -195,32 +195,25 @@ class Root(Tk):
     # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        """Persist bot connection settings and delegate character data to Character."""
+        """Persist bot connection settings to .env and character data to JSON."""
         dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID", str(self.bot.chat_id))
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID", str(self.bot.thread_id))
         self.character.save()
 
     def load_from_file(self) -> None:
-        """Restore bot connection settings and character data from the .env file."""
+        """Restore bot connection settings from .env and character data from JSON."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
-        try:
-            self.bot.chat_id = env["CHAT_ID"]
-            self.bot.thread_id = env["THREAD_ID"] if env.get("THREAD_ID") != "None" else None
+        self.bot.chat_id = env.get("CHAT_ID")
+        self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") != "None" else None
 
-            # character.load() sets blood_max_value; the UI refresh must follow
-            # before blood_value is applied so disabled cells are updated first.
-            self.character.load(env)
-            self._interface.refresh_blood_cells()
-            self.character.blood_value.set(int(env["BLOOD"]))
-            self.character.set_blood(load=True)
-            self.character.wounds_value.set(int(env["WOUNDS"]))
-            self.character.set_wounds(load=True)
-            self.character.humanity_value.set(int(env["HUMANITY"]))
-            self.character.set_humanity(load=True)
-            self.character.will_value.set(int(env["WILL"]))
-            self.character.set_will(load=True)
-        except KeyError:
+        if not self.character.load_from_file():
             self.save_to_file()
+            return
+
+        # refresh_blood_cells must run after blood_max_value is set
+        # and before the dot BooleanVars are populated
+        self._interface.refresh_blood_cells()
+        self.character.apply_trackers()
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
