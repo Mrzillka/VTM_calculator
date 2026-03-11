@@ -15,9 +15,9 @@ class Root(Toplevel):
     def __init__(self, parent=None, character: Character | None = None) -> None:
         super().__init__(parent)
         self.title("Character Sheet")
-        self.resizable(True, True)
-        self.geometry("960x700")
-        self.minsize(600, 400)
+        self.resizable(True, False)
+        self.geometry("1150x750")
+        self.minsize(700, 450)
 
         self.character = character if character is not None else Character()
         self.locked = BooleanVar(value=False)

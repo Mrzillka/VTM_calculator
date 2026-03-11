@@ -5,6 +5,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
 from config import WOUND_LEVELS
+from lang import locale
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
@@ -41,6 +42,20 @@ class Interface(ttk.Frame):
         """Re-evaluate which blood cells are active based on current blood_max_value."""
         self._disable_blood_cells()
 
+    # ── Locale helpers ────────────────────────────────────────────────────────
+
+    def _tlabel(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Label:
+        """Create a ttk.Label bound to a locale key; updates on language switch."""
+        lbl = ttk.Label(parent, text=locale.t(key), **kwargs)
+        locale.register(lbl, key)
+        return lbl
+
+    def _tbutton(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Button:
+        """Create a ttk.Button bound to a locale key; updates on language switch."""
+        btn = ttk.Button(parent, text=locale.t(key), **kwargs)
+        locale.register(btn, key)
+        return btn
+
     # ── Dot helpers ───────────────────────────────────────────────────────────
 
     @staticmethod
@@ -49,11 +64,19 @@ class Interface(ttk.Frame):
             text: str,
             var: BooleanVar,
             command=None,
+            locale_key: str | None = None,
     ) -> ttk.Frame:
-        """Dot-label toggle — a click-driven replacement for ttk.Checkbutton."""
+        """
+        Dot-label toggle — a click-driven replacement for ttk.Checkbutton.
+
+        Pass *locale_key* to keep the label text in sync with language switches.
+        """
         frame = ttk.Frame(parent, style="flat.TFrame")
         dot = ttk.Label(frame, text="●" if var.get() else "○", style="S.TLabel", cursor="hand2")
         lbl = ttk.Label(frame, text=text, style="S.TLabel", cursor="hand2")
+
+        if locale_key:
+            locale.register(lbl, locale_key)
 
         def _toggle(e=None) -> None:
             var.set(not var.get())
@@ -96,6 +119,11 @@ class Interface(ttk.Frame):
         from ui.charsheet.root import Root as CharacterSheet
         self._sheet_window = CharacterSheet(character=self.root.character)
 
+    def _switch_language(self) -> None:
+        """Toggle active language and save preference."""
+        locale.switch()
+        self.root.save_to_file()
+
     # ── Center block ──────────────────────────────────────────────────────────
 
     @frm(padding=4, style="solid.TFrame")
@@ -114,7 +142,7 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_main(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Label(frm, text="VTM calculator", anchor="n", style="title.TLabel")],
+            [self._tlabel(frm, "app.title", anchor="n", style="title.TLabel")],
             [self._frm_controls(frm)],
             [self._frm_main_buttons(frm)],
         ])
@@ -126,7 +154,7 @@ class Interface(ttk.Frame):
         rows: list[list[Any]] = []
 
         rows.append([
-            ttk.Label(frm, text="Number of dice:", width=15, style="M.TLabel", anchor="e"),
+            self._tlabel(frm, "controls.dice", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=15, length=125,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
@@ -136,7 +164,7 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            ttk.Label(frm, text="Difficulty:", width=15, style="M.TLabel", anchor="e"),
+            self._tlabel(frm, "controls.difficulty", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=2, to=10, length=125,
                       variable=root.difficulty, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.difficulty)),
@@ -145,7 +173,7 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            ttk.Label(frm, text="Auto success:", width=15, style="M.TLabel", anchor="e"),
+            self._tlabel(frm, "controls.auto_success", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=0, to=5, length=125,
                       variable=root.auto_success, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.auto_success)),
@@ -154,16 +182,22 @@ class Interface(ttk.Frame):
         ])
 
         rows.append([
-            self._dot_toggle(frm, "Specialisation", root.specialisation),
-            self._dot_toggle(frm, "Send to Telegram", root.is_send_to_telegram),
+            self._dot_toggle(frm, locale.t("controls.specialisation"),
+                             root.specialisation,
+                             locale_key="controls.specialisation"),
+            self._dot_toggle(frm, locale.t("controls.send_telegram"),
+                             root.is_send_to_telegram,
+                             locale_key="controls.send_telegram"),
             self._dot_toggle(frm, "∨", root.additional_options,
                              command=self._toggle_additional_options),
         ])
 
         place_widgets(rows)
 
+        success_lbl = self._tlabel(frm, "controls.success_needed",
+                                   width=16, style="M.TLabel", anchor="e")
         self._additional_row = [
-            ttk.Label(frm, text="Success needed:", width=12, style="M.TLabel", anchor="e"),
+            success_lbl,
             ttk.Scale(frm, from_=1, to=10, length=125,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
@@ -180,31 +214,43 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
         place_widgets([[
-            ttk.Button(frm, text="Roll!", style="L.TButton",
-                       command=self.root.roll_and_calculate),
-            ttk.Button(frm, text="Initiative", style="M.TButton",
-                       command=self.root.roll_initiative),
+            self._tbutton(frm, "controls.roll", style="L.TButton",
+                          command=self.root.roll_and_calculate),
+            self._tbutton(frm, "controls.initiative", style="M.TButton",
+                          command=self.root.roll_initiative),
         ]])
 
     @frm(padding=5)
     def _frm_results(self, frm: ttk.Frame) -> None:
         root = self.root
         place_widgets([
-            [ttk.Label(frm, textvariable=root.result, width=14, anchor="center", style="L.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_1, width=20, anchor="n", style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_2, width=20, anchor="n", style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_spec, width=20, anchor="n", style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.successes, width=5, anchor="n", style="L.TLabel")],
+            [ttk.Label(frm, textvariable=root.result, width=14, anchor="center",
+                       style="L.TLabel")],
+            [ttk.Label(frm, textvariable=root.roll_result_1, width=20, anchor="n",
+                       style="S.TLabel")],
+            [ttk.Label(frm, textvariable=root.roll_result_2, width=20, anchor="n",
+                       style="S.TLabel")],
+            [ttk.Label(frm, textvariable=root.roll_result_spec, width=20, anchor="n",
+                       style="S.TLabel")],
+            [ttk.Label(frm, textvariable=root.successes, width=5, anchor="n",
+                       style="L.TLabel")],
             [ttk.Label(frm, textvariable=root.initiative, anchor="n", style="M.TLabel")],
         ])
 
     @frm(padding=5)
     def _frm_sidebar(self, frm: ttk.Frame) -> None:
+        lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
+                              command=self._switch_language)
+        locale.register(lang_btn, "lang_btn")
+
         place_widgets([
-            [self._dot_toggle(frm, "Trackers ►", self.root.trackers,
-                              command=self._toggle_trackers)],
-            [ttk.Button(frm, text="Sheet", style="S.TButton",
-                        command=self._open_character_sheet)],
+            [self._dot_toggle(frm, locale.t("controls.trackers"),
+                              self.root.trackers,
+                              command=self._toggle_trackers,
+                              locale_key="controls.trackers")],
+            [self._tbutton(frm, "controls.sheet", style="S.TButton",
+                           command=self._open_character_sheet)],
+            [lang_btn],
         ])
 
     # ── Trackers ──────────────────────────────────────────────────────────────
@@ -229,7 +275,7 @@ class Interface(ttk.Frame):
         cells_frm = self._frm_blood_cells(frm)
         self._disable_blood_cells()
         place_widgets([
-            [ttk.Label(frm, text="Blood", width=12, anchor="n", style="M.TLabel")],
+            [self._tlabel(frm, "trackers.blood", width=12, anchor="n", style="M.TLabel")],
             [cells_frm],
             [self._frm_max_blood(frm)],
         ])
@@ -279,7 +325,7 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_max_blood(self, frm: ttk.Frame) -> None:
         place_widgets([[
-            ttk.Label(frm, text="Max Blood", width=12, anchor="n", style="S.TLabel"),
+            self._tlabel(frm, "trackers.max_blood", width=12, anchor="n", style="S.TLabel"),
             ttk.Spinbox(
                 frm, from_=1, to=40,
                 textvariable=self.root.character.blood_max_value,
@@ -292,9 +338,9 @@ class Interface(ttk.Frame):
     def _frm_wounds(self, frm: ttk.Frame) -> None:
         char = self.root.character
         place_widgets([
-            [ttk.Label(frm, text="Wounds", width=12, anchor="n", style="M.TLabel")],
+            [self._tlabel(frm, "trackers.wounds", width=12, anchor="n", style="M.TLabel")],
             [self._frm_wounds_cells(frm)],
-            [ttk.Button(frm, text="HEAL", command=char.heal, style="M.TButton")],
+            [self._tbutton(frm, "trackers.heal", command=char.heal, style="M.TButton")],
         ])
 
     @frm(padding=5)
@@ -314,8 +360,13 @@ class Interface(ttk.Frame):
                 lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
             )
             dot.bind("<Button-1>", lambda e, y=i: char.set_wounds(y))
+
+            name_lbl = ttk.Label(frm, text=locale.t(f"wound_levels.{level.name}"),
+                                 width=15, anchor="e", style="S.TLabel")
+            locale.register(name_lbl, f"wound_levels.{level.name}")
+
             rows.append([
-                ttk.Label(frm, text=level.name, width=10, anchor="e", style="S.TLabel"),
+                name_lbl,
                 ttk.Label(frm, text=str(level.penalty or ""), anchor="w", style="S.TLabel"),
                 dot,
             ])
@@ -325,7 +376,7 @@ class Interface(ttk.Frame):
     def _frm_humanity(self, frm: ttk.Frame) -> None:
         char = self.root.character
         place_widgets([
-            [ttk.Label(frm, text="Humanity/Path", style="M.TLabel")],
+            [self._tlabel(frm, "trackers.humanity_path", style="M.TLabel")],
             [self._frm_dot_tracker(frm, char.humanity, lambda x: char.set_humanity(x))],
         ])
         char.set_humanity(load=True)
@@ -334,7 +385,7 @@ class Interface(ttk.Frame):
     def _frm_will(self, frm: ttk.Frame) -> None:
         char = self.root.character
         place_widgets([
-            [ttk.Label(frm, text="Will", style="M.TLabel")],
+            [self._tlabel(frm, "trackers.will", style="M.TLabel")],
             [self._frm_will_cells(frm)],
         ])
         char.set_will(load=True)
@@ -407,10 +458,10 @@ class Interface(ttk.Frame):
         char = self.root.character
         place_widgets([[
             self._frm_options(frm),
-            self._frm_stat_label(frm, "Blood", char.blood_value),
-            self._frm_stat_label(frm, "Wounds", char.wounds_display),
-            self._frm_stat_label(frm, "Humanity", char.humanity_value),
-            self._frm_stat_label(frm, "Will", char.will_value),
+            self._frm_stat_label(frm, "stats.blood",    char.blood_value),
+            self._frm_stat_label(frm, "stats.wounds",   char.wounds_display),
+            self._frm_stat_label(frm, "stats.humanity", char.humanity_value),
+            self._frm_stat_label(frm, "stats.will",     char.will_value),
         ]])
 
     @frm(padding=5)
@@ -424,7 +475,7 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_name(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Label(frm, text="Character name:", anchor="e", style="M.TLabel")],
+            [self._tlabel(frm, "stats.character_name", anchor="e", style="M.TLabel")],
             [ttk.Entry(frm, textvariable=self.root.character.character_name, width=20,
                        style="my.TEntry")],
         ])
@@ -433,10 +484,10 @@ class Interface(ttk.Frame):
     def _frm_initiative_spinboxes(self, frm: ttk.Frame) -> None:
         char = self.root.character
         place_widgets([
-            [ttk.Label(frm, text="Dex", width=5, anchor="e", style="S.TLabel"),
+            [self._tlabel(frm, "stats.dex", width=5, anchor="e", style="S.TLabel"),
              ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_dex,
                          width=3, style="my.TSpinbox")],
-            [ttk.Label(frm, text="Wits", width=5, anchor="e", style="S.TLabel"),
+            [self._tlabel(frm, "stats.wits", width=5, anchor="e", style="S.TLabel"),
              ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_wits,
                          width=3, style="my.TSpinbox")],
         ])
@@ -446,14 +497,15 @@ class Interface(ttk.Frame):
         place_widgets([
             [ttk.Button(frm, textvariable=self.root.pooling_state,
                         command=self.root.start_bot_polling, style="S.TButton")],
-            [ttk.Button(frm, text="💾 Save",
-                        command=self.root.save_to_file, style="S.TButton")],
+            [self._tbutton(frm, "controls.save",
+                           command=self.root.save_to_file, style="S.TButton")],
         ])
 
     @frm(padding=2, style='solid.TFrame')
-    def _frm_stat_label(self, frm: ttk.Frame, title: str, var) -> None:
-        """Small widget for displaying a single numeric tracker value."""
+    def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:
+        """Small widget displaying a single tracker value with a localised title."""
+        title = self._tlabel(frm, title_key, width=14, anchor="center", style="M.TLabel")
         place_widgets([
-            [ttk.Label(frm, text=title, width=10, anchor='center', style="M.TLabel")],
-            [ttk.Label(frm, textvariable=var, width=10, anchor='center', style="S.TLabel")],
+            [title],
+            [ttk.Label(frm, textvariable=var, width=14, anchor="center", style="S.TLabel")],
         ])

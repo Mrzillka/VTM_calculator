@@ -1,0 +1,255 @@
+{
+  "lang_btn": "RU",
+
+  "app": {
+    "title": "VTM Calculator"
+  },
+
+  "controls": {
+    "dice":            "Number of dice:",
+    "difficulty":      "Difficulty:",
+    "auto_success":    "Auto success:",
+    "success_needed":  "Success needed:",
+    "specialisation":  "Specialisation",
+    "send_telegram":   "Send to Telegram",
+    "roll":            "Roll!",
+    "initiative":      "Initiative",
+    "trackers":        "Trackers ►",
+    "sheet":           "Sheet",
+    "save":            "💾 Save",
+    "connect_tg":      "Connect to Telegram",
+    "connecting":      "Connecting...",
+    "chance":          "Chance:"
+  },
+
+  "stats": {
+    "blood":           "Blood",
+    "wounds":          "Wounds",
+    "humanity":        "Humanity",
+    "will":            "Will",
+    "character_name":  "Character name:",
+    "dex":             "Dex",
+    "wits":            "Wits"
+  },
+
+  "trackers": {
+    "blood":           "Blood",
+    "max_blood":       "Max Blood",
+    "heal":            "HEAL",
+    "wounds":          "Wounds",
+    "humanity_path":   "Humanity / Path",
+    "will":            "Will"
+  },
+
+  "wound_levels": {
+    "Bruised":         "Bruised",
+    "Hurt":            "Hurt",
+    "Injured":         "Injured",
+    "Wounded":         "Wounded",
+    "Mauled":          "Mauled",
+    "Crippled":        "Crippled",
+    "Incapacitated":   "Incapacitated",
+    "Torpor":          "Torpor"
+  },
+
+  "sheet": {
+    "title":           "Vampire the Masquerade",
+    "save":            "💾 Save",
+    "lock":            "🔒 Lock",
+
+    "sections": {
+      "attributes":    "Attributes",
+      "abilities":     "Abilities",
+      "advantages":    "Advantages",
+      "merits_flaws":  "Merits, Flaws & Trackers"
+    },
+
+    "header": {
+      "Name":          "Name",
+      "Player":        "Player",
+      "Chronicle":     "Chronicle",
+      "Nature":        "Nature",
+      "Demeanor":      "Demeanor",
+      "Clan":          "Clan",
+      "Generation":    "Generation",
+      "Heaven":        "Haven",
+      "Concept":       "Concept"
+    },
+
+    "attr_categories": {
+      "Physical":      "Physical",
+      "Social":        "Social",
+      "Mental":        "Mental"
+    },
+
+    "attr_names": {
+      "Strength":      "Strength",
+      "Dexterity":     "Dexterity",
+      "Stamina":       "Stamina",
+      "Charisma":      "Charisma",
+      "Manipulation":  "Manipulation",
+      "Appearance":    "Appearance",
+      "Perception":    "Perception",
+      "Intelligence":  "Intelligence",
+      "Wits":          "Wits"
+    },
+
+    "ability_categories": {
+      "Talents":       "Talents",
+      "Skills":        "Skills",
+      "Knowledges":    "Knowledges"
+    },
+
+    "ability_names": {
+      "Alertness":     "Alertness",
+      "Athletics":     "Athletics",
+      "Brawl":         "Brawl",
+      "Dodge":         "Dodge",
+      "Empathy":       "Empathy",
+      "Expression":    "Expression",
+      "Intimidation":  "Intimidation",
+      "Leadership":    "Leadership",
+      "Streetwise":    "Streetwise",
+      "Subterfuge":    "Subterfuge",
+      "Animal Ken":    "Animal Ken",
+      "Crafts":        "Crafts",
+      "Drive":         "Drive",
+      "Etiquette":     "Etiquette",
+      "Firearms":      "Firearms",
+      "Melee":         "Melee",
+      "Performance":   "Performance",
+      "Security":      "Security",
+      "Stealth":       "Stealth",
+      "Survival":      "Survival",
+      "Academics":     "Academics",
+      "Computer":      "Computer",
+      "Finance":       "Finance",
+      "Investigation": "Investigation",
+      "Law":           "Law",
+      "Linguistics":   "Linguistics",
+      "Medicine":      "Medicine",
+      "Occult":        "Occult",
+      "Politics":      "Politics",
+      "Science":       "Science"
+    },
+
+    "adv_columns": {
+      "Backgrounds":   "Backgrounds",
+      "Disciplines":   "Disciplines",
+      "Virtues":       "Virtues"
+    },
+
+    "virtue_names": [
+      "Conscience / Conviction",
+      "Self-Control / Instinct",
+      "Courage"
+    ],
+
+    "mf": {
+      "merits":        "Merits",
+      "flaws":         "Flaws",
+      "pts":           "pts",
+      "cost":          "Cost: {n} pts",
+      "gain":          "Gain: {n} pts",
+      "free":          "Free points: {n:+d}"
+    },
+
+    "sheet_trackers": {
+      "willpower":     "Willpower",
+      "humanity":      "Humanity / Path",
+      "blood_pool":    "Blood Pool",
+      "health":        "Health Levels",
+      "max":           "Max:"
+    },
+
+    "backgrounds": {
+      "Allies":              "Allies",
+      "Alternate Identity":  "Alternate Identity",
+      "Contacts":            "Contacts",
+      "Domain":              "Domain",
+      "Fame":                "Fame",
+      "Generation":          "Generation",
+      "Herd":                "Herd",
+      "Influence":           "Influence",
+      "Mentor":              "Mentor",
+      "Resources":           "Resources",
+      "Retainers":           "Retainers",
+      "Status":              "Status"
+    },
+
+    "disciplines": {
+      "Animalism":       "Animalism",
+      "Auspex":          "Auspex",
+      "Celerity":        "Celerity",
+      "Chimerstry":      "Chimerstry",
+      "Dementation":     "Dementation",
+      "Dominate":        "Dominate",
+      "Fortitude":       "Fortitude",
+      "Mortis":          "Mortis",
+      "Mytherceria":     "Mytherceria",
+      "Necromancy":      "Necromancy",
+      "Obfuscate":       "Obfuscate",
+      "Obtenebration":   "Obtenebration",
+      "Potence":         "Potence",
+      "Presence":        "Presence",
+      "Protean":         "Protean",
+      "Quietus":         "Quietus",
+      "Serpentis":       "Serpentis",
+      "Thaumaturgy":     "Thaumaturgy",
+      "Vicissitude":     "Vicissitude",
+      "Visceratika":     "Visceratika"
+    },
+
+    "merits": {
+      "Acute Senses":       "Acute Senses",
+      "Ambidextrous":       "Ambidextrous",
+      "Calm Heart":         "Calm Heart",
+      "Common Sense":       "Common Sense",
+      "Concentration":      "Concentration",
+      "Early Riser":        "Early Riser",
+      "Eat Food":           "Eat Food",
+      "Eidetic Memory":     "Eidetic Memory",
+      "Enchanting Voice":   "Enchanting Voice",
+      "Holistic Awareness": "Holistic Awareness",
+      "Iron Will":          "Iron Will",
+      "Light Sleeper":      "Light Sleeper",
+      "Lucky":              "Lucky",
+      "Medium":             "Medium",
+      "Natural Linguist":   "Natural Linguist",
+      "Pitiable":           "Pitiable",
+      "Sanctity":           "Sanctity",
+      "Scholar of Enemies": "Scholar of Enemies",
+      "Self-Confident":     "Self-Confident",
+      "True Faith":         "True Faith",
+      "True Love":          "True Love"
+    },
+
+    "flaws": {
+      "Addiction":          "Addiction",
+      "Allergic":           "Allergic",
+      "Amnesia":            "Amnesia",
+      "Bard's Tongue":      "Bard's Tongue",
+      "Clan Enmity":        "Clan Enmity",
+      "Dark Secret":        "Dark Secret",
+      "Deep Sleeper":       "Deep Sleeper",
+      "Deformity":          "Deformity",
+      "Enemy":              "Enemy",
+      "Flashbacks":         "Flashbacks",
+      "Hatred":             "Hatred",
+      "Hunted":             "Hunted",
+      "Infamy":             "Infamy",
+      "Intolerance":        "Intolerance",
+      "Lifesaver":          "Lifesaver",
+      "Lunacy":             "Lunacy",
+      "Monstrous":          "Monstrous",
+      "Nightmares":         "Nightmares",
+      "Notoriety":          "Notoriety",
+      "Overconfident":      "Overconfident",
+      "Phobia":             "Phobia",
+      "Prey Exclusion":     "Prey Exclusion",
+      "Slow Healing":       "Slow Healing",
+      "Speech Impediment":  "Speech Impediment",
+      "Weak Willed":        "Weak Willed"
+    }
+  }
+}

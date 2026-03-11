@@ -12,6 +12,7 @@ from config import ENV_FILE_PATH, get_bot_token, FONT
 from game.calculator import Calculator
 from game.character import Character
 from game.roller import Roller
+from lang import locale
 from ui.interface import Interface, place_widgets
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,9 @@ class Root(Tk):
         super().__init__()
         self.title("VTM calculator")
         self.resizable(True, True)
+
+        # Restore language preference before any widget is built
+        self._restore_lang_pref()
 
         # ── Character ──────────────────────────────────────────────────────────
         self.character = Character()
@@ -56,7 +60,10 @@ class Root(Tk):
         self.trackers = BooleanVar(value=False)
 
         # ── Roll results ───────────────────────────────────────────────────────
-        self.result = StringVar(value="Chance: -.--%")
+        self._last_probability: float | None = None
+        self._last_initiative: int | None = None
+
+        self.result = StringVar(value=f"{locale.t('controls.chance')} -.--%")
         self.roll_result_1 = StringVar(value="")
         self.roll_result_2 = StringVar(value="")
         self.roll_result_spec = StringVar(value="")
@@ -66,7 +73,9 @@ class Root(Tk):
         self._last_spec: list[int] = []
 
         # ── Bot connection state ───────────────────────────────────────────────
-        self.pooling_state = StringVar(value="Connect to Telegram")
+        self.pooling_state = StringVar(value=locale.t("controls.connect_tg"))
+
+        locale.on_change(self._on_locale_change)
 
         self._configure_grid()
         self._configure_styles()
@@ -74,6 +83,13 @@ class Root(Tk):
         self.load_from_file()
 
     # ── Setup ──────────────────────────────────────────────────────────────────
+
+    def _restore_lang_pref(self) -> None:
+        """Read persisted language from .env and apply it before the UI is built."""
+        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        saved = env.get("LANG_PREF", "en")
+        if saved != locale.lang:
+            locale.set_lang(saved)
 
     def _configure_grid(self) -> None:
         for col in range(4):
@@ -104,6 +120,28 @@ class Root(Tk):
         self._interface = Interface(self)
         place_widgets([[self._interface]])
 
+    # ── Locale ─────────────────────────────────────────────────────────────────
+
+    def _on_locale_change(self) -> None:
+        """Refresh StringVars whose content depends on the active language."""
+        self._update_result_display()
+        self._update_initiative_display()
+
+    def _update_result_display(self) -> None:
+        label = locale.t("controls.chance")
+        if self._last_probability is None:
+            self.result.set(f"{label} -.--%")
+        else:
+            self.result.set(f"{label} {self._last_probability:.2f}%")
+
+    def _update_initiative_display(self) -> None:
+        if self._last_initiative is None:
+            self.initiative.set("")
+        else:
+            self.initiative.set(
+                f"{locale.t('controls.initiative')}: {self._last_initiative}"
+            )
+
     # ── Game logic ─────────────────────────────────────────────────────────────
 
     def calculate(self) -> None:
@@ -114,7 +152,8 @@ class Root(Tk):
             success_needed=self.success_needed.get(),
             auto_successes=self.auto_success.get(),
         )
-        self.result.set(f"Chance: {calc.get_probability():.2f}%")
+        self._last_probability = calc.get_probability()
+        self._update_result_display()
 
     def roll(self) -> None:
         """Perform a dice roll and update result display variables."""
@@ -141,11 +180,12 @@ class Root(Tk):
         from random import randint
         raw = randint(1, 10) + self.character.roll_penalty.get()
         total = (
-                raw
-                + self.character.initiative_bonus_dex.get()
-                + self.character.initiative_bonus_wits.get()
+            raw
+            + self.character.initiative_bonus_dex.get()
+            + self.character.initiative_bonus_wits.get()
         )
-        self.initiative.set(f"Initiative: {total}")
+        self._last_initiative = total
+        self._update_initiative_display()
         if self.is_send_to_telegram.get():
             self._send_initiative_to_telegram()
 
@@ -153,12 +193,13 @@ class Root(Tk):
 
     def start_bot_polling(self) -> None:
         self.bot.start_polling_in_background()
-        self.pooling_state.set("Connecting...")
+        self.pooling_state.set(locale.t("controls.connecting"))
         self._poll_status_update()
 
     def _poll_status_update(self) -> None:
         self.pooling_state.set(
-            "Connecting..." if self.bot.is_polling else "Connect to Telegram"
+            locale.t("controls.connecting") if self.bot.is_polling
+            else locale.t("controls.connect_tg")
         )
         self.after(1000, self._poll_status_update)
 
@@ -182,7 +223,7 @@ class Root(Tk):
         self.bot.send_async(msg)
 
     def _send_initiative_to_telegram(self) -> None:
-        total = int(self.initiative.get().split()[1])
+        total = self._last_initiative or 0
         dex = self.character.initiative_bonus_dex.get()
         wits = self.character.initiative_bonus_wits.get()
         raw = total - dex - wits
@@ -196,9 +237,10 @@ class Root(Tk):
     # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        """Persist bot connection settings to .env and character data to JSON."""
+        """Persist bot connection settings and language preference to .env, character data to JSON."""
         dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID", str(self.bot.chat_id))
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID", str(self.bot.thread_id))
+        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF", locale.lang)
         self.character.save()
 
     def load_from_file(self) -> None:

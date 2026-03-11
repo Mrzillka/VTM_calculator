@@ -1,0 +1,255 @@
+{
+  "lang_btn": "EN",
+
+  "app": {
+    "title": "VTM Калькулятор"
+  },
+
+  "controls": {
+    "dice":            "Количество кубиков:",
+    "difficulty":      "Сложность:",
+    "auto_success":    "Авто-успехи:",
+    "success_needed":  "Нужно успехов:",
+    "specialisation":  "Специализация",
+    "send_telegram":   "Отправить в TG",
+    "roll":            "Бросок!",
+    "initiative":      "Инициатива",
+    "trackers":        "Трекеры ►",
+    "sheet":           "Лист",
+    "save":            "💾 Сохранить",
+    "connect_tg":      "Подключить TG",
+    "connecting":      "Подключение...",
+    "chance":          "Шанс:"
+  },
+
+  "stats": {
+    "blood":           "Кровь",
+    "wounds":          "Раны",
+    "humanity":        "Человечность",
+    "will":            "Воля",
+    "character_name":  "Имя персонажа:",
+    "dex":             "Лов",
+    "wits":            "Смек"
+  },
+
+  "trackers": {
+    "blood":           "Кровь",
+    "max_blood":       "Макс. кровь",
+    "heal":            "ЛЕЧИТЬ",
+    "wounds":          "Раны",
+    "humanity_path":   "Человечность / Путь",
+    "will":            "Воля"
+  },
+
+  "wound_levels": {
+    "Bruised":         "Задет",
+    "Hurt":            "Поврежден",
+    "Injured":         "Ранен",
+    "Wounded":         "Тяжело ранен",
+    "Mauled":          "Травмирован",
+    "Crippled":        "Искалечен",
+    "Incapacitated":   "Обездвижен",
+    "Torpor":          "Торпор"
+  },
+
+  "sheet": {
+    "title":           "Вампиры: Маскарад",
+    "save":            "💾 Сохранить",
+    "lock":            "🔒 Заблок.",
+
+    "sections": {
+      "attributes":    "Атрибуты",
+      "abilities":     "Способности",
+      "advantages":    "Преимущества",
+      "merits_flaws":  "Достоинства, Недостатки и Трекеры"
+    },
+
+    "header": {
+      "Name":          "Имя",
+      "Player":        "Игрок",
+      "Chronicle":     "Хроника",
+      "Nature":        "Натура",
+      "Demeanor":      "Маска",
+      "Clan":          "Клан",
+      "Generation":    "Поколение",
+      "Heaven":        "Хэйвен",
+      "Concept":       "Концепция"
+    },
+
+    "attr_categories": {
+      "Physical":      "Физические",
+      "Social":        "Социальные",
+      "Mental":        "Ментальные"
+    },
+
+    "attr_names": {
+      "Strength":      "Сила",
+      "Dexterity":     "Ловкость",
+      "Stamina":       "Выносливость",
+      "Charisma":      "Обаяние",
+      "Manipulation":  "Манипуляция",
+      "Appearance":    "Внешность",
+      "Perception":    "Восприятие",
+      "Intelligence":  "Интеллект",
+      "Wits":          "Смекалка"
+    },
+
+    "ability_categories": {
+      "Talents":       "Таланты",
+      "Skills":        "Навыки",
+      "Knowledges":    "Познания"
+    },
+
+    "ability_names": {
+      "Alertness":     "Внимательность",
+      "Athletics":     "Атлетика",
+      "Brawl":         "Драка",
+      "Dodge":         "Уклонение",
+      "Empathy":       "Эмпатия",
+      "Expression":    "Экспрессия",
+      "Intimidation":  "Запугивание",
+      "Leadership":    "Лидерство",
+      "Streetwise":    "Знание улиц",
+      "Subterfuge":    "Хитрость",
+      "Animal Ken":    "Знание животных",
+      "Crafts":        "Ремёсла",
+      "Drive":         "Вождение",
+      "Etiquette":     "Этикет",
+      "Firearms":      "Стрельба",
+      "Melee":         "Фехтование",
+      "Performance":   "Исполнение",
+      "Security":      "Безопасность",
+      "Stealth":       "Скрытность",
+      "Survival":      "Выживание",
+      "Academics":     "Академические",
+      "Computer":      "Компьютеры",
+      "Finance":       "Финансы",
+      "Investigation": "Расследование",
+      "Law":           "Законы",
+      "Linguistics":   "Лингвистика",
+      "Medicine":      "Медицина",
+      "Occult":        "Оккультизм",
+      "Politics":      "Политика",
+      "Science":       "Наука"
+    },
+
+    "adv_columns": {
+      "Backgrounds":   "Дополнения",
+      "Disciplines":   "Дисциплины",
+      "Virtues":       "Добродетели"
+    },
+
+    "virtue_names": [
+      "Сознательность / Убеждённость",
+      "Самоконтроль / Инстинкты",
+      "Смелость"
+    ],
+
+    "mf": {
+      "merits":        "Достоинства",
+      "flaws":         "Недостатки",
+      "pts":           "оч.",
+      "cost":          "Стоимость: {n} оч.",
+      "gain":          "Получено: {n} оч.",
+      "free":          "Свободные очки: {n:+d}"
+    },
+
+    "sheet_trackers": {
+      "willpower":     "Сила воли",
+      "humanity":      "Человечность / Путь",
+      "blood_pool":    "Запас крови",
+      "health":        "Здоровье",
+      "max":           "Макс:"
+    },
+
+    "backgrounds": {
+      "Allies":              "Союзники",
+      "Alternate Identity":  "Альтерн. личность",
+      "Contacts":            "Связи",
+      "Domain":              "Домен",
+      "Fame":                "Слава",
+      "Generation":          "Поколение",
+      "Herd":                "Стадо",
+      "Influence":           "Влияние",
+      "Mentor":              "Ментор",
+      "Resources":           "Ресурсы",
+      "Retainers":           "Слуги",
+      "Status":              "Статус"
+    },
+
+    "disciplines": {
+      "Animalism":       "Анимализм",
+      "Auspex":          "Прорицание",
+      "Celerity":        "Стремительность",
+      "Chimerstry":      "Химерия",
+      "Dementation":     "Помешательство",
+      "Dominate":        "Доминирование",
+      "Fortitude":       "Стойкость",
+      "Mortis":          "Мортис",
+      "Mytherceria":     "Мифтерия",
+      "Necromancy":      "Некромантия",
+      "Obfuscate":       "Затемнение",
+      "Obtenebration":   "Власть теней",
+      "Potence":         "Могущество",
+      "Presence":        "Присутствие",
+      "Protean":         "Превращение",
+      "Quietus":         "Смертоносность",
+      "Serpentis":       "Серпетис",
+      "Thaumaturgy":     "Таматургия",
+      "Vicissitude":     "Изменчивость",
+      "Visceratika":     "Висцератика"
+    },
+
+    "merits": {
+      "Acute Senses":       "Острое восприятие",
+      "Ambidextrous":       "Амбидекстр",
+      "Calm Heart":         "Спокойное сердце",
+      "Common Sense":       "Здравый смысл",
+      "Concentration":      "Концентрация",
+      "Early Riser":        "Ранний подъём",
+      "Eat Food":           "Приём пищи",
+      "Eidetic Memory":     "Эйдетич. память",
+      "Enchanting Voice":   "Чарующий голос",
+      "Holistic Awareness": "Целостное мышл-е",
+      "Iron Will":          "Железная воля",
+      "Light Sleeper":      "Чуткий сон",
+      "Lucky":              "Удача",
+      "Medium":             "Медиум",
+      "Natural Linguist":   "Природн. лингвист",
+      "Pitiable":           "Жалкий вид",
+      "Sanctity":           "Святость",
+      "Scholar of Enemies": "Знаток врагов",
+      "Self-Confident":     "Самоуверенность",
+      "True Faith":         "Истинная вера",
+      "True Love":          "Истинная любовь"
+    },
+
+    "flaws": {
+      "Addiction":          "Зависимость",
+      "Allergic":           "Аллергия",
+      "Amnesia":            "Амнезия",
+      "Bard's Tongue":      "Язык барда",
+      "Clan Enmity":        "Вражда с кланом",
+      "Dark Secret":        "Тёмный секрет",
+      "Deep Sleeper":       "Крепкий сон",
+      "Deformity":          "Уродство",
+      "Enemy":              "Враг",
+      "Flashbacks":         "Флэшбэки",
+      "Hatred":             "Ненависть",
+      "Hunted":             "Преследуемый",
+      "Infamy":             "Дурная слава",
+      "Intolerance":        "Нетерпимость",
+      "Lifesaver":          "Ценитель жизни",
+      "Lunacy":             "Лунатизм",
+      "Monstrous":          "Чудовищность",
+      "Nightmares":         "Кошмары",
+      "Notoriety":          "Скандал. слава",
+      "Overconfident":      "Самонадеянность",
+      "Phobia":             "Фобия",
+      "Prey Exclusion":     "Табу на добычу",
+      "Slow Healing":       "Медленное исцел-е",
+      "Speech Impediment":  "Дефект речи",
+      "Weak Willed":        "Слабая воля"
+    }
+  }
+}
