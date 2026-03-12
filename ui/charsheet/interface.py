@@ -42,13 +42,19 @@ class Interface(ttk.Frame):
         self._merit_sum: int = 0
         self._flaw_sum: int = 0
 
+        # Guard that prevents _bind_disc_path traces from clearing path_var
+        # while _refresh_translations is updating values programmatically.
+        self._translating: bool = False
+
         self._build()
 
-        # Apply virtue names in the active language and keep them in sync
         self._sync_virtue_names()
         locale.on_change(self._sync_virtue_names)
         locale.on_change(self._refresh_mf_totals)
         locale.on_change(self._refresh_wound_names)
+        # Must be registered last so combobox value lists are already updated
+        # before we translate the selected values.
+        locale.on_change(self._refresh_translations)
 
     # ── Locale helpers ────────────────────────────────────────────────────────
 
@@ -243,7 +249,7 @@ class Interface(ttk.Frame):
         locale.on_change(self._refresh_bg_values)
 
     def _refresh_bg_values(self) -> None:
-        """Update background combobox values to the active language."""
+        """Update background combobox option lists to the active language."""
         names = list((locale.raw("sheet.backgrounds") or {}).values())
         for cb in getattr(self, "_bg_comboboxes", []):
             cb.configure(values=names)
@@ -253,11 +259,9 @@ class Interface(ttk.Frame):
         """
         Disciplines column.
 
-        Each row shows:
-          [discipline combobox] [path combobox — only when discipline has paths] [dots]
-
-        The path combobox is always present in the grid but is hidden (grid_remove)
-        when the selected discipline has no paths and shown otherwise.
+        Each row: [discipline combobox] [path combobox — only when discipline
+        has paths] [dots].  The path combobox is always present in the grid
+        but hidden via grid_remove() when not applicable.
         """
         rows = []
         self._disc_comboboxes: list[ttk.Combobox] = []
@@ -271,10 +275,7 @@ class Interface(ttk.Frame):
             self._disc_comboboxes.append(cb_disc)
             self._path_comboboxes.append(cb_path)
 
-            dots = self._frm_dots(frm, e["vars"])
-            rows.append([cb_disc, cb_path, dots])
-
-            # Wire path combobox visibility to the discipline name variable.
+            rows.append([cb_disc, cb_path, self._frm_dots(frm, e["vars"])])
             self._bind_disc_path(e["name"], e["path"], cb_path)
 
         place_widgets(rows)
@@ -290,14 +291,15 @@ class Interface(ttk.Frame):
         """
         Keep the path combobox in sync with the selected discipline.
 
-        - Shows the path combobox and populates it when the discipline has paths.
-        - Hides the path combobox and clears the path value otherwise.
-        - Translates the English canonical discipline name to locale-aware path names.
+        Shows / populates the path combobox when the discipline has paths;
+        hides it and clears path_var otherwise.  Skipped while
+        self._translating is True so that bulk translation updates are
+        not interrupted.
         """
         def _update(*_) -> None:
+            if self._translating:
+                return
             disc_display = name_var.get()
-
-            # Resolve display name back to English canonical key.
             en_key = self._disc_display_to_en(disc_display)
             paths_en = DISCIPLINE_PATHS.get(en_key, ())
 
@@ -313,32 +315,80 @@ class Interface(ttk.Frame):
                 cb_path.grid_remove()
 
         name_var.trace_add("write", _update)
-        # Run immediately to set the initial state.
         _update()
 
     def _disc_display_to_en(self, display_name: str) -> str:
-        """
-        Convert a displayed (possibly translated) discipline name to its English
-        canonical key used in DISCIPLINE_PATHS and locale data.
-        """
+        """Convert a discipline display name (active language) to its English canonical key."""
         disc_map: dict = locale.raw("sheet.disciplines") or {}
         reverse = {v: k for k, v in disc_map.items()}
         return reverse.get(display_name, display_name)
 
     def _refresh_disc_values(self) -> None:
-        """Update discipline combobox values to the active language."""
+        """Update discipline combobox option lists to the active language."""
         names = list((locale.raw("sheet.disciplines") or {}).values())
         for cb in getattr(self, "_disc_comboboxes", []):
             cb.configure(values=names)
-        # Refresh path dropdowns for already-selected disciplines.
-        for cb_path in getattr(self, "_path_comboboxes", []):
-            # Trigger the trace by touching the discipline's name var — done
-            # indirectly by re-evaluating each entry's path binding.
-            pass
-        # Re-trigger all discipline traces so path lists are translated.
-        if hasattr(self, "_disc_comboboxes"):
-            for entry in self.character.disciplines:
-                entry["name"].set(entry["name"].get())
+
+    def _refresh_translations(self) -> None:
+        """
+        Translate all known selected values to the active language.
+
+        Called after every language switch (registered last so option lists
+        are already updated).  User-entered custom strings are left untouched.
+        """
+        self._translating = True
+        try:
+            self._translate_disciplines()
+            self._translate_simple_entries(self.character.backgrounds, "sheet.backgrounds")
+            self._translate_simple_entries(self.character.merits,      "sheet.merits")
+            self._translate_simple_entries(self.character.flaws,       "sheet.flaws")
+        finally:
+            self._translating = False
+
+        # Re-evaluate path combobox visibility and option lists now that
+        # discipline names are in the new language.
+        for entry, cb_path in zip(
+            self.character.disciplines,
+            getattr(self, "_path_comboboxes", []),
+        ):
+            disc_en = locale.reverse_lookup_en("sheet.disciplines", entry["name"].get())
+            paths_en = DISCIPLINE_PATHS.get(disc_en, ())
+            if paths_en:
+                path_names = [
+                    locale.t(f"sheet.discipline_paths.{disc_en}.{p}") for p in paths_en
+                ]
+                cb_path.configure(values=path_names)
+                cb_path.grid()
+            else:
+                cb_path.configure(values=[])
+                cb_path.grid_remove()
+
+    def _translate_disciplines(self) -> None:
+        """Translate discipline name and path StringVars to the active language."""
+        for entry in self.character.disciplines:
+            old_name = entry["name"].get()
+            # Find English key while old_name is still in the previous language.
+            disc_en = locale.reverse_lookup_en("sheet.disciplines", old_name)
+            new_name = locale.translate_known("sheet.disciplines", old_name)
+
+            old_path = entry["path"].get()
+            new_path = locale.translate_known(
+                f"sheet.discipline_paths.{disc_en}", old_path
+            )
+
+            if new_name != old_name:
+                entry["name"].set(new_name)
+            if new_path != old_path:
+                entry["path"].set(new_path)
+
+    @staticmethod
+    def _translate_simple_entries(entries: list[dict], section: str) -> None:
+        """Translate the 'name' StringVar of each entry using *section*."""
+        for entry in entries:
+            old = entry["name"].get()
+            new = locale.translate_known(section, old)
+            if new != old:
+                entry["name"].set(new)
 
     @frm(padding=2)
     def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
@@ -439,14 +489,10 @@ class Interface(ttk.Frame):
         """
         Auto-fill cost when a known name is selected.
 
-        Looks up cost via the English key corresponding to the displayed
-        locale name, so autofill works regardless of the active language.
+        Uses reverse_lookup_en so autofill works regardless of the active language.
         """
         def _on_name_change(*_) -> None:
-            name = name_var.get()
-            translations: dict = locale.raw(locale_section) or {}
-            reverse = {v: k for k, v in translations.items()}
-            en_key = reverse.get(name, name)
+            en_key = locale.reverse_lookup_en(locale_section, name_var.get())
             if en_key in en_lookup:
                 cost_var.set(en_lookup[en_key])
         name_var.trace_add("write", _on_name_change)
@@ -466,10 +512,8 @@ class Interface(ttk.Frame):
         self._merit_sum = m
         self._flaw_sum = f
 
-        self._merit_total_lbl.configure(
-            text=locale.t("sheet.mf.cost").format(n=m))
-        self._flaw_total_lbl.configure(
-            text=locale.t("sheet.mf.gain").format(n=f))
+        self._merit_total_lbl.configure(text=locale.t("sheet.mf.cost").format(n=m))
+        self._flaw_total_lbl.configure(text=locale.t("sheet.mf.gain").format(n=f))
 
         net = f - m
         color = _VIRTUE_COLOR if net > 0 else (_DISABLED_COLOR if net < 0 else "")
@@ -552,10 +596,9 @@ class Interface(ttk.Frame):
         sp = ttk.Spinbox(frm, from_=1, to=max_to, textvariable=max_var,
                          command=refresh_cmd, width=3, style="sheet.TSpinbox")
         self._lockable.append(sp)
-        max_lbl = self._tlabel(frm, "sheet.sheet_trackers.max", style="sheet.S.TLabel")
         place_widgets([[
             self._tlabel(frm, title_key, style="sheet.M.TLabel"),
-            max_lbl,
+            self._tlabel(frm, "sheet.sheet_trackers.max", style="sheet.S.TLabel"),
             sp,
         ]])
 
@@ -621,8 +664,7 @@ class Interface(ttk.Frame):
     @frm(padding=0)
     def _frm_humanity_cells(self, frm: ttk.Frame) -> None:
         char = self.character
-        self._humanity_labels = self._build_tracker_dot_row(
-            frm, 10, char.set_humanity)
+        self._humanity_labels = self._build_tracker_dot_row(frm, 10, char.set_humanity)
 
         char.humanity_value.trace_add("write", lambda *_: self._refresh_humanity_cells())
         for v in char.virtues[0]["vars"]:
@@ -727,11 +769,7 @@ class Interface(ttk.Frame):
 
         name_lbl = self._tlabel(frm, f"{name_prefix}.{label}",
                                 width=15, anchor="e", style="sheet.S.TLabel")
-        place_widgets([[
-            name_lbl,
-            spec_entry,
-            self._frm_dots(frm, variables),
-        ]])
+        place_widgets([[name_lbl, spec_entry, self._frm_dots(frm, variables)]])
 
     @frm(padding=0)
     def _frm_dots(self, frm: ttk.Frame, variables: list[BooleanVar]) -> None:

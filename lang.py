@@ -21,15 +21,33 @@ class _Locale:
     def __init__(self, lang: str = "en") -> None:
         self._lang: str = lang if lang in _SUPPORTED else "en"
         self._data: dict[str, Any] = {}
+        self._all_data: dict[str, dict[str, Any]] = {}
         self._callbacks: list[Callable[[], None]] = []
-        self._load()
+        self._load_all()
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
+    def _load_all(self) -> None:
+        """Load every supported locale file into _all_data and set _data."""
+        for lang in _SUPPORTED:
+            path = LOCALE_DIR / f"{lang}.json"
+            with open(path, encoding="utf-8") as f:
+                self._all_data[lang] = json.load(f)
+        self._data = self._all_data[self._lang]
+
     def _load(self) -> None:
-        path = LOCALE_DIR / f"{self._lang}.json"
-        with open(path, encoding="utf-8") as f:
-            self._data = json.load(f)
+        self._data = self._all_data[self._lang]
+
+    @staticmethod
+    def _navigate(data: dict[str, Any], section: str) -> dict[str, Any]:
+        """Return the nested dict at *section* (dot-separated), or {} if not found."""
+        node: Any = data
+        for part in section.split("."):
+            if isinstance(node, dict):
+                node = node.get(part, {})
+            else:
+                return {}
+        return node if isinstance(node, dict) else {}
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -58,6 +76,36 @@ class _Locale:
             else:
                 return None
         return node
+
+    def reverse_lookup_en(self, section: str, value: str) -> str:
+        """
+        Find the English canonical key for *value* in *section*.
+
+        Searches all supported locales so it works even when *value* is a
+        translation from a different language than the currently active one.
+        Returns *value* unchanged if it is not found in any locale (i.e. a
+        user-entered custom string).
+        """
+        if not value:
+            return value
+        for lang_data in self._all_data.values():
+            section_map = self._navigate(lang_data, section)
+            reverse = {v: k for k, v in section_map.items()}
+            if value in reverse:
+                return reverse[value]
+        return value
+
+    def translate_known(self, section: str, value: str) -> str:
+        """
+        Translate *value* to the active language if it is a known entry in *section*.
+
+        Searches all supported locales for a reverse match, then returns the
+        equivalent string in the active language.  Returns *value* unchanged if
+        it is not a known entry (i.e. a user-entered custom string).
+        """
+        en_key = self.reverse_lookup_en(section, value)
+        current_map = self._navigate(self._data, section)
+        return current_map.get(en_key, value)
 
     def switch(self) -> None:
         """Cycle to the next supported language and invoke all registered callbacks."""
