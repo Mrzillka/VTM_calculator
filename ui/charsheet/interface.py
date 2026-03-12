@@ -4,7 +4,7 @@ from tkinter import BooleanVar, IntVar, StringVar
 from tkinter import ttk
 from typing import Callable
 
-from config import FLAWS, MERITS, WOUND_LEVELS
+from config import DISCIPLINE_PATHS, FLAWS, MERITS, WOUND_LEVELS
 from game.character import Character
 from lang import locale
 from ui.utils import frm, place_widgets
@@ -250,22 +250,95 @@ class Interface(ttk.Frame):
 
     @frm(padding=2)
     def _frm_adv_disciplines(self, frm: ttk.Frame) -> None:
+        """
+        Disciplines column.
+
+        Each row shows:
+          [discipline combobox] [path combobox — only when discipline has paths] [dots]
+
+        The path combobox is always present in the grid but is hidden (grid_remove)
+        when the selected discipline has no paths and shown otherwise.
+        """
         rows = []
         self._disc_comboboxes: list[ttk.Combobox] = []
+        self._path_comboboxes: list[ttk.Combobox] = []
+
         for e in self.character.disciplines:
-            cb = ttk.Combobox(frm, textvariable=e["name"], width=20)
-            self._lockable.append(cb)
-            self._disc_comboboxes.append(cb)
-            rows.append([cb, self._frm_dots(frm, e["vars"])])
+            cb_disc = ttk.Combobox(frm, textvariable=e["name"], width=16)
+            cb_path = ttk.Combobox(frm, textvariable=e["path"], width=16)
+            self._lockable.append(cb_disc)
+            self._lockable.append(cb_path)
+            self._disc_comboboxes.append(cb_disc)
+            self._path_comboboxes.append(cb_path)
+
+            dots = self._frm_dots(frm, e["vars"])
+            rows.append([cb_disc, cb_path, dots])
+
+            # Wire path combobox visibility to the discipline name variable.
+            self._bind_disc_path(e["name"], e["path"], cb_path)
+
         place_widgets(rows)
         self._refresh_disc_values()
         locale.on_change(self._refresh_disc_values)
+
+    def _bind_disc_path(
+        self,
+        name_var: StringVar,
+        path_var: StringVar,
+        cb_path: ttk.Combobox,
+    ) -> None:
+        """
+        Keep the path combobox in sync with the selected discipline.
+
+        - Shows the path combobox and populates it when the discipline has paths.
+        - Hides the path combobox and clears the path value otherwise.
+        - Translates the English canonical discipline name to locale-aware path names.
+        """
+        def _update(*_) -> None:
+            disc_display = name_var.get()
+
+            # Resolve display name back to English canonical key.
+            en_key = self._disc_display_to_en(disc_display)
+            paths_en = DISCIPLINE_PATHS.get(en_key, ())
+
+            if paths_en:
+                path_names = [
+                    locale.t(f"sheet.discipline_paths.{en_key}.{p}") for p in paths_en
+                ]
+                cb_path.configure(values=path_names)
+                cb_path.grid()
+            else:
+                path_var.set("")
+                cb_path.configure(values=[])
+                cb_path.grid_remove()
+
+        name_var.trace_add("write", _update)
+        # Run immediately to set the initial state.
+        _update()
+
+    def _disc_display_to_en(self, display_name: str) -> str:
+        """
+        Convert a displayed (possibly translated) discipline name to its English
+        canonical key used in DISCIPLINE_PATHS and locale data.
+        """
+        disc_map: dict = locale.raw("sheet.disciplines") or {}
+        reverse = {v: k for k, v in disc_map.items()}
+        return reverse.get(display_name, display_name)
 
     def _refresh_disc_values(self) -> None:
         """Update discipline combobox values to the active language."""
         names = list((locale.raw("sheet.disciplines") or {}).values())
         for cb in getattr(self, "_disc_comboboxes", []):
             cb.configure(values=names)
+        # Refresh path dropdowns for already-selected disciplines.
+        for cb_path in getattr(self, "_path_comboboxes", []):
+            # Trigger the trace by touching the discipline's name var — done
+            # indirectly by re-evaluating each entry's path binding.
+            pass
+        # Re-trigger all discipline traces so path lists are translated.
+        if hasattr(self, "_disc_comboboxes"):
+            for entry in self.character.disciplines:
+                entry["name"].set(entry["name"].get())
 
     @frm(padding=2)
     def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
@@ -372,7 +445,6 @@ class Interface(ttk.Frame):
         def _on_name_change(*_) -> None:
             name = name_var.get()
             translations: dict = locale.raw(locale_section) or {}
-            # Build reverse map: localized_name → english_key
             reverse = {v: k for k, v in translations.items()}
             en_key = reverse.get(name, name)
             if en_key in en_lookup:

@@ -181,26 +181,82 @@
     },
 
     "disciplines": {
-      "Animalism":       "Анимализм",
-      "Auspex":          "Прорицание",
-      "Celerity":        "Стремительность",
-      "Chimerstry":      "Химерия",
-      "Dementation":     "Помешательство",
-      "Dominate":        "Доминирование",
-      "Fortitude":       "Стойкость",
-      "Mortis":          "Мортис",
-      "Mytherceria":     "Мифтерия",
-      "Necromancy":      "Некромантия",
-      "Obfuscate":       "Затемнение",
-      "Obtenebration":   "Власть теней",
-      "Potence":         "Могущество",
-      "Presence":        "Присутствие",
-      "Protean":         "Превращение",
-      "Quietus":         "Смертоносность",
-      "Serpentis":       "Серпетис",
-      "Thaumaturgy":     "Таматургия",
-      "Vicissitude":     "Изменчивость",
-      "Visceratika":     "Висцератика"
+      "Animalism":        "Анимализм",
+      "Auspex":           "Прорицание",
+      "Celerity":         "Стремительность",
+      "Chimerstry":       "Химерия",
+      "Dementation":      "Помешательство",
+      "Dominate":         "Доминирование",
+      "Fortitude":        "Стойкость",
+      "Necromancy":       "Некромантия",
+      "Obfuscate":        "Затемнение",
+      "Obtenebration":    "Власть теней",
+      "Potence":          "Могущество",
+      "Presence":         "Присутствие",
+      "Protean":          "Превращение",
+      "Quietus":          "Смертоносность",
+      "Serpentis":        "Серпетис",
+      "Thaumaturgy":      "Таматургия",
+      "Vicissitude":      "Изменчивость",
+      "Abombwe":          "Абомбве",
+      "Daimonion":        "Даймонион",
+      "Melpominee":       "Мельпомина",
+      "Mortis":           "Мортис",
+      "Mytherceria":      "Мифтерия",
+      "Obeah":            "Обеа",
+      "Sanguinus":        "Сангвинус",
+      "Temporis":         "Темпорис",
+      "Thanatosis":       "Танатозис",
+      "Visceratika":      "Висцератика",
+      "Assamite Sorcery": "Асасинская ворожба",
+      "Koldunic Sorcery": "Колдовство Колдунов",
+      "Setite Sorcery":   "Магия Последователей Сета"
+    },
+
+    "discipline_paths": {
+      "Thaumaturgy": {
+        "Path of Blood":                    "Путь Крови",
+        "Elemental Mastery":                "Власть над Стихиями",
+        "The Green Path":                   "Зелёный Путь",
+        "Hands of Destruction":             "Длани Разрушения",
+        "The Lure of Flames":               "Зов Пламени",
+        "Movement of the Mind":             "Движение Разума",
+        "Neptune's Might":                  "Мощь Нептуна",
+        "Path of Conjuring":                "Путь Призывания",
+        "Path of Corruption":               "Путь Растления",
+        "Path of Mars":                     "Путь Марса",
+        "Path of Technomancy":              "Путь Технократии",
+        "Path of the Father's Vengeance":   "Путь Отцовского Мщения",
+        "Thaumaturgical Countermagic":      "Контрмагия Таматургии",
+        "Weather Control":                  "Власть над Погодой"
+      },
+      "Necromancy": {
+        "Sepulchre Path":  "Путь Склепа",
+        "Ash Path":        "Путь Пепла",
+        "Bone Path":       "Путь Кости",
+        "Cenotaph Path":   "Путь Кенотафа",
+        "Mortuus Path":    "Путь Мертвеца",
+        "Vitreous Path":   "Стеклянный Путь"
+      },
+      "Assamite Sorcery": {
+        "Path of the Levinbolt":       "Путь Молнии",
+        "Path of Awakening":           "Путь Пробуждения",
+        "Hands of the Divine":         "Длани Божественные",
+        "Movement of the Loyal Heart": "Движение Верного Сердца",
+        "The Stolen Heart":            "Украденное Сердце"
+      },
+      "Koldunic Sorcery": {
+        "Way of Earth":  "Путь Земли",
+        "Way of Fire":   "Путь Огня",
+        "Way of Water":  "Путь Воды",
+        "Way of Wind":   "Путь Ветра",
+        "Way of Spirit": "Путь Духа"
+      },
+      "Setite Sorcery": {
+        "Path of the Cobra's Favor": "Путь Милости Кобры",
+        "Path of Duat":              "Путь Дуата",
+        "Path of Phobos":            "Путь Фобоса"
+      }
     },
 
     "merits": {

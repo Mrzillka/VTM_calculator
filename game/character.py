@@ -98,15 +98,19 @@ class Character:
             for category, abilities in _ABILITIES.items()
         }
 
-        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]} with _DOTS dots
+        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]}
         self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
             {'name': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
         ]
+
+        # Each entry: {'name': StringVar, 'path': StringVar, 'vars': list[BooleanVar]}
+        # 'path' is only meaningful for disciplines that support sub-paths (see DISCIPLINE_PATHS).
         self.disciplines: list[dict[str, StringVar | list[BooleanVar]]] = [
-            {'name': StringVar(), 'vars': _dot_row()}
+            {'name': StringVar(), 'path': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
         ]
+
         self.virtues: list[dict[str, StringVar | list[BooleanVar]]] = [
             {'name': StringVar(value=vname), 'vars': _dot_row(5)}
             for vname in _VIRTUE_NAMES
@@ -136,7 +140,6 @@ class Character:
         else:
             if self.blood_value.get() != row * 10 + col + 1:
                 col += 1
-            # else: toggle off — col stays as-is, clearing that cell
 
         for i in range(4):
             for j in range(10):
@@ -258,7 +261,11 @@ class Character:
                     for e in self.backgrounds
                 ],
                 "disciplines": [
-                    {"name": e["name"].get(), "dots": [v.get() for v in e["vars"]]}
+                    {
+                        "name": e["name"].get(),
+                        "path": e["path"].get(),
+                        "dots": [v.get() for v in e["vars"]],
+                    }
                     for e in self.disciplines
                 ],
                 "virtues": [
@@ -337,6 +344,7 @@ class Character:
         for i, entry in enumerate(advantages.get("disciplines", [])):
             if i < len(self.disciplines):
                 self.disciplines[i]["name"].set(entry.get("name", ""))
+                self.disciplines[i]["path"].set(entry.get("path", ""))
                 for j, dot in enumerate(entry.get("dots", [])):
                     if j < len(self.disciplines[i]["vars"]):
                         self.disciplines[i]["vars"][j].set(dot)

@@ -28,12 +28,68 @@ BACKGROUNDS: tuple[str, ...] = (
 )
 
 DISCIPLINES: tuple[str, ...] = (
+    # Core Camarilla / Sabbat disciplines
     "Animalism", "Auspex", "Celerity", "Chimerstry",
-    "Dementation", "Dominate", "Fortitude", "Mortis",
-    "Mytherceria", "Necromancy", "Obfuscate", "Obtenebration",
+    "Dementation", "Dominate", "Fortitude",
+    "Necromancy", "Obfuscate", "Obtenebration",
     "Potence", "Presence", "Protean", "Quietus",
-    "Serpentis", "Thaumaturgy", "Vicissitude", "Visceratika",
+    "Serpentis", "Thaumaturgy", "Vicissitude",
+    # Clan-specific disciplines
+    "Abombwe", "Daimonion", "Melpominee",
+    "Mortis", "Mytherceria", "Obeah",
+    "Sanguinus", "Temporis", "Thanatosis", "Visceratika",
+    # Rare / bloodline sorceries with paths
+    "Assamite Sorcery", "Koldunic Sorcery", "Setite Sorcery",
 )
+
+# Disciplines that use sub-paths.
+# Keys must match entries in DISCIPLINES exactly.
+# Values are ordered tuples of path names (English canonical form).
+DISCIPLINE_PATHS: dict[str, tuple[str, ...]] = {
+    "Thaumaturgy": (
+        "Path of Blood",
+        "Elemental Mastery",
+        "The Green Path",
+        "Hands of Destruction",
+        "The Lure of Flames",
+        "Movement of the Mind",
+        "Neptune's Might",
+        "Path of Conjuring",
+        "Path of Corruption",
+        "Path of Mars",
+        "Path of Technomancy",
+        "Path of the Father's Vengeance",
+        "Thaumaturgical Countermagic",
+        "Weather Control",
+    ),
+    "Necromancy": (
+        "Sepulchre Path",
+        "Ash Path",
+        "Bone Path",
+        "Cenotaph Path",
+        "Mortuus Path",
+        "Vitreous Path",
+    ),
+    "Assamite Sorcery": (
+        "Path of the Levinbolt",
+        "Path of Awakening",
+        "Hands of the Divine",
+        "Movement of the Loyal Heart",
+        "The Stolen Heart",
+    ),
+    "Koldunic Sorcery": (
+        "Way of Earth",
+        "Way of Fire",
+        "Way of Water",
+        "Way of Wind",
+        "Way of Spirit",
+    ),
+    "Setite Sorcery": (
+        "Path of the Cobra's Favor",
+        "Path of Duat",
+        "Path of Phobos",
+    ),
+}
 
 # Merits: name → freebie point cost  (V20 core, p. 479+)
 MERITS: dict[str, int] = {
