@@ -22,9 +22,9 @@ class WoundLevel(NamedTuple):
 
 
 BACKGROUNDS: tuple[str, ...] = (
-    "Allies", "Alternate Identity", "Contacts", "Domain",
-    "Fame", "Generation", "Herd", "Influence", "Mentor",
-    "Resources", "Retainers", "Status",
+    "Allies", "Alternate Identity", "Armory", "Contacts", "Domain",
+    "Fame", "Generation", "Haven", "Herd", "Influence", "Library",
+    "Mentor", "Resources", "Retainers", "Status",
 )
 
 DISCIPLINES: tuple[str, ...] = (
@@ -35,58 +35,95 @@ DISCIPLINES: tuple[str, ...] = (
     "Serpentis", "Thaumaturgy", "Vicissitude", "Visceratika",
 )
 
-# Merits: name → freebie point cost
+# Merits: name → freebie point cost  (V20 core, p. 479+)
 MERITS: dict[str, int] = {
+    # Physical
     "Acute Senses": 1,
     "Ambidextrous": 1,
+    "Baby Face": 2,
+    "Blush of Health": 2,
+    "Catlike Balance": 1,
+    "Daredevil": 3,
+    "Eat Food": 1,
+    "Friendly Face": 1,
+    "Gunslinger": 3,
+    "Inoffensive to Animals": 1,
+    # Mental
     "Calm Heart": 3,
+    "Code of Honor": 2,
     "Common Sense": 1,
     "Concentration": 1,
-    "Early Riser": 1,
-    "Eat Food": 1,
+    "Danger Sense": 2,
     "Eidetic Memory": 2,
+    "Jack of All Trades": 5,
+    "Light Sleeper": 2,
+    "Oracular Ability": 3,
+    # Social
+    "Early Riser": 1,
     "Enchanting Voice": 2,
     "Holistic Awareness": 2,
     "Iron Will": 3,
-    "Light Sleeper": 2,
     "Lucky": 3,
-    "Medium": 2,
     "Natural Linguist": 2,
     "Pitiable": 1,
     "Sanctity": 2,
     "Scholar of Enemies": 2,
     "Self-Confident": 5,
+    # Supernatural
+    "Magic Resistance": 2,
+    "Medium": 2,
     "True Faith": 7,
     "True Love": 1,
 }
 
-# Flaws: name → freebie points gained
+# Flaws: name → freebie points gained  (V20 core, p. 484+)
 FLAWS: dict[str, int] = {
+    # Physical
     "Addiction": 1,
     "Allergic": 2,
-    "Amnesia": 2,
-    "Bard's Tongue": 1,
-    "Clan Enmity": 2,
-    "Dark Secret": 1,
     "Deep Sleeper": 1,
     "Deformity": 3,
-    "Enemy": 3,
+    "Lame": 3,
+    "Monstrous": 3,
+    "One Eye": 2,
+    "Permanent Wound": 3,
+    "Short": 1,
+    "Slow Healing": 3,
+    "Speech Impediment": 1,
+    # Mental
+    "Absent Minded": 3,
+    "Amnesia": 2,
+    "Bard's Tongue": 1,
+    "Compulsion": 1,
+    "Confused": 2,
+    "Curiosity": 2,
+    "Derangement": 2,
     "Flashbacks": 2,
+    "Nightmares": 1,
+    "Overconfident": 1,
+    "Soft-Hearted": 1,
+    "Vengeance": 2,
+    "Weak Willed": 3,
+    # Social
+    "Clan Enmity": 2,
+    "Dark Secret": 1,
+    "Enemy": 3,
     "Hatred": 3,
     "Hunted": 4,
     "Infamy": 2,
     "Intolerance": 1,
     "Lifesaver": 3,
     "Lunacy": 2,
-    "Monstrous": 3,
-    "Nightmares": 1,
     "Notoriety": 3,
-    "Overconfident": 1,
     "Phobia": 2,
     "Prey Exclusion": 1,
-    "Slow Healing": 3,
-    "Speech Impediment": 1,
-    "Weak Willed": 3,
+    "Territorial": 2,
+    # Supernatural
+    "Beacon of the Unholy": 2,
+    "Eerie Presence": 2,
+    "Grip of the Damned": 3,
+    "Haunted": 3,
+    "Thin Blood": 4,
 }
 
 WOUND_LEVELS: tuple[WoundLevel, ...] = (
