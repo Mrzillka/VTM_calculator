@@ -28,7 +28,6 @@ class Interface(ttk.Frame):
         self._trackers_frame: ttk.Frame | None = None
         self._additional_row: list[Widget] = []
         self._sheet_window = None
-        self._gm_window = None
         self._blood_cells: list[list[ttk.Label]] = []
 
         self._build()
@@ -119,15 +118,6 @@ class Interface(ttk.Frame):
             return
         from ui.charsheet.root import Root as CharacterSheet
         self._sheet_window = CharacterSheet(character=self.root.character)
-
-    def _open_gm_screen(self) -> None:
-        """Open or focus the GM screen window."""
-        if self._gm_window is not None and self._gm_window.winfo_exists():
-            self._gm_window.lift()
-            self._gm_window.focus_force()
-            return
-        from ui.gm_panel.root import GMRoot
-        self._gm_window = GMRoot(bot=self.root.bot)
 
     def _switch_language(self) -> None:
         """Toggle active language and save preference."""
@@ -260,8 +250,6 @@ class Interface(ttk.Frame):
                               locale_key="controls.trackers")],
             [self._tbutton(frm, "controls.sheet", style="S.TButton",
                            command=self._open_character_sheet)],
-            [self._tbutton(frm, "controls.gm_screen", style="S.TButton",
-                           command=self._open_gm_screen)],
             [lang_btn],
         ])
 
