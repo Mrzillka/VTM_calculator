@@ -19,7 +19,8 @@
     "save":            "💾 Сохранить",
     "connect_tg":      "Подключить TG",
     "connecting":      "Подключение...",
-    "chance":          "Шанс:"
+    "chance":          "Шанс:",
+    "gm_screen":       "GM экран"
   },
 
   "stats": {

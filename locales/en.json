@@ -19,7 +19,8 @@
     "save":            "💾 Save",
     "connect_tg":      "Connect to Telegram",
     "connecting":      "Connecting...",
-    "chance":          "Chance:"
+    "chance":          "Chance:",
+    "gm_screen":       "GM Screen"
   },
 
   "stats": {
