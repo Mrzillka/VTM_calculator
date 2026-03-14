@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tkinter as tk
 from tkinter import BooleanVar, Widget
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
@@ -9,7 +10,23 @@ from lang import locale
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
+    from game.models import RollRecord
     from ui.root import Root
+
+_HIT_FG = "#1b5e20"
+_BOTCH_FG = "#b71c1c"
+_NORMAL_FG = ""
+
+_OUTCOME_STYLE: dict[str, str] = {
+    "SUCCESS": "Success.TLabel",
+    "FAILURE": "Failure.TLabel",
+    "BOTCH":   "Botch.TLabel",
+}
+_COUNT_STYLE: dict[str, str] = {
+    "SUCCESS": "SuccessCount.TLabel",
+    "FAILURE": "FailureCount.TLabel",
+    "BOTCH":   "BotchCount.TLabel",
+}
 
 
 class Interface(ttk.Frame):
@@ -29,8 +46,10 @@ class Interface(ttk.Frame):
         self._additional_row: list[Widget] = []
         self._sheet_window = None
         self._blood_cells: list[list[ttk.Label]] = []
+        self._initiative_var = tk.StringVar(value="")
 
         self._build()
+        root.on_roll(self._append_roll_entry)
 
     def _build(self) -> None:
         place_widgets([
@@ -131,7 +150,7 @@ class Interface(ttk.Frame):
         self._trackers_frame = self._frm_trackers(frm)
         widgets = [
             self._frm_main(frm),
-            self._frm_results(frm),
+            self._frm_history(frm),
             self._frm_sidebar(frm),
             self._trackers_frame,
         ]
@@ -221,23 +240,6 @@ class Interface(ttk.Frame):
         ]])
 
     @frm(padding=5)
-    def _frm_results(self, frm: ttk.Frame) -> None:
-        root = self.root
-        place_widgets([
-            [ttk.Label(frm, textvariable=root.result, width=14, anchor="center",
-                       style="L.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_1, width=20, anchor="n",
-                       style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_2, width=20, anchor="n",
-                       style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.roll_result_spec, width=20, anchor="n",
-                       style="S.TLabel")],
-            [ttk.Label(frm, textvariable=root.successes, width=5, anchor="n",
-                       style="L.TLabel")],
-            [ttk.Label(frm, textvariable=root.initiative, anchor="n", style="M.TLabel")],
-        ])
-
-    @frm(padding=5)
     def _frm_sidebar(self, frm: ttk.Frame) -> None:
         lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
                               command=self._switch_language)
@@ -251,7 +253,125 @@ class Interface(ttk.Frame):
             [self._tbutton(frm, "controls.sheet", style="S.TButton",
                            command=self._open_character_sheet)],
             [lang_btn],
+            [ttk.Label(frm, textvariable=self._initiative_var,
+                       style="M.TLabel", anchor="center")],
         ])
+
+    # ── Roll history ──────────────────────────────────────────────────────────
+
+    @frm(padding=4, style="solid.TFrame")
+    def _frm_history(self, frm: ttk.Frame) -> None:
+        ttk.Label(frm, text="⚄  Roll History", style="M.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
+
+        canvas = tk.Canvas(frm, width=300, height=340, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(frm, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=1, column=0, sticky="nsew")
+        scrollbar.grid(row=1, column=1, sticky="ns")
+
+        frm.grid_rowconfigure(1, weight=1)
+        frm.grid_columnconfigure(0, weight=1)
+
+        self._history_canvas = canvas
+        self._history_inner = ttk.Frame(canvas)
+        self._history_win_id = canvas.create_window(
+            (0, 0), window=self._history_inner, anchor="nw")
+
+        self._history_inner.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        canvas.bind(
+            "<Configure>",
+            lambda e: canvas.itemconfig(self._history_win_id, width=e.width),
+        )
+        self._bind_mousewheel(canvas)
+
+    def _bind_mousewheel(self, canvas: tk.Canvas) -> None:
+        def _scroll(e: tk.Event) -> None:
+            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+
+        canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _scroll))
+        canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
+        canvas.bind("<Button-4>", lambda _: canvas.yview_scroll(-1, "units"))
+        canvas.bind("<Button-5>", lambda _: canvas.yview_scroll(1, "units"))
+
+    def _append_roll_entry(self, record: "RollRecord") -> None:
+        """Prepend a new roll entry at the top of the history panel."""
+        parent = self._history_inner
+
+        for child in parent.winfo_children():
+            info = child.grid_info()
+            if info:
+                child.grid(row=int(info["row"]) + 1)
+
+        entry = self._build_roll_entry(parent, record)
+        entry.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 2))
+        parent.grid_columnconfigure(0, weight=1)
+
+        self._history_canvas.after(
+            50, lambda: self._history_canvas.yview_moveto(0))
+
+    def _build_roll_entry(self, parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        """Build a single roll entry frame."""
+        frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
+        frame.grid_columnconfigure(0, weight=1)
+
+        outcome = record.outcome
+        outcome_style = _OUTCOME_STYLE[outcome]
+        count_style = _COUNT_STYLE[outcome]
+
+        meta_text = (
+            f"{record.dice_number}d  •  diff {record.difficulty}"
+            + (f"  •  auto +{record.auto_success}" if record.auto_success else "")
+        )
+        ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
+            row=0, column=0, sticky="w")
+        ttk.Label(frame, text=outcome, style=outcome_style).grid(
+            row=0, column=1, sticky="e", padx=(8, 0))
+
+        dice_frame = self._build_dice_display(frame, record)
+        dice_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(2, 0))
+
+        if record.spec_dice:
+            spec_text = "spec: " + "  ".join(map(str, sorted(record.spec_dice, reverse=True)))
+            ttk.Label(frame, text=spec_text, style="HistoryMeta.TLabel").grid(
+                row=2, column=0, sticky="w")
+
+        count_row = 2 if not record.spec_dice else 3
+        successes_text = f"{record.successes:+d}" if record.successes != 0 else "0"
+        ttk.Label(frame, text=successes_text, style=count_style).grid(
+            row=count_row, column=1, sticky="e")
+        ttk.Label(frame, text=f"{record.probability:.1f}%", style="HistoryMeta.TLabel").grid(
+            row=count_row, column=0, sticky="w")
+
+        return frame
+
+    @staticmethod
+    def _build_dice_display(parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        """Build a row of coloured die-value labels."""
+        frame = ttk.Frame(parent, style="flat.TFrame")
+        for col, value in enumerate(sorted(record.dice, reverse=True)):
+            if value == 1:
+                fg = _BOTCH_FG
+            elif value >= record.difficulty:
+                fg = _HIT_FG
+            else:
+                fg = _NORMAL_FG
+            lbl = ttk.Label(frame, text=str(value), style="HistoryDice.TLabel",
+                            width=2, anchor="center")
+            if fg:
+                lbl.configure(foreground=fg)
+            lbl.grid(row=0, column=col, padx=1)
+        return frame
+
+    # ── Public helpers ────────────────────────────────────────────────────────
+
+    def show_initiative(self, total: int) -> None:
+        """Display initiative result in the sidebar."""
+        self._initiative_var.set(f"{locale.t('controls.initiative')}: {total}")
 
     # ── Trackers ──────────────────────────────────────────────────────────────
 

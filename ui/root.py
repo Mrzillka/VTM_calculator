@@ -4,6 +4,7 @@ import logging
 from tkinter import BooleanVar, IntVar, StringVar, Tk
 from tkinter import messagebox
 from tkinter import ttk
+from typing import Callable
 
 import dotenv
 
@@ -11,6 +12,7 @@ from bot.tg_bot import TgBot
 from config import ENV_FILE_PATH, get_bot_token, FONT
 from game.calculator import Calculator
 from game.character import Character
+from game.models import RollRecord
 from game.roller import Roller
 from lang import locale
 from ui.interface import Interface, place_widgets
@@ -23,8 +25,7 @@ class Root(Tk):
     Main application window for VTM Calculator.
 
     Owns application-level state (Telegram, roll parameters, UI flags, roll
-    results) and an instance of Character for all character-specific state.
-    Interaction logic between the two domains is coordinated here.
+    history) and an instance of Character for all character-specific state.
     """
 
     def __init__(self) -> None:
@@ -32,7 +33,6 @@ class Root(Tk):
         self.title("VTM calculator")
         self.resizable(True, True)
 
-        # Restore language preference before any widget is built
         self._restore_lang_pref()
 
         # ── Character ──────────────────────────────────────────────────────────
@@ -59,18 +59,12 @@ class Root(Tk):
         self.is_send_to_telegram = BooleanVar(value=False)
         self.trackers = BooleanVar(value=False)
 
-        # ── Roll results ───────────────────────────────────────────────────────
-        self._last_probability: float | None = None
-        self._last_initiative: int | None = None
+        # ── Roll history ───────────────────────────────────────────────────────
+        self.roll_history: list[RollRecord] = []
+        self._on_roll_callbacks: list[Callable[[RollRecord], None]] = []
 
-        self.result = StringVar(value=f"{locale.t('controls.chance')} -.--%")
-        self.roll_result_1 = StringVar(value="")
-        self.roll_result_2 = StringVar(value="")
-        self.roll_result_spec = StringVar(value="")
-        self.successes = StringVar(value="0")
-        self.initiative = StringVar(value="")
-        self._last_roll: list[int] = []
-        self._last_spec: list[int] = []
+        # ── Initiative (displayed via interface callback) ───────────────────────
+        self._last_initiative: int | None = None
 
         # ── Bot connection state ───────────────────────────────────────────────
         self.pooling_state = StringVar(value=locale.t("controls.connect_tg"))
@@ -110,8 +104,16 @@ class Root(Tk):
             "my.TCheckbutton": {"font": (FONT, 10)},
             "title.TLabel": {"font": (FONT, 20, "bold", "italic")},
             "L.TLabel": {"font": (FONT, 18, "bold")},
-            "M.TLabel": {"font": (FONT, 15, 'italic')},
+            "M.TLabel": {"font": (FONT, 15, "italic")},
             "S.TLabel": {"font": (FONT, 10)},
+            "HistoryMeta.TLabel": {"font": (FONT, 9), "foreground": "gray"},
+            "HistoryDice.TLabel": {"font": (FONT, 10)},
+            "Success.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#2e7d32"},
+            "Failure.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#757575"},
+            "Botch.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#c62828"},
+            "SuccessCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#2e7d32"},
+            "FailureCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#757575"},
+            "BotchCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#c62828"},
         }
         for name, opts in definitions.items():
             s.configure(name, **opts)
@@ -123,40 +125,37 @@ class Root(Tk):
     # ── Locale ─────────────────────────────────────────────────────────────────
 
     def _on_locale_change(self) -> None:
-        """Refresh StringVars whose content depends on the active language."""
-        self._update_result_display()
-        self._update_initiative_display()
+        self.pooling_state.set(
+            locale.t("controls.connecting") if self.bot.is_polling
+            else locale.t("controls.connect_tg")
+        )
+        if self._last_initiative is not None:
+            self._interface.show_initiative(self._last_initiative)
 
-    def _update_result_display(self) -> None:
-        label = locale.t("controls.chance")
-        if self._last_probability is None:
-            self.result.set(f"{label} -.--%")
-        else:
-            self.result.set(f"{label} {self._last_probability:.2f}%")
+    # ── Roll callbacks ─────────────────────────────────────────────────────────
 
-    def _update_initiative_display(self) -> None:
-        if self._last_initiative is None:
-            self.initiative.set("")
-        else:
-            self.initiative.set(
-                f"{locale.t('controls.initiative')}: {self._last_initiative}"
-            )
+    def on_roll(self, callback: Callable[[RollRecord], None]) -> None:
+        """Register a callback invoked with the new RollRecord after each roll."""
+        self._on_roll_callbacks.append(callback)
+
+    def _emit_roll(self, record: RollRecord) -> None:
+        for cb in self._on_roll_callbacks:
+            cb(record)
 
     # ── Game logic ─────────────────────────────────────────────────────────────
 
-    def calculate(self) -> None:
-        """Calculate roll probability and update the result label."""
+    def _calculate(self) -> float:
         calc = Calculator(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
             success_needed=self.success_needed.get(),
             auto_successes=self.auto_success.get(),
         )
-        self._last_probability = calc.get_probability()
-        self._update_result_display()
+        return calc.get_probability()
 
-    def roll(self) -> None:
-        """Perform a dice roll and update result display variables."""
+    def roll_and_calculate(self) -> None:
+        probability = self._calculate()
+
         roller = Roller(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
@@ -165,16 +164,21 @@ class Root(Tk):
             penalty=self.character.roll_penalty.get(),
         )
         result = roller.roll()
-        self._last_roll = result.dice
-        self._last_spec = result.specialisation_dice
-        self._update_roll_display()
-        self.successes.set(str(result.successes))
 
-    def roll_and_calculate(self) -> None:
-        self.calculate()
-        self.roll()
+        record = RollRecord(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            dice=result.dice,
+            spec_dice=result.specialisation_dice,
+            successes=result.successes,
+            probability=probability,
+        )
+        self.roll_history.append(record)
+        self._emit_roll(record)
+
         if self.is_send_to_telegram.get():
-            self._send_roll_to_telegram()
+            self._send_roll_to_telegram(record)
 
     def roll_initiative(self) -> None:
         from random import randint
@@ -185,9 +189,9 @@ class Root(Tk):
             + self.character.initiative_bonus_wits.get()
         )
         self._last_initiative = total
-        self._update_initiative_display()
+        self._interface.show_initiative(total)
         if self.is_send_to_telegram.get():
-            self._send_initiative_to_telegram()
+            self._send_initiative_to_telegram(total, raw)
 
     # ── Telegram ───────────────────────────────────────────────────────────────
 
@@ -203,30 +207,25 @@ class Root(Tk):
         )
         self.after(1000, self._poll_status_update)
 
-    def _send_roll_to_telegram(self) -> None:
-        all_dice = self._last_roll + self._last_spec
-        net = int(self.successes.get())
-        outcome = "SUCCESS" if net >= 1 else ("BOTCH" if net < 0 else "FAILURE")
-
+    def _send_roll_to_telegram(self, record: RollRecord) -> None:
+        all_dice = record.dice + record.spec_dice
         msg = (
             f"<b><i>{self.character.character_name.get()}</i> rolled:</b>\n"
             f"<i>{', '.join(map(str, all_dice))}</i>\n"
-            f"on <b>{self.dice_number.get()} dices</b> "
-            f"with <b>difficulty {self.difficulty.get()}</b>.\n"
-            f"<b>It's a {outcome}!</b>\n\n"
-            f"<b><u>Total successes: {self.successes.get()}</u></b>\n"
-            f"        Auto successes: {self.auto_success.get()}\n"
+            f"on <b>{record.dice_number} dices</b> "
+            f"with <b>difficulty {record.difficulty}</b>.\n"
+            f"<b>It's a {record.outcome}!</b>\n\n"
+            f"<b><u>Total successes: {record.successes}</u></b>\n"
+            f"        Auto successes: {record.auto_success}\n"
             f"        Wounds penalty: {self.character.roll_penalty.get()} die(s)\n"
             f"        Needed at least {self.success_needed.get()} successes\n"
-            f"Succeed {self.result.get()}"
+            f"Succeed {record.probability:.2f}%"
         )
         self.bot.send_async(msg)
 
-    def _send_initiative_to_telegram(self) -> None:
-        total = self._last_initiative or 0
+    def _send_initiative_to_telegram(self, total: int, raw: int) -> None:
         dex = self.character.initiative_bonus_dex.get()
         wits = self.character.initiative_bonus_wits.get()
-        raw = total - dex - wits
         msg = (
             f"<b><i>{self.character.character_name.get()}</i> rolled #INITIATIVE</b>\n"
             f"Result: <b>{total}</b>\n"
@@ -253,8 +252,6 @@ class Root(Tk):
             self.save_to_file()
             return
 
-        # refresh_blood_cells must run after blood_max_value is set
-        # and before the dot BooleanVars are populated
         self._interface.refresh_blood_cells()
         self.character.apply_trackers()
 
@@ -264,8 +261,3 @@ class Root(Tk):
     def scaler(value: str, var: IntVar) -> None:
         """Convert a float slider value to int and assign it to the variable."""
         var.set(int(float(value)))
-
-    def _update_roll_display(self) -> None:
-        self.roll_result_1.set(", ".join(map(str, self._last_roll[:8])))
-        self.roll_result_2.set(", ".join(map(str, self._last_roll[8:])))
-        self.roll_result_spec.set(", ".join(map(str, self._last_spec)))
