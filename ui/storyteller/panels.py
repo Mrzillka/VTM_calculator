@@ -6,6 +6,7 @@ import tkinter as tk
 import uuid
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from typing import Callable
 
 from config import NPC_DIR, PC_DIR
 from game.character import Character
@@ -97,7 +98,6 @@ class PCPanel(ttk.Frame):
 
     def __init__(self, parent: ttk.Frame) -> None:
         super().__init__(parent, style="solid.TFrame", padding=4)
-        # Each entry: {'char': Character, 'path': Path, 'card': ttk.Frame}
         self._entries: list[dict] = []
         self._sheet_wins: dict[Path, tk.Toplevel] = {}
         self._build()
@@ -159,8 +159,6 @@ class PCPanel(ttk.Frame):
         self._entries.remove(entry)
         entry["card"].destroy()
 
-    # ── Sheet ──────────────────────────────────────────────────────────────────
-
     def _open_sheet(self, char: Character, path: Path) -> None:
         win = self._sheet_wins.get(path)
         if win and win.winfo_exists():
@@ -180,17 +178,35 @@ class NPCPanel(ttk.Frame):
     _WIDTH = 260
     _HEIGHT = 420
 
-    def __init__(self, parent: ttk.Frame) -> None:
+    def __init__(
+        self,
+        parent: ttk.Frame,
+        *,
+        on_roster_change: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__(parent, style="solid.TFrame", padding=4)
-        # Each entry: {'char': Character, 'path': Path, 'card': ttk.Frame}
+        self._on_roster_change = on_roster_change
         self._entries: list[dict] = []
         self._sheet_wins: dict[Path, tk.Toplevel] = {}
         self._build()
         self._load_directory()
 
+    # ── Public API ─────────────────────────────────────────────────────────────
+
+    def get_npc_entries(self) -> list[dict]:
+        """Return the live list of NPC entries (read-only intent)."""
+        return self._entries
+
+    # ── Internal ───────────────────────────────────────────────────────────────
+
     def _build(self) -> None:
         _panel_header(self, "NPCs", "+ New NPC", self._create_npc)
         self._inner = _make_scroll_canvas(self, width=self._WIDTH, height=self._HEIGHT)
+
+    def _notify(self) -> None:
+        """Fire the roster-change callback if one is registered."""
+        if self._on_roster_change:
+            self._on_roster_change()
 
     # ── Persistence ────────────────────────────────────────────────────────────
 
@@ -212,6 +228,9 @@ class NPCPanel(ttk.Frame):
         entry: dict = {"char": char, "path": path, "card": None}
         self._entries.append(entry)
         self._append_card(entry)
+        self._notify()
+        # Propagate renames to the roller combobox immediately.
+        char.character_name.trace_add("write", lambda *_: self._notify())
 
     def _create_npc(self) -> None:
         char = Character()
@@ -220,7 +239,8 @@ class NPCPanel(ttk.Frame):
         entry: dict = {"char": char, "path": path, "card": None}
         self._entries.append(entry)
         self._append_card(entry)
-        # Open the sheet immediately so the GM can fill in details.
+        self._notify()
+        char.character_name.trace_add("write", lambda *_: self._notify())
         self._open_sheet(char, path)
 
     def _append_card(self, entry: dict) -> None:
@@ -244,8 +264,7 @@ class NPCPanel(ttk.Frame):
         entry["path"].unlink(missing_ok=True)
         self._entries.remove(entry)
         entry["card"].destroy()
-
-    # ── Sheet ──────────────────────────────────────────────────────────────────
+        self._notify()
 
     def _open_sheet(self, char: Character, path: Path) -> None:
         win = self._sheet_wins.get(path)
@@ -281,13 +300,11 @@ def _build_pc_card(
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
     frame.grid_columnconfigure(0, weight=1)
 
-    # Row 0: name + action buttons
     ttk.Label(frame, textvariable=char.character_name, style="M.TLabel").grid(
         row=0, column=0, sticky="w"
     )
     _card_buttons(frame, on_open, on_remove).grid(row=0, column=1, sticky="e")
 
-    # Row 1: player / clan (small text)
     sub = ttk.Frame(frame, style="flat.TFrame")
     ttk.Label(sub, textvariable=char.player, style="HistoryMeta.TLabel").grid(
         row=0, column=0, sticky="w"
@@ -297,16 +314,11 @@ def _build_pc_card(
     )
     sub.grid(row=1, column=0, columnspan=2, sticky="w")
 
-    # Row 2: four key stats
     stats = ttk.Frame(frame, style="flat.TFrame")
-    blood_var = _ratio_var(char.blood_value, char.blood_max_value)
-    will_var  = _ratio_var(char.will_value,  char.willpower_max)
-
-    _stat_pair(stats, "Blood",    blood_var,            row=0, col=0)
-    _stat_pair(stats, "Wounds",   char.wounds_display,  row=0, col=2)
-    _stat_pair(stats, "Will",     will_var,             row=1, col=0)
-    _stat_pair(stats, "Humanity", char.humanity_value,  row=1, col=2)
-
+    _stat_pair(stats, "Blood",    _ratio_var(char.blood_value, char.blood_max_value), row=0, col=0)
+    _stat_pair(stats, "Wounds",   char.wounds_display,                                row=0, col=2)
+    _stat_pair(stats, "Will",     _ratio_var(char.will_value,  char.willpower_max),   row=1, col=0)
+    _stat_pair(stats, "Humanity", char.humanity_value,                                row=1, col=2)
     stats.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
     return frame
 
@@ -322,30 +334,19 @@ def _build_npc_card(
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
     frame.grid_columnconfigure(0, weight=1)
 
-    # Row 0: name + action buttons
     ttk.Label(frame, textvariable=char.character_name, style="M.TLabel").grid(
         row=0, column=0, sticky="w"
     )
     _card_buttons(frame, on_open, on_remove).grid(row=0, column=1, sticky="e")
 
-    # Row 1: clan / concept (small text)
     sub = ttk.Frame(frame, style="flat.TFrame")
-    ttk.Label(sub, textvariable=char.clan, style="HistoryMeta.TLabel").grid(
-        row=0, column=0, sticky="w"
-    )
-    ttk.Label(sub, textvariable=char.concept, style="HistoryMeta.TLabel").grid(
-        row=0, column=1, padx=(6, 0), sticky="w"
-    )
+    ttk.Label(sub, textvariable=char.clan,    style="HistoryMeta.TLabel").grid(row=0, column=0, sticky="w")
+    ttk.Label(sub, textvariable=char.concept, style="HistoryMeta.TLabel").grid(row=0, column=1, padx=(6, 0), sticky="w")
     sub.grid(row=1, column=0, columnspan=2, sticky="w")
 
-    # Row 2: three key stats (no Humanity on NPC cards — it's rarely tracked)
     stats = ttk.Frame(frame, style="flat.TFrame")
-    blood_var = _ratio_var(char.blood_value, char.blood_max_value)
-    will_var  = _ratio_var(char.will_value,  char.willpower_max)
-
-    _stat_pair(stats, "Blood",  blood_var,           row=0, col=0)
-    _stat_pair(stats, "Wounds", char.wounds_display, row=0, col=2)
-    _stat_pair(stats, "Will",   will_var,             row=1, col=0)
-
+    _stat_pair(stats, "Blood",  _ratio_var(char.blood_value, char.blood_max_value), row=0, col=0)
+    _stat_pair(stats, "Wounds", char.wounds_display,                                row=0, col=2)
+    _stat_pair(stats, "Will",   _ratio_var(char.will_value,  char.willpower_max),   row=1, col=0)
     stats.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
     return frame

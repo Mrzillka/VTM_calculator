@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import NamedTuple
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -34,6 +33,8 @@ class RollRecord:
     spec_dice: list[int]
     successes: int
     probability: float
+    # Empty string means the Storyteller rolled (no specific character).
+    roller_name: str = field(default="")
 
     @property
     def outcome(self) -> str:

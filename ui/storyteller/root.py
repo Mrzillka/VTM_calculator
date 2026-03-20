@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from tkinter import BooleanVar, IntVar, Tk
+from tkinter import BooleanVar, IntVar, StringVar, Tk
 from tkinter import ttk
 from typing import Callable
 
@@ -17,6 +17,9 @@ from ui.styles import configure_main_styles
 from ui.utils import place_widgets
 
 logger = logging.getLogger(__name__)
+
+# Sentinel value shown in the roller combobox when no NPC is selected.
+from ui.storyteller.constants import NO_ROLLER  # noqa: E402
 
 
 class Root(Tk):
@@ -35,6 +38,9 @@ class Root(Tk):
         self.auto_success     = IntVar(value=0)
         self.specialisation   = BooleanVar(value=False)
         self.additional_options = BooleanVar(value=False)
+
+        # Currently selected roller: NO_ROLLER sentinel or an NPC name.
+        self.active_roller = StringVar(value=NO_ROLLER)
 
         self.roll_history: list[RollRecord] = []
         self._on_roll_callbacks: list[Callable[[RollRecord], None]] = []
@@ -96,6 +102,9 @@ class Root(Tk):
         )
         result = roller.roll()
 
+        display = self.active_roller.get()
+        roller_name = "" if display == NO_ROLLER else display
+
         record = RollRecord(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
@@ -104,6 +113,7 @@ class Root(Tk):
             spec_dice=result.specialisation_dice,
             successes=result.successes,
             probability=probability,
+            roller_name=roller_name,
         )
         self.roll_history.append(record)
         self._emit_roll(record)

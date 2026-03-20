@@ -11,8 +11,8 @@ from ui.utils import place_widgets
 if TYPE_CHECKING:
     from game.models import RollRecord
 
-_HIT_FG   = "#1b5e20"
-_BOTCH_FG = "#b71c1c"
+_HIT_FG    = "#1b5e20"
+_BOTCH_FG  = "#b71c1c"
 _NORMAL_FG = ""
 
 _OUTCOME_STYLE: dict[str, str] = {
@@ -145,31 +145,41 @@ class BaseInterface(ttk.Frame):
         frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
         frame.grid_columnconfigure(0, weight=1)
 
-        outcome   = record.outcome
+        outcome = record.outcome
+        current_row = 0
+
+        # Optional roller name header (NPC or character name).
+        if record.roller_name:
+            ttk.Label(frame, text=record.roller_name, style="M.TLabel", anchor="w").grid(
+                row=current_row, column=0, columnspan=2, sticky="w"
+            )
+            current_row += 1
+
         meta_text = (
             f"{record.dice_number}d  •  diff {record.difficulty}"
             + (f"  •  auto +{record.auto_success}" if record.auto_success else "")
         )
         ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
-            row=0, column=0, sticky="w")
+            row=current_row, column=0, sticky="w")
         ttk.Label(frame, text=outcome, style=_OUTCOME_STYLE[outcome]).grid(
-            row=0, column=1, sticky="e", padx=(8, 0))
+            row=current_row, column=1, sticky="e", padx=(8, 0))
+        current_row += 1
 
         self._build_dice_display(frame, record).grid(
-            row=1, column=0, columnspan=2, sticky="w", pady=(2, 0))
+            row=current_row, column=0, columnspan=2, sticky="w", pady=(2, 0))
+        current_row += 1
 
-        count_row = 2
         if record.spec_dice:
             spec_text = "spec: " + "  ".join(map(str, sorted(record.spec_dice, reverse=True)))
             ttk.Label(frame, text=spec_text, style="HistoryMeta.TLabel").grid(
-                row=2, column=0, sticky="w")
-            count_row = 3
+                row=current_row, column=0, sticky="w")
+            current_row += 1
 
         successes_text = f"{record.successes:+d}" if record.successes != 0 else "0"
         ttk.Label(frame, text=successes_text, style=_COUNT_STYLE[outcome]).grid(
-            row=count_row, column=1, sticky="e")
+            row=current_row, column=1, sticky="e")
         ttk.Label(frame, text=f"{record.probability:.1f}%", style="HistoryMeta.TLabel").grid(
-            row=count_row, column=0, sticky="w")
+            row=current_row, column=0, sticky="w")
 
         return frame
 

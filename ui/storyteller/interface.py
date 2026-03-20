@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from lang import locale
 from ui.base_interface import BaseInterface
 from ui.storyteller.panels import NPCPanel, PCPanel
+from ui.storyteller.constants import NO_ROLLER
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
@@ -23,26 +24,43 @@ class Interface(BaseInterface):
 
         self._additional_row: list[Widget] = []
         self._initiative_var = tk.StringVar(value="")
+        self._roller_cb: ttk.Combobox | None = None
+
+        # Create panels first so _frm_controls_panel() can reference _npc_panel.
+        self._pc_panel = PCPanel(self)
+        self._npc_panel = NPCPanel(self, on_roster_change=self._refresh_roller_combobox)
 
         self._build()
         root.on_roll(self._append_roll_entry)
 
     def _build(self) -> None:
-        pc_panel = PCPanel(self)
-        npc_panel = NPCPanel(self)
         place_widgets([[
             self._frm_controls_panel(),
             self._frm_history_panel(),
-            pc_panel,
-            npc_panel,
+            self._pc_panel,
+            self._npc_panel,
         ]])
+
+    # ── Roller combobox ───────────────────────────────────────────────────────
+
+    def _refresh_roller_combobox(self) -> None:
+        """Rebuild the roller combobox values from the current NPC roster."""
+        if self._roller_cb is None:
+            return
+        names = [NO_ROLLER] + [
+            e["char"].character_name.get() for e in self._npc_panel.get_npc_entries()
+        ]
+        self._roller_cb.configure(values=names)
+        # Reset to sentinel if the previously selected NPC was deleted/renamed.
+        if self.root.active_roller.get() not in names:
+            self.root.active_roller.set(NO_ROLLER)
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
 
     def _toggle_additional_options(self) -> None:
         if self.root.additional_options.get():
             for col_idx, widget in enumerate(self._additional_row):
-                widget.grid(column=col_idx, row=4)
+                widget.grid(column=col_idx, row=5)
                 widget.update()
         else:
             for widget in self._additional_row:
@@ -99,6 +117,21 @@ class Interface(BaseInterface):
             self._dot_toggle(frm, "∨", root.additional_options,
                              command=self._toggle_additional_options),
         ])
+
+        # Roller selector: always visible, one row below the toggles.
+        roller_lbl = ttk.Label(frm, text="Rolls as:", style="M.TLabel", anchor="e", width=22)
+        self._roller_cb = ttk.Combobox(
+            frm,
+            textvariable=root.active_roller,
+            values=[NO_ROLLER],
+            width=20,
+            state="readonly",
+        )
+        self._roller_cb.grid(column=1, row=4, columnspan=2, sticky="w")
+        roller_lbl.grid(column=0, row=4, sticky="e")
+        # Populate from whichever NPCs were already loaded before this widget existed.
+        self._refresh_roller_combobox()
+
         place_widgets(rows)
 
         self._additional_row = [
@@ -111,7 +144,7 @@ class Interface(BaseInterface):
                         width=3, style="my.TSpinbox"),
         ]
         for col_idx, widget in enumerate(self._additional_row):
-            widget.grid(column=col_idx, row=4)
+            widget.grid(column=col_idx, row=5)
             widget.update()
         if not root.additional_options.get():
             for widget in self._additional_row:
