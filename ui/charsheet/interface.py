@@ -462,7 +462,7 @@ class Interface(ttk.Frame):
         comboboxes: list[ttk.Combobox] = []
         for entry in entries:
             self._bind_autofill_locale(entry["name"], entry["cost"], en_lookup, locale_section)
-            cb = ttk.Combobox(frm, textvariable=entry["name"], width=15)
+            cb = ttk.Combobox(frm, textvariable=entry["name"], width=25)
             sp = ttk.Spinbox(frm, from_=0, to=max_cost,
                              textvariable=entry["cost"],
                              width=3, style="sheet.TSpinbox")

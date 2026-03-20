@@ -7,36 +7,15 @@ from typing import TYPE_CHECKING, Any
 
 from config import WOUND_LEVELS
 from lang import locale
+from ui.base_interface import BaseInterface
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
-    from game.models import RollRecord
     from ui.root import Root
 
-_HIT_FG = "#1b5e20"
-_BOTCH_FG = "#b71c1c"
-_NORMAL_FG = ""
 
-_OUTCOME_STYLE: dict[str, str] = {
-    "SUCCESS": "Success.TLabel",
-    "FAILURE": "Failure.TLabel",
-    "BOTCH":   "Botch.TLabel",
-}
-_COUNT_STYLE: dict[str, str] = {
-    "SUCCESS": "SuccessCount.TLabel",
-    "FAILURE": "FailureCount.TLabel",
-    "BOTCH":   "BotchCount.TLabel",
-}
-
-
-class Interface(ttk.Frame):
-    """
-    Root widget of the application interface.
-
-    Composes all child frames and delegates logic to the Root object.
-    Toggle-able sections (trackers, additional options) are built once
-    and shown/hidden via grid_remove() / grid() to avoid full redraws.
-    """
+class Interface(BaseInterface):
+    """Root widget of the main application interface."""
 
     def __init__(self, root: "Root") -> None:
         super().__init__(root)
@@ -58,57 +37,7 @@ class Interface(ttk.Frame):
         ])
 
     def refresh_blood_cells(self) -> None:
-        """Re-evaluate which blood cells are active based on current blood_max_value."""
         self._disable_blood_cells()
-
-    # ── Locale helpers ────────────────────────────────────────────────────────
-
-    def _tlabel(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Label:
-        """Create a ttk.Label bound to a locale key; updates on language switch."""
-        lbl = ttk.Label(parent, text=locale.t(key), **kwargs)
-        locale.register(lbl, key)
-        return lbl
-
-    def _tbutton(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Button:
-        """Create a ttk.Button bound to a locale key; updates on language switch."""
-        btn = ttk.Button(parent, text=locale.t(key), **kwargs)
-        locale.register(btn, key)
-        return btn
-
-    # ── Dot helpers ───────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _dot_toggle(
-            parent: ttk.Frame,
-            text: str,
-            var: BooleanVar,
-            command=None,
-            locale_key: str | None = None,
-    ) -> ttk.Frame:
-        """
-        Dot-label toggle — a click-driven replacement for ttk.Checkbutton.
-
-        Pass *locale_key* to keep the label text in sync with language switches.
-        """
-        frame = ttk.Frame(parent, style="flat.TFrame")
-        dot = ttk.Label(frame, text="●" if var.get() else "○", style="S.TLabel", cursor="hand2")
-        lbl = ttk.Label(frame, text=text, style="S.TLabel", cursor="hand2")
-
-        if locale_key:
-            locale.register(lbl, locale_key)
-
-        def _toggle(e=None) -> None:
-            var.set(not var.get())
-            if command:
-                command()
-
-        var.trace_add("write", lambda *_: dot.configure(text="●" if var.get() else "○"))
-        dot.bind("<Button-1>", _toggle)
-        lbl.bind("<Button-1>", _toggle)
-
-        dot.grid(row=0, column=0, padx=(0, 2))
-        lbl.grid(row=0, column=1)
-        return frame
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
 
@@ -130,7 +59,6 @@ class Interface(ttk.Frame):
                 widget.grid_remove()
 
     def _open_character_sheet(self) -> None:
-        """Open or focus the character sheet window."""
         if self._sheet_window is not None and self._sheet_window.winfo_exists():
             self._sheet_window.lift()
             self._sheet_window.focus_force()
@@ -139,7 +67,6 @@ class Interface(ttk.Frame):
         self._sheet_window = CharacterSheet(character=self.root.character)
 
     def _switch_language(self) -> None:
-        """Toggle active language and save preference."""
         locale.switch()
         self.root.save_to_file()
 
@@ -148,13 +75,12 @@ class Interface(ttk.Frame):
     @frm(padding=4, style="solid.TFrame")
     def _frm_center(self, frm: ttk.Frame) -> None:
         self._trackers_frame = self._frm_trackers(frm)
-        widgets = [
+        place_widgets([[
             self._frm_main(frm),
             self._frm_history(frm),
             self._frm_sidebar(frm),
             self._trackers_frame,
-        ]
-        place_widgets([widgets])
+        ]])
         if not self.root.trackers.get():
             self._trackers_frame.grid_remove()
 
@@ -169,7 +95,6 @@ class Interface(ttk.Frame):
     @frm(padding=5)
     def _frm_controls(self, frm: ttk.Frame) -> None:
         root = self.root
-
         rows: list[list[Any]] = []
 
         rows.append([
@@ -181,7 +106,6 @@ class Interface(ttk.Frame):
                         width=3, style="my.TSpinbox"),
             ttk.Label(frm, textvariable=root.character.roll_penalty, width=3, style="S.TLabel"),
         ])
-
         rows.append([
             self._tlabel(frm, "controls.difficulty", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=2, to=10, length=125,
@@ -190,7 +114,6 @@ class Interface(ttk.Frame):
             ttk.Spinbox(frm, from_=2, to=10, textvariable=root.difficulty,
                         width=3, style="my.TSpinbox"),
         ])
-
         rows.append([
             self._tlabel(frm, "controls.auto_success", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=0, to=5, length=125,
@@ -199,7 +122,6 @@ class Interface(ttk.Frame):
             ttk.Spinbox(frm, from_=0, to=5, textvariable=root.auto_success,
                         width=3, style="my.TSpinbox"),
         ])
-
         rows.append([
             self._dot_toggle(frm, locale.t("controls.specialisation"),
                              root.specialisation,
@@ -210,13 +132,10 @@ class Interface(ttk.Frame):
             self._dot_toggle(frm, "∨", root.additional_options,
                              command=self._toggle_additional_options),
         ])
-
         place_widgets(rows)
 
-        success_lbl = self._tlabel(frm, "controls.success_needed",
-                                   width=16, style="M.TLabel", anchor="e")
         self._additional_row = [
-            success_lbl,
+            self._tlabel(frm, "controls.success_needed", width=16, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=10, length=125,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
@@ -263,115 +182,7 @@ class Interface(ttk.Frame):
     def _frm_history(self, frm: ttk.Frame) -> None:
         ttk.Label(frm, text="⚄  Roll History", style="M.TLabel").grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
-
-        canvas = tk.Canvas(frm, width=300, height=340, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(frm, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.grid(row=1, column=0, sticky="nsew")
-        scrollbar.grid(row=1, column=1, sticky="ns")
-
-        frm.grid_rowconfigure(1, weight=1)
-        frm.grid_columnconfigure(0, weight=1)
-
-        self._history_canvas = canvas
-        self._history_inner = ttk.Frame(canvas)
-        self._history_win_id = canvas.create_window(
-            (0, 0), window=self._history_inner, anchor="nw")
-
-        self._history_inner.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
-        )
-        canvas.bind(
-            "<Configure>",
-            lambda e: canvas.itemconfig(self._history_win_id, width=e.width),
-        )
-        self._bind_mousewheel(canvas)
-
-    def _bind_mousewheel(self, canvas: tk.Canvas) -> None:
-        def _scroll(e: tk.Event) -> None:
-            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
-
-        canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _scroll))
-        canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
-        canvas.bind("<Button-4>", lambda _: canvas.yview_scroll(-1, "units"))
-        canvas.bind("<Button-5>", lambda _: canvas.yview_scroll(1, "units"))
-
-    def _append_roll_entry(self, record: "RollRecord") -> None:
-        """Prepend a new roll entry at the top of the history panel."""
-        parent = self._history_inner
-
-        for child in parent.winfo_children():
-            info = child.grid_info()
-            if info:
-                child.grid(row=int(info["row"]) + 1)
-
-        entry = self._build_roll_entry(parent, record)
-        entry.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 2))
-        parent.grid_columnconfigure(0, weight=1)
-
-        self._history_canvas.after(
-            50, lambda: self._history_canvas.yview_moveto(0))
-
-    def _build_roll_entry(self, parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
-        """Build a single roll entry frame."""
-        frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
-        frame.grid_columnconfigure(0, weight=1)
-
-        outcome = record.outcome
-        outcome_style = _OUTCOME_STYLE[outcome]
-        count_style = _COUNT_STYLE[outcome]
-
-        meta_text = (
-            f"{record.dice_number}d  •  diff {record.difficulty}"
-            + (f"  •  auto +{record.auto_success}" if record.auto_success else "")
-        )
-        ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
-            row=0, column=0, sticky="w")
-        ttk.Label(frame, text=outcome, style=outcome_style).grid(
-            row=0, column=1, sticky="e", padx=(8, 0))
-
-        dice_frame = self._build_dice_display(frame, record)
-        dice_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(2, 0))
-
-        if record.spec_dice:
-            spec_text = "spec: " + "  ".join(map(str, sorted(record.spec_dice, reverse=True)))
-            ttk.Label(frame, text=spec_text, style="HistoryMeta.TLabel").grid(
-                row=2, column=0, sticky="w")
-
-        count_row = 2 if not record.spec_dice else 3
-        successes_text = f"{record.successes:+d}" if record.successes != 0 else "0"
-        ttk.Label(frame, text=successes_text, style=count_style).grid(
-            row=count_row, column=1, sticky="e")
-        ttk.Label(frame, text=f"{record.probability:.1f}%", style="HistoryMeta.TLabel").grid(
-            row=count_row, column=0, sticky="w")
-
-        return frame
-
-    @staticmethod
-    def _build_dice_display(parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
-        """Build a row of coloured die-value labels."""
-        frame = ttk.Frame(parent, style="flat.TFrame")
-        for col, value in enumerate(sorted(record.dice, reverse=True)):
-            if value == 1:
-                fg = _BOTCH_FG
-            elif value >= record.difficulty:
-                fg = _HIT_FG
-            else:
-                fg = _NORMAL_FG
-            lbl = ttk.Label(frame, text=str(value), style="HistoryDice.TLabel",
-                            width=2, anchor="center")
-            if fg:
-                lbl.configure(foreground=fg)
-            lbl.grid(row=0, column=col, padx=1)
-        return frame
-
-    # ── Public helpers ────────────────────────────────────────────────────────
-
-    def show_initiative(self, total: int) -> None:
-        """Display initiative result in the sidebar."""
-        self._initiative_var.set(f"{locale.t('controls.initiative')}: {total}")
+        self._build_scrollable_history(frm, width=300, height=340)
 
     # ── Trackers ──────────────────────────────────────────────────────────────
 
@@ -410,11 +221,8 @@ class Interface(ttk.Frame):
             for j in range(10):
                 var = char.blood[i][j]
                 lbl = ttk.Label(
-                    frm,
-                    text="●" if var.get() else "○",
-                    width=2,
-                    style="S.TLabel",
-                    cursor="hand2",
+                    frm, text="●" if var.get() else "○",
+                    width=2, style="S.TLabel", cursor="hand2",
                 )
                 lbl.grid(row=i, column=j)
                 var.trace_add(
@@ -469,12 +277,8 @@ class Interface(ttk.Frame):
         rows = []
         for i, level in enumerate(WOUND_LEVELS):
             var = char.wounds[i]
-            dot = ttk.Label(
-                frm,
-                text="●" if var.get() else "○",
-                style="S.TLabel",
-                cursor="hand2",
-            )
+            dot = ttk.Label(frm, text="●" if var.get() else "○",
+                            style="S.TLabel", cursor="hand2")
             var.trace_add(
                 "write",
                 lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
@@ -512,7 +316,6 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_will_cells(self, frm: ttk.Frame) -> None:
-        """Will dot tracker that respects willpower_max."""
         char = self.root.character
         labels = [
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
@@ -534,7 +337,6 @@ class Interface(ttk.Frame):
         self._refresh_will_dots()
 
     def _refresh_will_dots(self) -> None:
-        """Enable or disable will dots based on willpower_max."""
         if not hasattr(self, "_will_dots"):
             return
         char = self.root.character
@@ -549,20 +351,14 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_dot_tracker(self, frm: ttk.Frame, variables: list[BooleanVar], command) -> None:
-        """Generic dot-tracker widget (Humanity)."""
         labels = [
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
             for i in range(10)
         ]
         dots = []
         for i, var in enumerate(variables):
-            dot = ttk.Label(
-                frm,
-                text="●" if var.get() else "○",
-                width=2,
-                style="S.TLabel",
-                cursor="hand2",
-            )
+            dot = ttk.Label(frm, text="●" if var.get() else "○",
+                            width=2, style="S.TLabel", cursor="hand2")
             var.trace_add(
                 "write",
                 lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
@@ -621,11 +417,9 @@ class Interface(ttk.Frame):
                            command=self.root.save_to_file, style="S.TButton")],
         ])
 
-    @frm(padding=2, style='solid.TFrame')
+    @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:
-        """Small widget displaying a single tracker value with a localised title."""
-        title = self._tlabel(frm, title_key, width=14, anchor="center", style="M.TLabel")
         place_widgets([
-            [title],
+            [self._tlabel(frm, title_key, width=14, anchor="center", style="M.TLabel")],
             [ttk.Label(frm, textvariable=var, width=14, anchor="center", style="S.TLabel")],
         ])

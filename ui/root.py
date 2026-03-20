@@ -9,13 +9,15 @@ from typing import Callable
 import dotenv
 
 from bot.tg_bot import TgBot
-from config import ENV_FILE_PATH, get_bot_token, FONT
+from config import ENV_FILE_PATH, get_bot_token
 from game.calculator import Calculator
 from game.character import Character
 from game.models import RollRecord
 from game.roller import Roller
 from lang import locale
-from ui.interface import Interface, place_widgets
+from ui.interface import Interface
+from ui.styles import configure_main_styles
+from ui.utils import place_widgets
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +50,16 @@ class Root(Tk):
         self.chat_id = StringVar(value=str(self.bot.chat_id or ""))
 
         # ── Roll parameters ────────────────────────────────────────────────────
-        self.dice_number = IntVar(value=5)
-        self.difficulty = IntVar(value=6)
+        self.dice_number    = IntVar(value=5)
+        self.difficulty     = IntVar(value=6)
         self.success_needed = IntVar(value=1)
-        self.auto_success = IntVar(value=0)
+        self.auto_success   = IntVar(value=0)
         self.specialisation = BooleanVar(value=False)
 
         # ── UI flags ───────────────────────────────────────────────────────────
-        self.additional_options = BooleanVar(value=False)
-        self.is_send_to_telegram = BooleanVar(value=False)
-        self.trackers = BooleanVar(value=False)
+        self.additional_options   = BooleanVar(value=False)
+        self.is_send_to_telegram  = BooleanVar(value=False)
+        self.trackers             = BooleanVar(value=False)
 
         # ── Roll history ───────────────────────────────────────────────────────
         self.roll_history: list[RollRecord] = []
@@ -79,7 +81,6 @@ class Root(Tk):
     # ── Setup ──────────────────────────────────────────────────────────────────
 
     def _restore_lang_pref(self) -> None:
-        """Read persisted language from .env and apply it before the UI is built."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
         saved = env.get("LANG_PREF", "en")
         if saved != locale.lang:
@@ -91,32 +92,7 @@ class Root(Tk):
         self.grid_rowconfigure(0, pad=10)
 
     def _configure_styles(self) -> None:
-        s = ttk.Style()
-        definitions = {
-            "flat.TFrame": {"relief": "flat"},
-            "solid.TFrame": {"relief": "solid"},
-            "L.TButton": {"font": (FONT, 15)},
-            "M.TButton": {"font": (FONT, 12, "italic")},
-            "S.TButton": {"font": (FONT, 10)},
-            "my.TEntry": {"font": (FONT, 10)},
-            "my.Horizontal.TScale": {"font": (FONT, 10)},
-            "my.TSpinbox": {"font": (FONT, 10)},
-            "my.TCheckbutton": {"font": (FONT, 10)},
-            "title.TLabel": {"font": (FONT, 20, "bold", "italic")},
-            "L.TLabel": {"font": (FONT, 18, "bold")},
-            "M.TLabel": {"font": (FONT, 15, "italic")},
-            "S.TLabel": {"font": (FONT, 10)},
-            "HistoryMeta.TLabel": {"font": (FONT, 9), "foreground": "gray"},
-            "HistoryDice.TLabel": {"font": (FONT, 10)},
-            "Success.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#2e7d32"},
-            "Failure.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#757575"},
-            "Botch.TLabel": {"font": (FONT, 13, "bold"), "foreground": "#c62828"},
-            "SuccessCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#2e7d32"},
-            "FailureCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#757575"},
-            "BotchCount.TLabel": {"font": (FONT, 11, "bold"), "foreground": "#c62828"},
-        }
-        for name, opts in definitions.items():
-            s.configure(name, **opts)
+        configure_main_styles(ttk.Style())
 
     def _build_interface(self) -> None:
         self._interface = Interface(self)
@@ -135,7 +111,6 @@ class Root(Tk):
     # ── Roll callbacks ─────────────────────────────────────────────────────────
 
     def on_roll(self, callback: Callable[[RollRecord], None]) -> None:
-        """Register a callback invoked with the new RollRecord after each roll."""
         self._on_roll_callbacks.append(callback)
 
     def _emit_roll(self, record: RollRecord) -> None:
@@ -150,6 +125,7 @@ class Root(Tk):
             difficulty=self.difficulty.get(),
             success_needed=self.success_needed.get(),
             auto_successes=self.auto_success.get(),
+            specialisation=self.specialisation.get(),
         )
         return calc.get_probability()
 
@@ -224,7 +200,7 @@ class Root(Tk):
         self.bot.send_async(msg)
 
     def _send_initiative_to_telegram(self, total: int, raw: int) -> None:
-        dex = self.character.initiative_bonus_dex.get()
+        dex  = self.character.initiative_bonus_dex.get()
         wits = self.character.initiative_bonus_wits.get()
         msg = (
             f"<b><i>{self.character.character_name.get()}</i> rolled #INITIATIVE</b>\n"
@@ -236,14 +212,12 @@ class Root(Tk):
     # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        """Persist bot connection settings and language preference to .env, character data to JSON."""
         dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID", str(self.bot.chat_id))
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID", str(self.bot.thread_id))
         dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF", locale.lang)
         self.character.save()
 
     def load_from_file(self) -> None:
-        """Restore bot connection settings from .env and character data from JSON."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
         self.bot.chat_id = env.get("CHAT_ID")
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") != "None" else None
@@ -259,5 +233,4 @@ class Root(Tk):
 
     @staticmethod
     def scaler(value: str, var: IntVar) -> None:
-        """Convert a float slider value to int and assign it to the variable."""
         var.set(int(float(value)))

@@ -4,9 +4,9 @@ import tkinter as tk
 from tkinter import BooleanVar, Toplevel
 from tkinter import ttk
 
-from config import FONT
 from game.character import Character
 from ui.charsheet.interface import Interface
+from ui.styles import configure_sheet_styles
 
 
 class Root(Toplevel):
@@ -26,24 +26,7 @@ class Root(Toplevel):
         self._build_scrollable()
 
     def _configure_styles(self) -> None:
-        s = ttk.Style()
-        definitions = {
-            "flat.TFrame": {"relief": "flat"},
-            "solid.TFrame": {"relief": "solid"},
-            "sheet.TButton": {"font": (FONT, 15)},
-            "sheet.save.TButton": {"font": (FONT, 12)},
-            "sheet.TEntry": {"font": (FONT, 10)},
-            "sheet.TSpinbox": {"font": (FONT, 10)},
-            "sheet.TCheckbutton": {"font": (FONT, 10)},
-            "sheet.title.TLabel": {"font": (FONT, 15, "bold", "italic")},
-            "sheet.L.TLabel": {"font": (FONT, 15, "italic")},
-            "sheet.M.TLabel": {"font": (FONT, 12, "italic")},
-            "sheet.S.TLabel": {"font": (FONT, 10)},
-            "sheet.Dot.TLabel": {"font": (FONT, 12)},
-            "sheet.Sep.TLabel": {"font": (FONT, 8), "foreground": "gray"},
-        }
-        for name, opts in definitions.items():
-            s.configure(name, **opts)
+        configure_sheet_styles(ttk.Style())
 
     def _build_scrollable(self) -> None:
         """Wrap the Interface in a Canvas-based scrollable container."""
@@ -78,7 +61,6 @@ class Root(Toplevel):
         Binds to the Toplevel rather than the canvas so that the <Enter> event
         fires reliably when the window is opened or re-focused.
         """
-
         def _scroll_win(e: tk.Event) -> None:
             canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
