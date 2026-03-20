@@ -7,6 +7,13 @@ from typing import NamedTuple
 
 import dotenv
 
+
+def resource_path(relative: str) -> Path:
+    """Return absolute path to a bundled resource (works with PyInstaller)."""
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    return base / relative
+
+
 NAMES: tuple[str, ...] = (
     "Alex", "Greg", "John", "Bill", "Emma", "Richard",
     "Anna", "Thomas", "Andrew", "Maria", "Caren", "Carl",

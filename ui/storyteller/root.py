@@ -18,7 +18,7 @@ from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
 from ui.storyteller.interface import Interface
 from ui.styles import configure_main_styles
-from ui.utils import place_widgets
+from ui.utils import apply_icon, place_widgets
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ class Root(Tk):
         super().__init__()
         self.title("VTM Storyteller")
         self.resizable(True, True)
+
+        apply_icon(self, "icon_storyteller.ico")
 
         self._restore_lang_pref()
 

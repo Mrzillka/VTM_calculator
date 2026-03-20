@@ -1,9 +1,38 @@
 from __future__ import annotations
 
+import logging
+import tkinter as tk
 from functools import wraps
 from tkinter import Widget
 from tkinter import ttk
 from typing import Callable
+
+from config import resource_path
+
+logger = logging.getLogger(__name__)
+
+
+def apply_icon(window: tk.Wm, icon_name: str, *, inherit: bool = True) -> None:
+    """
+    Apply an .ico file as window icon (title bar, taskbar, Alt+Tab).
+
+    Args:
+        window:   any tkinter window (Tk or Toplevel).
+        icon_name: filename relative to the project/bundle root (e.g. 'icon.ico').
+        inherit:  passed to wm_iconphoto — True propagates the icon to all
+                  future Toplevel children; False applies only to this window.
+    """
+    path = resource_path(icon_name)
+    if not path.exists():
+        return
+    try:
+        from PIL import Image, ImageTk
+        window.wm_iconbitmap(str(path))
+        img = ImageTk.PhotoImage(Image.open(path))
+        window.wm_iconphoto(inherit, img)
+        window._icon_ref = img  # type: ignore[attr-defined]  # prevent GC
+    except Exception as exc:
+        logger.debug("Could not apply icon %s: %s", icon_name, exc)
 
 
 def place_widgets(grid: list[list[Widget | None]]) -> None:

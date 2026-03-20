@@ -9,6 +9,7 @@ from typing import Callable
 from game.character import Character
 from ui.charsheet.interface import Interface
 from ui.styles import configure_sheet_styles
+from ui.utils import apply_icon
 
 
 class Root(Toplevel):
@@ -28,6 +29,8 @@ class Root(Toplevel):
         self.resizable(True, False)
         self.geometry("1150x750")
         self.minsize(700, 450)
+
+        apply_icon(self, "icon.ico", inherit=False)
 
         self._save_path = save_path
         # Callback invoked by the Send button in the toolbar; None = button hidden.
