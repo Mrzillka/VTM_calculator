@@ -205,31 +205,31 @@ class Character:
 
     # ── Persistence ────────────────────────────────────────────────────────────
 
-    def save(self, path: Path | None = None) -> None:
-        """Write all character data to *path*, defaulting to CHARACTER_FILE_PATH."""
-        data = {
+    def to_dict(self) -> dict:
+        """Serialize the full character state to a plain dictionary."""
+        return {
             "header": {
                 "character_name": self.character_name.get(),
-                "player": self.player.get(),
-                "chronicle": self.chronicle.get(),
-                "nature": self.nature.get(),
-                "demeanor": self.demeanor.get(),
-                "clan": self.clan.get(),
-                "generation": self.generation.get(),
-                "heaven": self.heaven.get(),
-                "concept": self.concept.get(),
+                "player":         self.player.get(),
+                "chronicle":      self.chronicle.get(),
+                "nature":         self.nature.get(),
+                "demeanor":       self.demeanor.get(),
+                "clan":           self.clan.get(),
+                "generation":     self.generation.get(),
+                "heaven":         self.heaven.get(),
+                "concept":        self.concept.get(),
             },
             "initiative": {
-                "dex": self.initiative_bonus_dex.get(),
+                "dex":  self.initiative_bonus_dex.get(),
                 "wits": self.initiative_bonus_wits.get(),
             },
             "trackers": {
-                "blood_value": self.blood_value.get(),
+                "blood_value":     self.blood_value.get(),
                 "blood_max_value": self.blood_max_value.get(),
-                "wounds_value": self.wounds_value.get(),
-                "humanity_value": self.humanity_value.get(),
-                "will_value": self.will_value.get(),
-                "willpower_max": self.willpower_max.get(),
+                "wounds_value":    self.wounds_value.get(),
+                "humanity_value":  self.humanity_value.get(),
+                "will_value":      self.will_value.get(),
+                "willpower_max":   self.willpower_max.get(),
             },
             "attributes": {
                 category: {
@@ -279,9 +279,11 @@ class Character:
             },
         }
 
+    def save(self, path: Path | None = None) -> None:
+        """Write all character data to *path*, defaulting to CHARACTER_FILE_PATH."""
         save_path = path if path is not None else CHARACTER_FILE_PATH
         with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
 
     def load(self, data: dict) -> None:
         """

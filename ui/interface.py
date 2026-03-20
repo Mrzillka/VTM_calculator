@@ -64,7 +64,10 @@ class Interface(BaseInterface):
             self._sheet_window.focus_force()
             return
         from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet(character=self.root.character)
+        self._sheet_window = CharacterSheet(
+            character=self.root.character,
+            send_sheet_callback=self.root.send_sheet_to_server,
+        )
 
     def _switch_language(self) -> None:
         locale.switch()
@@ -386,6 +389,7 @@ class Interface(BaseInterface):
             self._frm_name(frm),
             self._frm_initiative_spinboxes(frm),
             self._frm_action_buttons(frm),
+            self._frm_session(frm),
         ]])
 
     @frm(padding=5)
@@ -416,6 +420,34 @@ class Interface(BaseInterface):
             [self._tbutton(frm, "controls.save",
                            command=self.root.save_to_file, style="S.TButton")],
         ])
+
+    @frm(padding=5)
+    def _frm_session(self, frm: ttk.Frame) -> None:
+        """Session code field + Join/Leave button."""
+        root = self.root
+
+        self._tlabel(frm, "controls.session_code",
+                     style="S.TLabel", anchor="e").grid(row=0, column=0, sticky="e")
+        ttk.Entry(frm, textvariable=root.session_code,
+                  width=16, style="my.TEntry").grid(row=0, column=1, padx=(4, 0))
+
+        btn_var = tk.StringVar(value=locale.t("controls.join_session"))
+
+        def _update_btn(*_) -> None:
+            key = "controls.leave_session" if root.is_connected.get() else "controls.join_session"
+            btn_var.set(locale.t(key))
+
+        root.is_connected.trace_add("write", _update_btn)
+        locale.on_change(_update_btn)
+
+        def _on_click() -> None:
+            if root.is_connected.get():
+                root.leave_session()
+            else:
+                root.join_session()
+
+        ttk.Button(frm, textvariable=btn_var, command=_on_click,
+                   style="S.TButton").grid(row=1, column=0, columnspan=2, pady=(4, 0))
 
     @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:

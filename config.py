@@ -28,68 +28,41 @@ BACKGROUNDS: tuple[str, ...] = (
 )
 
 DISCIPLINES: tuple[str, ...] = (
-    # Core Camarilla / Sabbat disciplines
     "Animalism", "Auspex", "Celerity", "Chimerstry",
     "Dementation", "Dominate", "Fortitude",
     "Necromancy", "Obfuscate", "Obtenebration",
     "Potence", "Presence", "Protean", "Quietus",
     "Serpentis", "Thaumaturgy", "Vicissitude",
-    # Clan-specific disciplines
     "Abombwe", "Daimonion", "Melpominee",
     "Mortis", "Mytherceria", "Obeah",
     "Sanguinus", "Temporis", "Thanatosis", "Visceratika",
-    # Rare / bloodline sorceries with paths
     "Assamite Sorcery", "Koldunic Sorcery", "Setite Sorcery",
 )
 
-# Disciplines that use sub-paths.
 DISCIPLINE_PATHS: dict[str, tuple[str, ...]] = {
     "Thaumaturgy": (
-        "Path of Blood",
-        "Elemental Mastery",
-        "The Green Path",
-        "Hands of Destruction",
-        "The Lure of Flames",
-        "Movement of the Mind",
-        "Neptune's Might",
-        "Path of Conjuring",
-        "Path of Corruption",
-        "Path of Mars",
-        "Path of Technomancy",
-        "Path of the Father's Vengeance",
-        "Thaumaturgical Countermagic",
-        "Weather Control",
+        "Path of Blood", "Elemental Mastery", "The Green Path",
+        "Hands of Destruction", "The Lure of Flames", "Movement of the Mind",
+        "Neptune's Might", "Path of Conjuring", "Path of Corruption",
+        "Path of Mars", "Path of Technomancy", "Path of the Father's Vengeance",
+        "Thaumaturgical Countermagic", "Weather Control",
     ),
     "Necromancy": (
-        "Sepulchre Path",
-        "Ash Path",
-        "Bone Path",
-        "Cenotaph Path",
-        "Mortuus Path",
-        "Vitreous Path",
+        "Sepulchre Path", "Ash Path", "Bone Path",
+        "Cenotaph Path", "Mortuus Path", "Vitreous Path",
     ),
     "Assamite Sorcery": (
-        "Path of the Levinbolt",
-        "Path of Awakening",
-        "Hands of the Divine",
-        "Movement of the Loyal Heart",
-        "The Stolen Heart",
+        "Path of the Levinbolt", "Path of Awakening", "Hands of the Divine",
+        "Movement of the Loyal Heart", "The Stolen Heart",
     ),
     "Koldunic Sorcery": (
-        "Way of Earth",
-        "Way of Fire",
-        "Way of Water",
-        "Way of Wind",
-        "Way of Spirit",
+        "Way of Earth", "Way of Fire", "Way of Water", "Way of Wind", "Way of Spirit",
     ),
     "Setite Sorcery": (
-        "Path of the Cobra's Favor",
-        "Path of Duat",
-        "Path of Phobos",
+        "Path of the Cobra's Favor", "Path of Duat", "Path of Phobos",
     ),
 }
 
-# Merits: name → freebie point cost  (V20 core, p. 479+)
 MERITS: dict[str, int] = {
     "Acute Senses": 1, "Ambidextrous": 1, "Baby Face": 2, "Blush of Health": 2,
     "Catlike Balance": 1, "Daredevil": 3, "Eat Food": 1, "Friendly Face": 1,
@@ -102,7 +75,6 @@ MERITS: dict[str, int] = {
     "Magic Resistance": 2, "Medium": 2, "True Faith": 7, "True Love": 1,
 }
 
-# Flaws: name → freebie points gained  (V20 core, p. 484+)
 FLAWS: dict[str, int] = {
     "Addiction": 1, "Allergic": 2, "Deep Sleeper": 1, "Deformity": 3,
     "Lame": 3, "Monstrous": 3, "One Eye": 2, "Permanent Wound": 3,
@@ -145,6 +117,13 @@ ENV_FILE_PATH: Path = APP_DATA_DIR / ".env"
 CHARACTER_FILE_PATH: Path = APP_DATA_DIR / "character.json"
 NPC_DIR: Path = APP_DATA_DIR / "npcs"
 PC_DIR: Path = APP_DATA_DIR / "pcs"
+
+DEFAULT_SERVER_PORT: int = 9999
+
+
+def get_server_port() -> int:
+    """Return the configured TCP server port, reading SERVER_PORT from the environment."""
+    return int(os.getenv("SERVER_PORT", str(DEFAULT_SERVER_PORT)))
 
 
 def ensure_app_data_dir() -> None:

@@ -21,29 +21,17 @@ class Interface(ttk.Frame):
         self.root = root
         self.character: Character = root.character
 
-        # Editable widgets toggled by the lock checkbox (Entry, Spinbox, Combobox).
         self._lockable: list[ttk.Widget] = []
-
-        # Callbacks that restore spec-entry enabled state after unlock.
         self._spec_refreshers: list[Callable] = []
-
-        # Cached label lists for virtue-aware trackers
         self._wp_labels: list[ttk.Label] = []
         self._humanity_labels: list[ttk.Label] = []
         self._sheet_blood_labels: list[list[ttk.Label]] = []
-
-        # Wound level name labels — updated on locale change
         self._wound_name_labels: list[ttk.Label] = []
-
-        # Merit / flaw total labels — updated on locale change and value change
         self._merit_total_lbl: ttk.Label | None = None
         self._flaw_total_lbl: ttk.Label | None = None
         self._net_lbl: ttk.Label | None = None
         self._merit_sum: int = 0
         self._flaw_sum: int = 0
-
-        # Guard that prevents _bind_disc_path traces from clearing path_var
-        # while _refresh_translations is updating values programmatically.
         self._translating: bool = False
 
         self._build()
@@ -52,26 +40,21 @@ class Interface(ttk.Frame):
         locale.on_change(self._sync_virtue_names)
         locale.on_change(self._refresh_mf_totals)
         locale.on_change(self._refresh_wound_names)
-        # Must be registered last so combobox value lists are already updated
-        # before we translate the selected values.
         locale.on_change(self._refresh_translations)
 
     # ── Locale helpers ────────────────────────────────────────────────────────
 
     def _tlabel(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Label:
-        """Create a ttk.Label bound to a locale key; reconfigures on language switch."""
         lbl = ttk.Label(parent, text=locale.t(key), **kwargs)
         locale.register(lbl, key)
         return lbl
 
     def _tbutton(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Button:
-        """Create a ttk.Button bound to a locale key; reconfigures on language switch."""
         btn = ttk.Button(parent, text=locale.t(key), **kwargs)
         locale.register(btn, key)
         return btn
 
     def _tcheckbutton(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Checkbutton:
-        """Create a ttk.Checkbutton bound to a locale key; reconfigures on language switch."""
         cb = ttk.Checkbutton(parent, text=locale.t(key), **kwargs)
         locale.register(cb, key)
         return cb
@@ -113,10 +96,15 @@ class Interface(ttk.Frame):
         save_btn.grid(row=0, column=0, sticky="w", padx=(0, 8))
         lock_cb.grid(row=0, column=1, sticky="w")
 
+        # Send Sheet button — only shown when a send callback is wired up.
+        if self.root._send_sheet_callback is not None:
+            send_btn = self._tbutton(frm, "sheet.send_sheet", style="sheet.save.TButton",
+                                     command=self.root.send_sheet)
+            send_btn.grid(row=0, column=2, sticky="w", padx=(8, 0))
+
     # ── Lock ──────────────────────────────────────────────────────────────────
 
     def _apply_lock(self) -> None:
-        """Disable or restore all lockable widgets based on the locked flag."""
         locked = self.root.locked.get()
         state = "disabled" if locked else "normal"
         for widget in self._lockable:
@@ -126,7 +114,6 @@ class Interface(ttk.Frame):
                 refresh()
 
     def _collapsible_header(self, title_key: str, content: ttk.Frame) -> ttk.Label:
-        """Return a clickable label that toggles visibility of *content*."""
         visible = BooleanVar(value=True)
         lbl = ttk.Label(self, style="sheet.L.TLabel", cursor="hand2")
 
@@ -249,20 +236,12 @@ class Interface(ttk.Frame):
         locale.on_change(self._refresh_bg_values)
 
     def _refresh_bg_values(self) -> None:
-        """Update background combobox option lists to the active language."""
         names = list((locale.raw("sheet.backgrounds") or {}).values())
         for cb in getattr(self, "_bg_comboboxes", []):
             cb.configure(values=names)
 
     @frm(padding=2)
     def _frm_adv_disciplines(self, frm: ttk.Frame) -> None:
-        """
-        Disciplines column.
-
-        Each row: [discipline combobox] [path combobox — only when discipline
-        has paths] [dots].  The path combobox is always present in the grid
-        but hidden via grid_remove() when not applicable.
-        """
         rows = []
         self._disc_comboboxes: list[ttk.Combobox] = []
         self._path_comboboxes: list[ttk.Combobox] = []
@@ -288,14 +267,6 @@ class Interface(ttk.Frame):
         path_var: StringVar,
         cb_path: ttk.Combobox,
     ) -> None:
-        """
-        Keep the path combobox in sync with the selected discipline.
-
-        Shows / populates the path combobox when the discipline has paths;
-        hides it and clears path_var otherwise.  Skipped while
-        self._translating is True so that bulk translation updates are
-        not interrupted.
-        """
         def _update(*_) -> None:
             if self._translating:
                 return
@@ -318,24 +289,16 @@ class Interface(ttk.Frame):
         _update()
 
     def _disc_display_to_en(self, display_name: str) -> str:
-        """Convert a discipline display name (active language) to its English canonical key."""
         disc_map: dict = locale.raw("sheet.disciplines") or {}
         reverse = {v: k for k, v in disc_map.items()}
         return reverse.get(display_name, display_name)
 
     def _refresh_disc_values(self) -> None:
-        """Update discipline combobox option lists to the active language."""
         names = list((locale.raw("sheet.disciplines") or {}).values())
         for cb in getattr(self, "_disc_comboboxes", []):
             cb.configure(values=names)
 
     def _refresh_translations(self) -> None:
-        """
-        Translate all known selected values to the active language.
-
-        Called after every language switch (registered last so option lists
-        are already updated).  User-entered custom strings are left untouched.
-        """
         self._translating = True
         try:
             self._translate_disciplines()
@@ -345,8 +308,6 @@ class Interface(ttk.Frame):
         finally:
             self._translating = False
 
-        # Re-evaluate path combobox visibility and option lists now that
-        # discipline names are in the new language.
         for entry, cb_path in zip(
             self.character.disciplines,
             getattr(self, "_path_comboboxes", []),
@@ -364,10 +325,8 @@ class Interface(ttk.Frame):
                 cb_path.grid_remove()
 
     def _translate_disciplines(self) -> None:
-        """Translate discipline name and path StringVars to the active language."""
         for entry in self.character.disciplines:
             old_name = entry["name"].get()
-            # Find English key while old_name is still in the previous language.
             disc_en = locale.reverse_lookup_en("sheet.disciplines", old_name)
             new_name = locale.translate_known("sheet.disciplines", old_name)
 
@@ -383,7 +342,6 @@ class Interface(ttk.Frame):
 
     @staticmethod
     def _translate_simple_entries(entries: list[dict], section: str) -> None:
-        """Translate the 'name' StringVar of each entry using *section*."""
         for entry in entries:
             old = entry["name"].get()
             new = locale.translate_known(section, old)
@@ -392,7 +350,6 @@ class Interface(ttk.Frame):
 
     @frm(padding=2)
     def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
-        """Virtues column uses StringVars that are kept in sync with the locale."""
         place_widgets([
             [ttk.Label(frm, textvariable=e["name"], width=30,
                        style="sheet.S.TLabel", anchor="w"),
@@ -401,7 +358,6 @@ class Interface(ttk.Frame):
         ])
 
     def _sync_virtue_names(self) -> None:
-        """Update virtue name StringVars to match the active language."""
         virtue_names = locale.raw("sheet.virtue_names")
         if not isinstance(virtue_names, list):
             return
@@ -452,7 +408,6 @@ class Interface(ttk.Frame):
         locale_section: str,
         max_cost: int,
     ) -> None:
-        """Single Merits or Flaws column with locale-aware combobox values and autofill."""
         pts_lbl = self._tlabel(frm, "sheet.mf.pts", style="sheet.S.TLabel")
         rows: list[list] = [[
             self._tlabel(frm, title_key, style="sheet.M.TLabel"),
@@ -486,11 +441,6 @@ class Interface(ttk.Frame):
         en_lookup: dict[str, int],
         locale_section: str,
     ) -> None:
-        """
-        Auto-fill cost when a known name is selected.
-
-        Uses reverse_lookup_en so autofill works regardless of the active language.
-        """
         def _on_name_change(*_) -> None:
             en_key = locale.reverse_lookup_en(locale_section, name_var.get())
             if en_key in en_lookup:
@@ -498,13 +448,11 @@ class Interface(ttk.Frame):
         name_var.trace_add("write", _on_name_change)
 
     def _setup_mf_totals(self) -> None:
-        """Wire total labels to update whenever any merit/flaw cost changes."""
         for entry in self.character.merits + self.character.flaws:
             entry["cost"].trace_add("write", lambda *_: self._refresh_mf_totals())
         self._refresh_mf_totals()
 
     def _refresh_mf_totals(self) -> None:
-        """Recompute and re-render merit/flaw totals in the active language."""
         if self._merit_total_lbl is None:
             return
         m = sum(e["cost"].get() for e in self.character.merits)
@@ -549,7 +497,6 @@ class Interface(ttk.Frame):
 
     @frm(padding=0)
     def _frm_sheet_wounds(self, frm: ttk.Frame) -> None:
-        """Health levels table: name | penalty | clickable dot."""
         char = self.character
         self._wound_name_labels = []
         rows: list[list] = []
@@ -577,7 +524,6 @@ class Interface(ttk.Frame):
         place_widgets(rows)
 
     def _refresh_wound_names(self) -> None:
-        """Update wound level name labels to the active language."""
         for lbl, name in self._wound_name_labels:
             try:
                 lbl.configure(text=locale.t(f"wound_levels.{name}"))

@@ -26,7 +26,6 @@ class Interface(BaseInterface):
         self._initiative_var = tk.StringVar(value="")
         self._roller_cb: ttk.Combobox | None = None
 
-        # Create panels first so _frm_controls_panel() can reference _npc_panel.
         self._pc_panel = PCPanel(self)
         self._npc_panel = NPCPanel(self, on_roster_change=self._refresh_roller_combobox)
 
@@ -44,14 +43,12 @@ class Interface(BaseInterface):
     # ── Roller combobox ───────────────────────────────────────────────────────
 
     def _refresh_roller_combobox(self) -> None:
-        """Rebuild the roller combobox values from the current NPC roster."""
         if self._roller_cb is None:
             return
         names = [NO_ROLLER] + [
             e["char"].character_name.get() for e in self._npc_panel.get_npc_entries()
         ]
         self._roller_cb.configure(values=names)
-        # Reset to sentinel if the previously selected NPC was deleted/renamed.
         if self.root.active_roller.get() not in names:
             self.root.active_roller.set(NO_ROLLER)
 
@@ -118,7 +115,6 @@ class Interface(BaseInterface):
                              command=self._toggle_additional_options),
         ])
 
-        # Roller selector: always visible, one row below the toggles.
         roller_lbl = ttk.Label(frm, text="Rolls as:", style="M.TLabel", anchor="e", width=22)
         self._roller_cb = ttk.Combobox(
             frm,
@@ -129,7 +125,6 @@ class Interface(BaseInterface):
         )
         self._roller_cb.grid(column=1, row=4, columnspan=2, sticky="w")
         roller_lbl.grid(column=0, row=4, sticky="e")
-        # Populate from whichever NPCs were already loaded before this widget existed.
         self._refresh_roller_combobox()
 
         place_widgets(rows)
@@ -168,6 +163,26 @@ class Interface(BaseInterface):
         ttk.Label(frm, textvariable=self._initiative_var,
                   style="M.TLabel", anchor="center").grid(row=0, column=0, padx=8)
         lang_btn.grid(row=0, column=1, padx=4)
+
+        # Session block: New Session button + code label + Copy button
+        new_btn = self._tbutton(frm, "controls.new_session", style="S.TButton",
+                                command=self.root.new_session)
+        new_btn.grid(row=1, column=0, columnspan=2, pady=(8, 2), sticky="ew")
+
+        code_lbl = ttk.Label(frm, textvariable=self.root.session_topic,
+                             style="S.TLabel", anchor="center")
+        code_lbl.grid(row=2, column=0, sticky="ew")
+
+        copy_btn = self._tbutton(frm, "controls.copy_code", style="S.TButton",
+                                 command=self._copy_session_code)
+        copy_btn.grid(row=2, column=1, padx=(4, 0))
+
+    def _copy_session_code(self) -> None:
+        """Copy the current session code to the system clipboard."""
+        code = self.root.session_topic.get()
+        if code:
+            self.clipboard_clear()
+            self.clipboard_append(code)
 
     # ── Roll history panel ────────────────────────────────────────────────────
 

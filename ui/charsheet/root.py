@@ -4,6 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import BooleanVar, Toplevel
 from tkinter import ttk
+from typing import Callable
 
 from game.character import Character
 from ui.charsheet.interface import Interface
@@ -20,6 +21,7 @@ class Root(Toplevel):
         *,
         read_only: bool = False,
         save_path: Path | None = None,
+        send_sheet_callback: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.title("Character Sheet")
@@ -28,6 +30,8 @@ class Root(Toplevel):
         self.minsize(700, 450)
 
         self._save_path = save_path
+        # Callback invoked by the Send button in the toolbar; None = button hidden.
+        self._send_sheet_callback = send_sheet_callback
         self.character = character if character is not None else Character()
         self.locked = BooleanVar(value=False)
 
@@ -68,12 +72,6 @@ class Root(Toplevel):
         self._interface.pack(fill="both", expand=True)
 
     def _setup_mousewheel(self, canvas: tk.Canvas) -> None:
-        """
-        Bind mousewheel scrolling while the cursor is anywhere inside the window.
-
-        Binds to the Toplevel rather than the canvas so that the <Enter> event
-        fires reliably when the window is opened or re-focused.
-        """
         def _scroll_win(e: tk.Event) -> None:
             canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
@@ -99,3 +97,8 @@ class Root(Toplevel):
     def save(self) -> None:
         """Persist character data to JSON, using save_path if provided."""
         self.character.save(path=self._save_path)
+
+    def send_sheet(self) -> None:
+        """Invoke the send callback if one is registered."""
+        if self._send_sheet_callback is not None:
+            self._send_sheet_callback()

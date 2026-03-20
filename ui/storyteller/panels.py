@@ -107,12 +107,74 @@ class PCPanel(ttk.Frame):
         _panel_header(self, "Players", "+ Load PC", self._browse_and_load)
         self._inner = _make_scroll_canvas(self, width=self._WIDTH, height=self._HEIGHT)
 
+    # ── Network callbacks ──────────────────────────────────────────────────────
+
+    def on_sheet_received(self, data: dict) -> None:
+        """
+        Apply a full character sheet received from a player over the network.
+
+        Matches by character_name.  If no existing entry matches, a new
+        in-memory card is created (not persisted to disk on the GM side).
+        """
+        name = data.get("header", {}).get("character_name", "")
+        for entry in self._entries:
+            if entry["char"].character_name.get() == name:
+                entry["char"].load(data)
+                entry["char"].apply_trackers()
+                return
+
+        # Unknown character: create a live in-memory card.
+        char = Character()
+        char.load(data)
+        char.apply_trackers()
+        path = PC_DIR / f"_live_{uuid.uuid4().hex[:8]}.json"
+        entry: dict = {"char": char, "path": path, "card": None}
+        self._entries.append(entry)
+        card = _build_pc_card(
+            self._inner, char,
+            on_open=lambda c=char, p=path: self._open_sheet(c, p),
+            on_remove=lambda e=entry: self._remove_entry(e),
+        )
+        entry["card"] = card
+        card.pack(fill="x", padx=2, pady=(0, 4))
+
+    def on_trackers_received(self, data: dict) -> None:
+        """
+        Apply tracker-only update received from a player over the network.
+
+        Silently ignored if the character name is not found in the panel.
+        Concurrent updates from different players are safe because each name
+        maps to a distinct Character instance.
+        """
+        name = data.get("character_name", "")
+        trackers = data.get("trackers", {})
+        for entry in self._entries:
+            if entry["char"].character_name.get() == name:
+                char = entry["char"]
+                char.blood_max_value.set(
+                    trackers.get("blood_max_value", char.blood_max_value.get()))
+                char.blood_value.set(
+                    trackers.get("blood_value", char.blood_value.get()))
+                char.wounds_value.set(
+                    trackers.get("wounds_value", char.wounds_value.get()))
+                char.humanity_value.set(
+                    trackers.get("humanity_value", char.humanity_value.get()))
+                char.will_value.set(
+                    trackers.get("will_value", char.will_value.get()))
+                char.willpower_max.set(
+                    trackers.get("willpower_max", char.willpower_max.get()))
+                char.apply_trackers()
+                return
+
     # ── Persistence ────────────────────────────────────────────────────────────
 
     def _load_directory(self) -> None:
         if not PC_DIR.exists():
             return
         for path in sorted(PC_DIR.glob("*.json")):
+            # Skip temporary live cards written by on_sheet_received.
+            if path.stem.startswith("_live_"):
+                continue
             self._load_file(path)
 
     def _load_file(self, path: Path) -> None:
@@ -191,24 +253,17 @@ class NPCPanel(ttk.Frame):
         self._build()
         self._load_directory()
 
-    # ── Public API ─────────────────────────────────────────────────────────────
-
     def get_npc_entries(self) -> list[dict]:
         """Return the live list of NPC entries (read-only intent)."""
         return self._entries
-
-    # ── Internal ───────────────────────────────────────────────────────────────
 
     def _build(self) -> None:
         _panel_header(self, "NPCs", "+ New NPC", self._create_npc)
         self._inner = _make_scroll_canvas(self, width=self._WIDTH, height=self._HEIGHT)
 
     def _notify(self) -> None:
-        """Fire the roster-change callback if one is registered."""
         if self._on_roster_change:
             self._on_roster_change()
-
-    # ── Persistence ────────────────────────────────────────────────────────────
 
     def _load_directory(self) -> None:
         if not NPC_DIR.exists():
@@ -229,7 +284,6 @@ class NPCPanel(ttk.Frame):
         self._entries.append(entry)
         self._append_card(entry)
         self._notify()
-        # Propagate renames to the roller combobox immediately.
         char.character_name.trace_add("write", lambda *_: self._notify())
 
     def _create_npc(self) -> None:
@@ -280,7 +334,6 @@ class NPCPanel(ttk.Frame):
 # ── Card builders ──────────────────────────────────────────────────────────────
 
 def _card_buttons(parent: ttk.Frame, on_open: callable, on_remove: callable) -> ttk.Frame:
-    """Return a small frame with Sheet and ✕ buttons."""
     frm = ttk.Frame(parent, style="flat.TFrame")
     ttk.Button(frm, text="Sheet", style="S.TButton", command=on_open).grid(row=0, column=0)
     ttk.Button(frm, text="✕", style="S.TButton", width=2, command=on_remove).grid(

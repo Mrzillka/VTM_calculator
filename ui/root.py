@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import queue
 from tkinter import BooleanVar, IntVar, StringVar, Tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -15,6 +16,8 @@ from game.character import Character
 from game.models import RollRecord
 from game.roller import Roller
 from lang import locale
+from network.protocol import dict_to_roll_record, roll_record_to_dict
+from network.session import NtfySession
 from ui.interface import Interface
 from ui.styles import configure_main_styles
 from ui.utils import place_widgets
@@ -24,10 +27,11 @@ logger = logging.getLogger(__name__)
 
 class Root(Tk):
     """
-    Main application window for VTM Calculator.
+    Main application window for VTM Calculator (Player).
 
     Owns application-level state (Telegram, roll parameters, UI flags, roll
-    history) and an instance of Character for all character-specific state.
+    history, network session) and an instance of Character for all
+    character-specific state.
     """
 
     def __init__(self) -> None:
@@ -61,14 +65,18 @@ class Root(Tk):
         self.is_send_to_telegram  = BooleanVar(value=False)
         self.trackers             = BooleanVar(value=False)
 
+        # ── Session state ──────────────────────────────────────────────────────
+        self.session_code = StringVar(value="")   # last entered/joined code
+        self.is_connected = BooleanVar(value=False)
+
         # ── Roll history ───────────────────────────────────────────────────────
         self.roll_history: list[RollRecord] = []
         self._on_roll_callbacks: list[Callable[[RollRecord], None]] = []
 
-        # ── Initiative (displayed via interface callback) ───────────────────────
+        # ── Initiative ─────────────────────────────────────────────────────────
         self._last_initiative: int | None = None
 
-        # ── Bot connection state ───────────────────────────────────────────────
+        # ── Telegram bot state ─────────────────────────────────────────────────
         self.pooling_state = StringVar(value=locale.t("controls.connect_tg"))
 
         locale.on_change(self._on_locale_change)
@@ -77,6 +85,13 @@ class Root(Tk):
         self._configure_styles()
         self._build_interface()
         self.load_from_file()
+
+        # Network: created after load so session_code is restored from file.
+        self._net_queue: queue.Queue[tuple[str, object]] = queue.Queue()
+        self._session: NtfySession | None = None
+        self._tracker_send_job: str | None = None
+        self._setup_tracker_traces()
+        self.after(100, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
 
@@ -149,9 +164,13 @@ class Root(Tk):
             spec_dice=result.specialisation_dice,
             successes=result.successes,
             probability=probability,
+            roller_name=self.character.character_name.get(),
         )
         self.roll_history.append(record)
         self._emit_roll(record)
+
+        if self._session is not None:
+            self._session.publish("roll", roll_record_to_dict(record))
 
         if self.is_send_to_telegram.get():
             self._send_roll_to_telegram(record)
@@ -168,6 +187,90 @@ class Root(Tk):
         self._interface.show_initiative(total)
         if self.is_send_to_telegram.get():
             self._send_initiative_to_telegram(total, raw)
+
+    # ── Session management ─────────────────────────────────────────────────────
+
+    def join_session(self) -> None:
+        """Join the ntfy.sh session with the code entered in the UI."""
+        code = self.session_code.get().strip()
+        if not code:
+            messagebox.showwarning("Session", "Enter the session code from the Storyteller.")
+            return
+        if self._session is not None:
+            self._session.stop()
+        self._session = NtfySession(topic=code, event_queue=self._net_queue)
+        self._session.start()
+        self.is_connected.set(True)
+
+    def leave_session(self) -> None:
+        """Disconnect from the current session."""
+        if self._session is not None:
+            self._session.stop()
+            self._session = None
+        self.is_connected.set(False)
+
+    def send_sheet_to_server(self) -> None:
+        """Publish the full character sheet to the current session."""
+        if self._session is None:
+            return
+        self._session.publish("sheet", self.character.to_dict())
+
+    # ── Tracker auto-send (debounced) ──────────────────────────────────────────
+
+    def _setup_tracker_traces(self) -> None:
+        """Attach debounced send callbacks to all tracker variables."""
+        for var in (
+            self.character.blood_value,
+            self.character.blood_max_value,
+            self.character.wounds_value,
+            self.character.humanity_value,
+            self.character.will_value,
+            self.character.willpower_max,
+        ):
+            var.trace_add("write", lambda *_: self._schedule_tracker_send())
+
+    def _schedule_tracker_send(self) -> None:
+        """Debounce rapid tracker changes — send 500 ms after the last update."""
+        if self._session is None:
+            return
+        if self._tracker_send_job:
+            self.after_cancel(self._tracker_send_job)
+        self._tracker_send_job = self.after(500, self._send_trackers_now)
+
+    def _send_trackers_now(self) -> None:
+        """Transmit current tracker snapshot; called after debounce delay."""
+        self._tracker_send_job = None
+        if self._session is None:
+            return
+        char = self.character
+        self._session.publish("sheet_trackers", {
+            "character_name": char.character_name.get(),
+            "trackers": {
+                "blood_value":     char.blood_value.get(),
+                "blood_max_value": char.blood_max_value.get(),
+                "wounds_value":    char.wounds_value.get(),
+                "humanity_value":  char.humanity_value.get(),
+                "will_value":      char.will_value.get(),
+                "willpower_max":   char.willpower_max.get(),
+            },
+        })
+
+    # ── Network queue polling ──────────────────────────────────────────────────
+
+    def _poll_net_queue(self) -> None:
+        try:
+            while True:
+                event_type, data = self._net_queue.get_nowait()
+
+                if event_type == "roll":
+                    record = dict_to_roll_record(data)  # type: ignore[arg-type]
+                    self.roll_history.append(record)
+                    self._emit_roll(record)
+
+        except queue.Empty:
+            pass
+        finally:
+            self.after(100, self._poll_net_queue)
 
     # ── Telegram ───────────────────────────────────────────────────────────────
 
@@ -212,15 +315,17 @@ class Root(Tk):
     # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID", str(self.bot.chat_id))
-        dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID", str(self.bot.thread_id))
-        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF", locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID",      str(self.bot.chat_id))
+        dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",    str(self.bot.thread_id))
+        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",    locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE", self.session_code.get())
         self.character.save()
 
     def load_from_file(self) -> None:
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
-        self.bot.chat_id = env.get("CHAT_ID")
+        self.bot.chat_id   = env.get("CHAT_ID")
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") != "None" else None
+        self.session_code.set(env.get("SESSION_CODE", ""))
 
         if not self.character.load_from_file():
             self.save_to_file()
