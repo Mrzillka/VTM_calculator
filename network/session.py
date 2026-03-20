@@ -15,7 +15,11 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _NTFY_BASE = "https://ntfy.sh"
-_RECONNECT_DELAY = 5  # seconds between reconnect attempts
+_RECONNECT_DELAY = 5   # seconds between reconnect attempts
+_PUBLISH_TIMEOUT = 15  # seconds for a single POST
+
+# Sentinel pushed to the outgoing queue to stop the publish worker.
+_STOP_SENTINEL = object()
 
 
 def _pack(payload: dict[str, Any]) -> bytes:
@@ -42,6 +46,10 @@ class NtfySession:
     Inbound events are placed on *event_queue* as ``(event_type, data)``
     tuples for the tkinter main thread to consume via ``root.after()``
     polling.
+
+    Outgoing messages are handled by a single dedicated daemon thread so
+    that a slow POST can never block the tkinter thread or accumulate
+    unbounded background threads.
     """
 
     def __init__(
@@ -52,7 +60,14 @@ class NtfySession:
         self._topic = topic
         self._sender_id = uuid.uuid4().hex
         self._queue = event_queue
-        self._active = False
+
+        # Subscribe-side
+        self._stop_event = threading.Event()
+        self._subscribe_client: httpx.Client | None = None
+        self._subscribe_lock = threading.Lock()
+
+        # Publish-side: single worker thread drains _publish_queue
+        self._publish_queue: queue.Queue[object] = queue.Queue()
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -61,60 +76,92 @@ class NtfySession:
         return self._topic
 
     def start(self) -> None:
-        """Begin subscribing in a daemon thread."""
-        self._active = True
+        """Start the subscribe listener and publish worker as daemon threads."""
+        self._stop_event.clear()
         threading.Thread(target=self._subscribe_loop, daemon=True).start()
+        threading.Thread(target=self._publish_worker, daemon=True).start()
 
     def stop(self) -> None:
-        """Request the subscription thread to exit on the next iteration."""
-        self._active = False
+        """
+        Signal both threads to stop and interrupt any blocking SSE stream.
+
+        The threads are daemons so they will not prevent process exit, but
+        calling stop() releases the network connection immediately.
+        """
+        self._stop_event.set()
+        # Close the active httpx client from the outside to unblock iter_lines().
+        with self._subscribe_lock:
+            if self._subscribe_client is not None:
+                try:
+                    self._subscribe_client.close()
+                except Exception:
+                    pass
+                self._subscribe_client = None
+        # Wake up the publish worker so it can exit.
+        self._publish_queue.put(_STOP_SENTINEL)
 
     def publish(self, msg_type: str, data: dict[str, Any]) -> None:
-        """Fire-and-forget publish in a daemon thread."""
-        threading.Thread(
-            target=self._post,
-            args=(msg_type, data),
-            daemon=True,
-        ).start()
+        """Enqueue a message for the publish worker; never blocks the caller."""
+        if not self._stop_event.is_set():
+            self._publish_queue.put((msg_type, data))
 
     # ── Subscribe loop ────────────────────────────────────────────────────────
 
     def _subscribe_loop(self) -> None:
-        """Reconnecting SSE loop; only receives messages published after start."""
-        since = str(int(time.time()))
-        url = f"{_NTFY_BASE}/{self._topic}/sse?since={since}"
+        """
+        Reconnecting SSE loop.
 
-        while self._active:
+        ``since`` is updated to the current time on every reconnect so that
+        only messages arriving after reconnection are replayed — not the
+        entire session history.
+        """
+        while not self._stop_event.is_set():
+            # Compute `since` fresh on every connection attempt to avoid
+            # replaying old messages after a reconnect.
+            since = str(int(time.time()))
+            url = f"{_NTFY_BASE}/{self._topic}/sse?since={since}"
+
             try:
-                with httpx.Client(timeout=None) as client:
-                    with client.stream("GET", url) as resp:
-                        resp.raise_for_status()
-                        for line in resp.iter_lines():
-                            if not self._active:
-                                return
-                            if not line.startswith("data:"):
-                                continue
-                            raw = line[5:].strip()
-                            if not raw or raw == "{}":
-                                continue
-                            self._handle_line(raw)
+                client = httpx.Client(timeout=None)
+                with self._subscribe_lock:
+                    if self._stop_event.is_set():
+                        client.close()
+                        return
+                    self._subscribe_client = client
+
+                with client.stream("GET", url) as resp:
+                    resp.raise_for_status()
+                    for line in resp.iter_lines():
+                        if self._stop_event.is_set():
+                            return
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if not raw or raw == "{}":
+                            continue
+                        self._handle_line(raw)
+
             except Exception as exc:
-                if not self._active:
+                if self._stop_event.is_set():
                     return
                 logger.warning(
                     "ntfy subscribe error, retrying in %ds: %s",
                     _RECONNECT_DELAY, exc,
                 )
-                time.sleep(_RECONNECT_DELAY)
+            finally:
+                with self._subscribe_lock:
+                    self._subscribe_client = None
+
+            if not self._stop_event.is_set():
+                self._stop_event.wait(timeout=_RECONNECT_DELAY)
 
     def _handle_line(self, raw: str) -> None:
         """Parse one SSE data line and enqueue the inner event if valid."""
         try:
             outer = json.loads(raw)
+            # ntfy sends keepalive events; skip them.
             if outer.get("event") == "keepalive":
                 return
-            # We always send gzip-compressed bytes encoded as base64 in the
-            # ntfy "message" field.
             encoded = outer.get("message", "")
             if not encoded:
                 return
@@ -128,7 +175,16 @@ class NtfySession:
         except Exception as exc:
             logger.debug("ntfy parse error: %s  raw=%r", exc, raw[:120])
 
-    # ── Publish ───────────────────────────────────────────────────────────────
+    # ── Publish worker ────────────────────────────────────────────────────────
+
+    def _publish_worker(self) -> None:
+        """Single background thread that drains the outgoing message queue."""
+        while True:
+            item = self._publish_queue.get()
+            if item is _STOP_SENTINEL:
+                return
+            msg_type, data = item  # type: ignore[misc]
+            self._post(msg_type, data)  # type: ignore[arg-type]
 
     def _post(self, msg_type: str, data: dict[str, Any]) -> None:
         payload = {
@@ -136,14 +192,12 @@ class NtfySession:
             "data":      data,
             "sender_id": self._sender_id,
         }
-        # gzip-compress and base64-encode so the payload survives as a
-        # printable string in the ntfy "message" field.
         body = base64.b64encode(_pack(payload)).decode()
         try:
             httpx.post(
                 f"{_NTFY_BASE}/{self._topic}",
                 content=body.encode(),
-                timeout=15,
+                timeout=_PUBLISH_TIMEOUT,
             )
         except Exception as exc:
-            logger.error("ntfy publish error: %s", exc)
+            logger.error("ntfy publish error (%s): %s", msg_type, exc)

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -9,31 +7,9 @@ if TYPE_CHECKING:
 
 # ── Message type identifiers ──────────────────────────────────────────────────
 
-MSG_HELLO          = "hello"           # client → server: identify by name
 MSG_ROLL           = "roll"            # bidirectional: dice roll record
-MSG_SHEET          = "sheet"           # client → server: full character sheet
-MSG_SHEET_TRACKERS = "sheet_trackers"  # client → server: tracker values only
-MSG_PING           = "ping"
-MSG_PONG           = "pong"
-
-
-# ── Wire format ───────────────────────────────────────────────────────────────
-
-@dataclass
-class Message:
-    type: str
-    data: dict[str, Any]
-
-
-def encode(msg: Message) -> bytes:
-    """Serialize a Message to a newline-terminated UTF-8 JSON bytes object."""
-    return (json.dumps({"type": msg.type, "data": msg.data}) + "\n").encode("utf-8")
-
-
-def decode(line: str) -> Message:
-    """Deserialize a single JSON line into a Message; raises on malformed input."""
-    raw = json.loads(line)
-    return Message(type=raw["type"], data=raw.get("data", {}))
+MSG_SHEET          = "sheet"           # player → storyteller: full character sheet
+MSG_SHEET_TRACKERS = "sheet_trackers"  # player → storyteller: tracker values only
 
 
 # ── RollRecord ↔ dict ─────────────────────────────────────────────────────────
