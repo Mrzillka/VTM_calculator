@@ -255,9 +255,12 @@ class Interface(ttk.Frame):
             self._path_comboboxes.append(cb_path)
 
             rows.append([cb_disc, cb_path, self._frm_dots(frm, e["vars"])])
-            self._bind_disc_path(e["name"], e["path"], cb_path)
 
         place_widgets(rows)
+
+        for e, cb_path in zip(self.character.disciplines, self._path_comboboxes):
+            self._bind_disc_path(e["name"], e["path"], cb_path)
+
         self._refresh_disc_values()
         locale.on_change(self._refresh_disc_values)
 
