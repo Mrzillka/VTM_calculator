@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from random import choice
 from tkinter import BooleanVar, IntVar, StringVar
 
@@ -98,14 +99,11 @@ class Character:
             for category, abilities in _ABILITIES.items()
         }
 
-        # Each entry: {'name': StringVar, 'vars': list[BooleanVar]}
         self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
             {'name': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
         ]
 
-        # Each entry: {'name': StringVar, 'path': StringVar, 'vars': list[BooleanVar]}
-        # 'path' is only meaningful for disciplines that support sub-paths (see DISCIPLINE_PATHS).
         self.disciplines: list[dict[str, StringVar | list[BooleanVar]]] = [
             {'name': StringVar(), 'path': StringVar(), 'vars': _dot_row()}
             for _ in range(_ADVANTAGE_ROWS)
@@ -116,7 +114,6 @@ class Character:
             for vname in _VIRTUE_NAMES
         ]
 
-        # Each entry: {'name': StringVar, 'cost': IntVar}
         self.merits: list[dict[str, StringVar | IntVar]] = [
             {'name': StringVar(), 'cost': IntVar(value=0)}
             for _ in range(_MERIT_FLAW_ROWS)
@@ -208,9 +205,8 @@ class Character:
 
     # ── Persistence ────────────────────────────────────────────────────────────
 
-    def save(self) -> None:
-        """Write all character data to a JSON file."""
-
+    def save(self, path: Path | None = None) -> None:
+        """Write all character data to *path*, defaulting to CHARACTER_FILE_PATH."""
         data = {
             "header": {
                 "character_name": self.character_name.get(),
@@ -283,7 +279,8 @@ class Character:
             },
         }
 
-        with open(CHARACTER_FILE_PATH, "w", encoding="utf-8") as f:
+        save_path = path if path is not None else CHARACTER_FILE_PATH
+        with open(save_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def load(self, data: dict) -> None:

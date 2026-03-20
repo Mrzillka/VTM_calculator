@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.storyteller.panels import NPCPanel, PCPanel
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
@@ -27,9 +28,13 @@ class Interface(BaseInterface):
         root.on_roll(self._append_roll_entry)
 
     def _build(self) -> None:
+        pc_panel = PCPanel(self)
+        npc_panel = NPCPanel(self)
         place_widgets([[
             self._frm_controls_panel(),
             self._frm_history_panel(),
+            pc_panel,
+            npc_panel,
         ]])
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
@@ -131,7 +136,7 @@ class Interface(BaseInterface):
                   style="M.TLabel", anchor="center").grid(row=0, column=0, padx=8)
         lang_btn.grid(row=0, column=1, padx=4)
 
-    # ── Right panel: roll history ─────────────────────────────────────────────
+    # ── Roll history panel ────────────────────────────────────────────────────
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_history_panel(self, frm: ttk.Frame) -> None:

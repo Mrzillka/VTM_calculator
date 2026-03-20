@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import BooleanVar, Toplevel
 from tkinter import ttk
 
@@ -12,18 +13,30 @@ from ui.styles import configure_sheet_styles
 class Root(Toplevel):
     """Character sheet window with a vertically scrollable interface."""
 
-    def __init__(self, parent=None, character: Character | None = None) -> None:
+    def __init__(
+        self,
+        parent=None,
+        character: Character | None = None,
+        *,
+        read_only: bool = False,
+        save_path: Path | None = None,
+    ) -> None:
         super().__init__(parent)
         self.title("Character Sheet")
         self.resizable(True, False)
         self.geometry("1150x750")
         self.minsize(700, 450)
 
+        self._save_path = save_path
         self.character = character if character is not None else Character()
         self.locked = BooleanVar(value=False)
 
         self._configure_styles()
         self._build_scrollable()
+
+        if read_only:
+            self.locked.set(True)
+            self._interface._apply_lock()
 
     def _configure_styles(self) -> None:
         configure_sheet_styles(ttk.Style())
@@ -64,10 +77,10 @@ class Root(Toplevel):
         def _scroll_win(e: tk.Event) -> None:
             canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
-        def _scroll_up(e: tk.Event) -> None:
+        def _scroll_up(e: tk.Event = None) -> None:
             canvas.yview_scroll(-1, "units")
 
-        def _scroll_down(e: tk.Event) -> None:
+        def _scroll_down(e: tk.Event = None) -> None:
             canvas.yview_scroll(1, "units")
 
         def _bind(e: tk.Event = None) -> None:
@@ -84,5 +97,5 @@ class Root(Toplevel):
         self.bind("<Leave>", _unbind)
 
     def save(self) -> None:
-        """Persist character data to JSON."""
-        self.character.save()
+        """Persist character data to JSON, using save_path if provided."""
+        self.character.save(path=self._save_path)
