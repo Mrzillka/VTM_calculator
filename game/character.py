@@ -30,6 +30,7 @@ _VIRTUE_NAMES: tuple[str, ...] = (
 
 _ADVANTAGE_ROWS: int = 7
 _MERIT_FLAW_ROWS: int = 7
+_CUSTOM_ABILITY_ROWS: int = 3
 
 
 class Character:
@@ -97,6 +98,15 @@ class Character:
                 for ability in abilities
             }
             for category, abilities in _ABILITIES.items()
+        }
+
+        # Extra user-defined ability rows, 3 per category.
+        self.custom_abilities: dict[str, list[dict]] = {
+            category: [
+                {'name': StringVar(), 'spec': StringVar(), 'vars': _dot_row()}
+                for _ in range(_CUSTOM_ABILITY_ROWS)
+            ]
+            for category in _ABILITIES
         }
 
         self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
@@ -251,6 +261,17 @@ class Character:
                 }
                 for category, abilities in self.abilities.items()
             },
+            "custom_abilities": {
+                category: [
+                    {
+                        "name": entry["name"].get(),
+                        "spec": entry["spec"].get(),
+                        "dots": [v.get() for v in entry["vars"]],
+                    }
+                    for entry in entries
+                ]
+                for category, entries in self.custom_abilities.items()
+            },
             "advantages": {
                 "backgrounds": [
                     {"name": e["name"].get(), "dots": [v.get() for v in e["vars"]]}
@@ -330,6 +351,18 @@ class Character:
                     for i, dot in enumerate(values.get("dots", [])):
                         if i < len(self.abilities[category][ability]["vars"]):
                             self.abilities[category][ability]["vars"][i].set(dot)
+
+        for category, entries in data.get("custom_abilities", {}).items():
+            if category in self.custom_abilities:
+                for i, entry_data in enumerate(entries):
+                    if i < len(self.custom_abilities[category]):
+                        self.custom_abilities[category][i]["name"].set(
+                            entry_data.get("name", ""))
+                        self.custom_abilities[category][i]["spec"].set(
+                            entry_data.get("spec", ""))
+                        for j, dot in enumerate(entry_data.get("dots", [])):
+                            if j < len(self.custom_abilities[category][i]["vars"]):
+                                self.custom_abilities[category][i]["vars"][j].set(dot)
 
         advantages = data.get("advantages", {})
 

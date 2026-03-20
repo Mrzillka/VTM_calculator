@@ -96,7 +96,6 @@ class Interface(ttk.Frame):
         save_btn.grid(row=0, column=0, sticky="w", padx=(0, 8))
         lock_cb.grid(row=0, column=1, sticky="w")
 
-        # Send Sheet button — only shown when a send callback is wired up.
         if self.root._send_sheet_callback is not None:
             send_btn = self._tbutton(frm, "sheet.send_sheet", style="sheet.save.TButton",
                                      command=self.root.send_sheet)
@@ -166,13 +165,30 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_attributes(self, frm: ttk.Frame) -> None:
-        self._place_stat_columns(frm, self.character.attributes, "sheet.attr_categories",
-                                 "sheet.attr_names")
+        self._place_stat_columns(frm, self.character.attributes,
+                                 "sheet.attr_categories", "sheet.attr_names")
 
     @frm(padding=5)
     def _frm_abilities(self, frm: ttk.Frame) -> None:
-        self._place_stat_columns(frm, self.character.abilities, "sheet.ability_categories",
-                                 "sheet.ability_names")
+        char = self.character
+        category_names = list(char.abilities.keys())
+
+        headers = [
+            self._tlabel(frm, f"sheet.ability_categories.{name}", style="sheet.M.TLabel")
+            for name in category_names
+        ]
+        contents = [
+            self._frm_stat_lines(
+                frm,
+                char.abilities[cat],
+                "sheet.ability_names",
+                char.custom_abilities.get(cat, []),
+            )
+            for cat in category_names
+        ]
+        place_widgets([headers, contents])
+        for col in range(len(category_names)):
+            frm.grid_columnconfigure(col, pad=14)
 
     def _place_stat_columns(
         self,
@@ -199,11 +215,67 @@ class Interface(ttk.Frame):
         frm: ttk.Frame,
         data: dict[str, dict[str, StringVar | list[BooleanVar]]],
         name_prefix: str,
+        custom_entries: list[dict] | None = None,
     ) -> None:
-        place_widgets([
-            [self._frm_line(frm, label, name_prefix, values["vars"], values["spec"])]
-            for label, values in data.items()
-        ])
+        """
+        Build all stat rows directly in one shared grid so tkinter aligns
+        columns uniformly across standard and custom rows.
+
+        Standard rows: right-aligned Label (col 0), spec Entry (col 1), dots (col 2).
+        Custom rows:   editable Entry (col 0), spec Entry (col 1), dots (col 2).
+        """
+        row_idx = 0
+
+        for label, values in data.items():
+            name_lbl = self._tlabel(frm, f"{name_prefix}.{label}",
+                                    width=15, anchor="e", style="sheet.S.TLabel")
+            spec_entry = ttk.Entry(frm, textvariable=values["spec"],
+                                   width=15, style="sheet.TEntry")
+            dots = self._frm_dots(frm, values["vars"])
+
+            self._lockable.append(spec_entry)
+            self._wire_spec_state(spec_entry, values["vars"], values["spec"])
+
+            name_lbl.grid(row=row_idx, column=0, sticky="e", pady=1)
+            spec_entry.grid(row=row_idx, column=1, padx=(2, 0), pady=1)
+            dots.grid(row=row_idx, column=2, padx=(2, 0), pady=1)
+            row_idx += 1
+
+        for entry in (custom_entries or []):
+            name_entry = ttk.Entry(frm, textvariable=entry["name"],
+                                   width=15, style="sheet.TEntry")
+            spec_entry = ttk.Entry(frm, textvariable=entry["spec"],
+                                   width=15, style="sheet.TEntry")
+            dots = self._frm_dots(frm, entry["vars"])
+
+            self._lockable.extend([name_entry, spec_entry])
+            self._wire_spec_state(spec_entry, entry["vars"], entry["spec"])
+
+            name_entry.grid(row=row_idx, column=0, sticky="ew", pady=1)
+            spec_entry.grid(row=row_idx, column=1, padx=(2, 0), pady=1)
+            dots.grid(row=row_idx, column=2, padx=(2, 0), pady=1)
+            row_idx += 1
+
+    def _wire_spec_state(
+        self,
+        spec_entry: ttk.Entry,
+        variables: list[BooleanVar],
+        spec_var: StringVar,
+    ) -> None:
+        """Disable the specialisation entry until at least 4 dots are filled."""
+        def _update(*_) -> None:
+            if self.root.locked.get():
+                return
+            if sum(v.get() for v in variables) >= 4:
+                spec_entry.configure(state="normal")
+            else:
+                spec_var.set("")
+                spec_entry.configure(state="disabled")
+
+        self._spec_refreshers.append(_update)
+        for var in variables:
+            var.trace_add("write", _update)
+        _update()
 
     # ── Advantages ────────────────────────────────────────────────────────────
 
@@ -255,12 +327,9 @@ class Interface(ttk.Frame):
             self._path_comboboxes.append(cb_path)
 
             rows.append([cb_disc, cb_path, self._frm_dots(frm, e["vars"])])
-
-        place_widgets(rows)
-
-        for e, cb_path in zip(self.character.disciplines, self._path_comboboxes):
             self._bind_disc_path(e["name"], e["path"], cb_path)
 
+        place_widgets(rows)
         self._refresh_disc_values()
         locale.on_change(self._refresh_disc_values)
 
@@ -685,40 +754,7 @@ class Interface(ttk.Frame):
             char.blood_value.set(max_blood)
             char.set_blood(load=True)
 
-    # ── Stat line ────────────────────────────────────────────────────────────
-
-    @frm(padding=0)
-    def _frm_line(
-        self,
-        frm: ttk.Frame,
-        label: str,
-        name_prefix: str,
-        variables: list[BooleanVar],
-        spec_var: StringVar,
-    ) -> None:
-        spec_entry = ttk.Entry(frm, textvariable=spec_var,
-                               width=15, style="sheet.TEntry")
-        self._lockable.append(spec_entry)
-
-        def _update_spec_state(*_) -> None:
-            if self.root.locked.get():
-                return
-            filled = sum(v.get() for v in variables)
-            if filled >= 4:
-                spec_entry.configure(state="normal")
-            else:
-                spec_var.set("")
-                spec_entry.configure(state="disabled")
-
-        self._spec_refreshers.append(_update_spec_state)
-
-        for var in variables:
-            var.trace_add("write", _update_spec_state)
-        _update_spec_state()
-
-        name_lbl = self._tlabel(frm, f"{name_prefix}.{label}",
-                                width=15, anchor="e", style="sheet.S.TLabel")
-        place_widgets([[name_lbl, spec_entry, self._frm_dots(frm, variables)]])
+    # ── Dots ─────────────────────────────────────────────────────────────────
 
     @frm(padding=0)
     def _frm_dots(self, frm: ttk.Frame, variables: list[BooleanVar]) -> None:
