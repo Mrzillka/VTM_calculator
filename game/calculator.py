@@ -11,6 +11,7 @@ class Calculator:
         success_needed: minimum net successes required.
         auto_successes: automatic successes added before threshold check.
         specialisation: whether specialisation (10-rerolls) is active.
+        no_botch:       if True, 1s are treated as misses (damage/soak mode).
     """
 
     SIDES: int = 10
@@ -22,12 +23,14 @@ class Calculator:
             success_needed: int = 1,
             auto_successes: int = 0,
             specialisation: bool = False,
+            no_botch: bool = False,
     ) -> None:
         self.dice_number    = dice_number
         self.difficulty     = difficulty
         self.success_needed = success_needed
         self.auto_successes = auto_successes
         self.specialisation = specialisation
+        self.no_botch       = no_botch
 
     def get_probability(self) -> float:
         """Return success probability as a percentage (0–100)."""
@@ -49,28 +52,51 @@ class Calculator:
         Return {net_score: probability} for one die roll.
 
         Without specialisation a 10 is a regular hit.
-        With specialisation a 10 grants +1 and triggers an extra die roll;
-        chains are modelled to depth 20 (residual probability ≈ 10⁻²⁰).
+        With specialisation a 10 grants +1 and triggers an extra die roll.
+
+        When no_botch is True, 1s count as misses instead of -1 botches.
+        Chains are modelled to depth 20 (residual probability ≈ 10⁻²⁰).
         """
-        p_10  = 1.0 / self.SIDES
-        # Base outcomes, excluding the 10-face:
-        base: dict[int, float] = {
-            -1: 1.0 / self.SIDES,
-             0: max(0.0, (self.difficulty - 2) / self.SIDES),
-             1: max(0.0, (self.SIDES - self.difficulty) / self.SIDES),
-        }
+        p_10 = 1.0 / self.SIDES
 
-        if not self.specialisation:
-            base[1] = base.get(1, 0.0) + p_10
-            return base
+        if self.no_botch:
+            # 1 through difficulty-1: miss; difficulty through 10: hit
+            base: dict[int, float] = {
+                0: max(0.0, (self.difficulty - 1) / self.SIDES),
+                1: max(0.0, (self.SIDES - self.difficulty + 1) / self.SIDES),
+            }
+            if not self.specialisation:
+                return base
+            # Adjust for specialisation chains (10 face already counted as hit in base)
+            dist: dict[int, float] = {k: v for k, v in base.items() if k != 1 or True}
+            # Remove the 10-face hit from base[1] and re-add with chaining
+            base_no_10 = dict(base)
+            base_no_10[1] = max(0.0, base_no_10.get(1, 0.0) - p_10)
+            dist = dict(base_no_10)
+            chain_p = p_10
+            for depth in range(1, 21):
+                for score, p in base_no_10.items():
+                    k = score + depth
+                    dist[k] = dist.get(k, 0.0) + chain_p * p
+                chain_p *= p_10
+            return dist
+        else:
+            # Base outcomes, excluding the 10-face:
+            base = {
+                -1: 1.0 / self.SIDES,
+                 0: max(0.0, (self.difficulty - 2) / self.SIDES),
+                 1: max(0.0, (self.SIDES - self.difficulty) / self.SIDES),
+            }
 
-        # Specialisation: rolling 10 → +1 and roll again (may chain).
-        # dist[k] = base[k] + sum_{depth≥1} (p_10^depth * base[k - depth])
-        dist: dict[int, float] = dict(base)
-        chain_p = p_10
-        for depth in range(1, 21):
-            for score, p in base.items():
-                k = score + depth
-                dist[k] = dist.get(k, 0.0) + chain_p * p
-            chain_p *= p_10
-        return dist
+            if not self.specialisation:
+                base[1] = base.get(1, 0.0) + p_10
+                return base
+
+            dist = dict(base)
+            chain_p = p_10
+            for depth in range(1, 21):
+                for score, p in base.items():
+                    k = score + depth
+                    dist[k] = dist.get(k, 0.0) + chain_p * p
+                chain_p *= p_10
+            return dist

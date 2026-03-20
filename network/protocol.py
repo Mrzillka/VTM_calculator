@@ -24,6 +24,7 @@ def roll_record_to_dict(record: "RollRecord") -> dict[str, Any]:
         "successes":    record.successes,
         "probability":  record.probability,
         "roller_name":  record.roller_name,
+        "roll_type":    record.roll_type,
     }
 
 
@@ -38,4 +39,5 @@ def dict_to_roll_record(data: dict[str, Any]) -> "RollRecord":
         successes    = data["successes"],
         probability  = data["probability"],
         roller_name  = data.get("roller_name", ""),
+        roll_type    = data.get("roll_type", "NORMAL"),
     )

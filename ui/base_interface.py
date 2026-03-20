@@ -32,14 +32,12 @@ class BaseInterface(ttk.Frame):
     Shared helpers and roll-history widget used by all interface variants.
 
     Subclasses that use the history panel must call _build_scrollable_history()
-    during construction; subclasses that use show_initiative() must initialise
-    self._initiative_var before it is called.
+    during construction.
     """
 
     _history_canvas: tk.Canvas
     _history_inner: ttk.Frame
     _history_win_id: int
-    _initiative_var: tk.StringVar
 
     # ── Locale helpers ────────────────────────────────────────────────────────
 
@@ -142,23 +140,64 @@ class BaseInterface(ttk.Frame):
         self._history_canvas.after(50, lambda: self._history_canvas.yview_moveto(0))
 
     def _build_roll_entry(self, parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        if record.roll_type == "INITIATIVE":
+            return self._build_initiative_entry(parent, record)
+        return self._build_dice_entry(parent, record)
+
+    def _build_initiative_entry(self, parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        """History card for an initiative roll."""
+        frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
+        frame.grid_columnconfigure(0, weight=1)
+
+        if record.roller_name:
+            ttk.Label(frame, text=record.roller_name, style="M.TLabel", anchor="w").grid(
+                row=0, column=0, columnspan=2, sticky="w"
+            )
+
+        ttk.Label(
+            frame,
+            text=locale.t("controls.initiative"),
+            style="HistoryMeta.TLabel",
+        ).grid(row=1, column=0, sticky="w")
+
+        # dice[0] is the raw d10 result; auto_success carries dex+wits bonus.
+        raw = record.dice[0] if record.dice else 0
+        bonus = record.auto_success
+        detail = f"d10={raw}  +{bonus}"
+        ttk.Label(frame, text=detail, style="HistoryMeta.TLabel").grid(
+            row=2, column=0, sticky="w"
+        )
+
+        ttk.Label(
+            frame,
+            text=str(record.successes),
+            style="SuccessCount.TLabel",
+        ).grid(row=2, column=1, sticky="e")
+
+        return frame
+
+    def _build_dice_entry(self, parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        """History card for a normal or damage/soak roll."""
         frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
         frame.grid_columnconfigure(0, weight=1)
 
         outcome = record.outcome
         current_row = 0
 
-        # Optional roller name header (NPC or character name).
         if record.roller_name:
             ttk.Label(frame, text=record.roller_name, style="M.TLabel", anchor="w").grid(
                 row=current_row, column=0, columnspan=2, sticky="w"
             )
             current_row += 1
 
+        # Meta line: dice count, difficulty, optional auto-successes, roll type badge.
         meta_text = (
             f"{record.dice_number}d  •  diff {record.difficulty}"
             + (f"  •  auto +{record.auto_success}" if record.auto_success else "")
         )
+        if record.roll_type == "DAMAGE":
+            meta_text += f"  •  {locale.t('controls.damage_soak')}"
+
         ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
             row=current_row, column=0, sticky="w")
         ttk.Label(frame, text=outcome, style=_OUTCOME_STYLE[outcome]).grid(
@@ -187,9 +226,11 @@ class BaseInterface(ttk.Frame):
     def _build_dice_display(parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
         frame = ttk.Frame(parent, style="flat.TFrame")
         for col, value in enumerate(sorted(record.dice, reverse=True)):
+            is_hit   = value >= record.difficulty
+            is_botch = value == 1 and record.roll_type != "DAMAGE"
             fg = (
-                _BOTCH_FG if value == 1
-                else _HIT_FG if value >= record.difficulty
+                _BOTCH_FG if is_botch
+                else _HIT_FG if is_hit
                 else _NORMAL_FG
             )
             lbl = ttk.Label(frame, text=str(value), style="HistoryDice.TLabel",
@@ -198,8 +239,3 @@ class BaseInterface(ttk.Frame):
                 lbl.configure(foreground=fg)
             lbl.grid(row=0, column=col, padx=1)
         return frame
-
-    # ── Initiative display ────────────────────────────────────────────────────
-
-    def show_initiative(self, total: int) -> None:
-        self._initiative_var.set(f"{locale.t('controls.initiative')}: {total}")

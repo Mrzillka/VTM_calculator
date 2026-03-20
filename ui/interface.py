@@ -25,7 +25,6 @@ class Interface(BaseInterface):
         self._additional_row: list[Widget] = []
         self._sheet_window = None
         self._blood_cells: list[list[ttk.Label]] = []
-        self._initiative_var = tk.StringVar(value="")
 
         self._build()
         root.on_roll(self._append_roll_entry)
@@ -159,6 +158,8 @@ class Interface(BaseInterface):
                           command=self.root.roll_and_calculate),
             self._tbutton(frm, "controls.initiative", style="M.TButton",
                           command=self.root.roll_initiative),
+            self._tbutton(frm, "controls.damage_soak", style="M.TButton",
+                          command=self.root.roll_damage_soak),
         ]])
 
     @frm(padding=5)
@@ -175,8 +176,6 @@ class Interface(BaseInterface):
             [self._tbutton(frm, "controls.sheet", style="S.TButton",
                            command=self._open_character_sheet)],
             [lang_btn],
-            [ttk.Label(frm, textvariable=self._initiative_var,
-                       style="M.TLabel", anchor="center")],
         ])
 
     # ── Roll history ──────────────────────────────────────────────────────────

@@ -7,14 +7,15 @@ from game.models import RollResult
 
 class Roller:
     """
-    Выполняет бросок кубиков по правилам VTM.
+    Performs a dice roll according to VTM rules.
 
     Args:
-        dice_number:    количество кубиков.
-        difficulty:     сложность броска (2–10).
-        auto_success:   автоматические успехи.
-        specialisation: включить специализацию (перебросы 10).
-        penalty:        штраф (убирает кубики из пула).
+        dice_number:    number of dice in the pool.
+        difficulty:     roll difficulty (2–10).
+        auto_success:   automatic successes.
+        specialisation: enable specialisation (reroll 10s).
+        penalty:        penalty (removes dice from the pool).
+        no_botch:       if True, 1s are treated as misses rather than botches.
     """
 
     SIDES: int = 10
@@ -26,15 +27,17 @@ class Roller:
             auto_success: int = 0,
             specialisation: bool = False,
             penalty: int = 0,
+            no_botch: bool = False,
     ) -> None:
         self.dice_number = dice_number
         self.difficulty = difficulty
         self.auto_success = auto_success
         self.specialisation = specialisation
         self.penalty = penalty
+        self.no_botch = no_botch
 
     def roll(self) -> RollResult:
-        """Выполняет бросок и возвращает результат."""
+        """Perform the roll and return the result."""
         pool_size = max(1, self.dice_number + self.penalty)
         dice = [randint(1, self.SIDES) for _ in range(pool_size)]
         spec_dice = self._roll_specialisation(dice)
@@ -47,7 +50,7 @@ class Roller:
         )
 
     def _roll_specialisation(self, dice: list[int]) -> list[int]:
-        """Дополнительные броски за каждую выпавшую 10 при специализации."""
+        """Additional rolls for each 10 when specialisation is active."""
         if not self.specialisation:
             return []
 
@@ -62,7 +65,11 @@ class Roller:
         return extra
 
     def _count_successes(self, roll_dice: list[int], spec_dice: list[int]) -> int:
-        """Подсчитывает нетто-успехи: (успехи + авто) - провалы (единицы)."""
+        """
+        Count net successes: (hits + auto) - botches.
+
+        When no_botch is True, 1s are ignored (damage/soak mode).
+        """
         hits = sum(1 for d in roll_dice + spec_dice if d >= self.difficulty)
-        botches = roll_dice.count(1)
+        botches = 0 if self.no_botch else roll_dice.count(1)
         return hits + self.auto_success - botches

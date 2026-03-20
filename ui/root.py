@@ -66,15 +66,12 @@ class Root(Tk):
         self.trackers             = BooleanVar(value=False)
 
         # ── Session state ──────────────────────────────────────────────────────
-        self.session_code = StringVar(value="")   # last entered/joined code
+        self.session_code = StringVar(value="")
         self.is_connected = BooleanVar(value=False)
 
         # ── Roll history ───────────────────────────────────────────────────────
         self.roll_history: list[RollRecord] = []
         self._on_roll_callbacks: list[Callable[[RollRecord], None]] = []
-
-        # ── Initiative ─────────────────────────────────────────────────────────
-        self._last_initiative: int | None = None
 
         # ── Telegram bot state ─────────────────────────────────────────────────
         self.pooling_state = StringVar(value=locale.t("controls.connect_tg"))
@@ -120,8 +117,6 @@ class Root(Tk):
             locale.t("controls.connecting") if self.bot.is_polling
             else locale.t("controls.connect_tg")
         )
-        if self._last_initiative is not None:
-            self._interface.show_initiative(self._last_initiative)
 
     # ── Roll callbacks ─────────────────────────────────────────────────────────
 
@@ -134,13 +129,14 @@ class Root(Tk):
 
     # ── Game logic ─────────────────────────────────────────────────────────────
 
-    def _calculate(self) -> float:
+    def _calculate(self, no_botch: bool = False) -> float:
         calc = Calculator(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
             success_needed=self.success_needed.get(),
             auto_successes=self.auto_success.get(),
             specialisation=self.specialisation.get(),
+            no_botch=no_botch,
         )
         return calc.get_probability()
 
@@ -165,33 +161,74 @@ class Root(Tk):
             successes=result.successes,
             probability=probability,
             roller_name=self.character.character_name.get(),
+            roll_type="NORMAL",
         )
+        self._record_and_emit(record)
+
+    def roll_damage_soak(self) -> None:
+        """Roll without botch subtraction (damage or soak roll)."""
+        probability = self._calculate(no_botch=True)
+
+        roller = Roller(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            specialisation=self.specialisation.get(),
+            penalty=self.character.roll_penalty.get(),
+            no_botch=True,
+        )
+        result = roller.roll()
+
+        record = RollRecord(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            dice=result.dice,
+            spec_dice=result.specialisation_dice,
+            successes=result.successes,
+            probability=probability,
+            roller_name=self.character.character_name.get(),
+            roll_type="DAMAGE",
+        )
+        self._record_and_emit(record)
+
+    def roll_initiative(self) -> None:
+        from random import randint
+        raw = randint(1, 10) + self.character.roll_penalty.get()
+        dex  = self.character.initiative_bonus_dex.get()
+        wits = self.character.initiative_bonus_wits.get()
+        total = raw + dex + wits
+
+        record = RollRecord(
+            dice_number=1,
+            difficulty=0,
+            auto_success=dex + wits,
+            dice=[raw],
+            spec_dice=[],
+            successes=total,
+            probability=0.0,
+            roller_name=self.character.character_name.get(),
+            roll_type="INITIATIVE",
+        )
+        self._record_and_emit(record)
+
+        if self.is_send_to_telegram.get():
+            self._send_initiative_to_telegram(total, raw)
+
+    def _record_and_emit(self, record: RollRecord) -> None:
+        """Append *record* to history, notify callbacks, publish to session and Telegram."""
         self.roll_history.append(record)
         self._emit_roll(record)
 
         if self._session is not None:
             self._session.publish("roll", roll_record_to_dict(record))
 
-        if self.is_send_to_telegram.get():
+        if self.is_send_to_telegram.get() and record.roll_type in ("NORMAL", "DAMAGE"):
             self._send_roll_to_telegram(record)
-
-    def roll_initiative(self) -> None:
-        from random import randint
-        raw = randint(1, 10) + self.character.roll_penalty.get()
-        total = (
-            raw
-            + self.character.initiative_bonus_dex.get()
-            + self.character.initiative_bonus_wits.get()
-        )
-        self._last_initiative = total
-        self._interface.show_initiative(total)
-        if self.is_send_to_telegram.get():
-            self._send_initiative_to_telegram(total, raw)
 
     # ── Session management ─────────────────────────────────────────────────────
 
     def join_session(self) -> None:
-        """Join the ntfy.sh session with the code entered in the UI."""
         code = self.session_code.get().strip()
         if not code:
             messagebox.showwarning("Session", "Enter the session code from the Storyteller.")
@@ -203,14 +240,12 @@ class Root(Tk):
         self.is_connected.set(True)
 
     def leave_session(self) -> None:
-        """Disconnect from the current session."""
         if self._session is not None:
             self._session.stop()
             self._session = None
         self.is_connected.set(False)
 
     def send_sheet_to_server(self) -> None:
-        """Publish the full character sheet to the current session."""
         if self._session is None:
             return
         self._session.publish("sheet", self.character.to_dict())
@@ -218,7 +253,6 @@ class Root(Tk):
     # ── Tracker auto-send (debounced) ──────────────────────────────────────────
 
     def _setup_tracker_traces(self) -> None:
-        """Attach debounced send callbacks to all tracker variables."""
         for var in (
             self.character.blood_value,
             self.character.blood_max_value,
@@ -230,7 +264,6 @@ class Root(Tk):
             var.trace_add("write", lambda *_: self._schedule_tracker_send())
 
     def _schedule_tracker_send(self) -> None:
-        """Debounce rapid tracker changes — send 500 ms after the last update."""
         if self._session is None:
             return
         if self._tracker_send_job:
@@ -238,7 +271,6 @@ class Root(Tk):
         self._tracker_send_job = self.after(500, self._send_trackers_now)
 
     def _send_trackers_now(self) -> None:
-        """Transmit current tracker snapshot; called after debounce delay."""
         self._tracker_send_job = None
         if self._session is None:
             return
@@ -288,8 +320,13 @@ class Root(Tk):
 
     def _send_roll_to_telegram(self, record: RollRecord) -> None:
         all_dice = record.dice + record.spec_dice
+        roll_label = (
+            locale.t("controls.damage_soak")
+            if record.roll_type == "DAMAGE"
+            else "roll"
+        )
         msg = (
-            f"<b><i>{self.character.character_name.get()}</i> rolled:</b>\n"
+            f"<b><i>{self.character.character_name.get()}</i> {roll_label}:</b>\n"
             f"<i>{', '.join(map(str, all_dice))}</i>\n"
             f"on <b>{record.dice_number} dices</b> "
             f"with <b>difficulty {record.difficulty}</b>.\n"

@@ -48,7 +48,6 @@ class Root(Tk):
         self.additional_options = BooleanVar(value=False)
         self.active_roller      = StringVar(value=NO_ROLLER)
 
-        # Currently active session topic; empty means no session running.
         self.session_topic = StringVar(value="")
 
         self.roll_history: list[RollRecord] = []
@@ -94,15 +93,20 @@ class Root(Tk):
 
     # ── Game logic ─────────────────────────────────────────────────────────────
 
-    def _calculate(self) -> float:
+    def _calculate(self, no_botch: bool = False) -> float:
         calc = Calculator(
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
             success_needed=self.success_needed.get(),
             auto_successes=self.auto_success.get(),
             specialisation=self.specialisation.get(),
+            no_botch=no_botch,
         )
         return calc.get_probability()
+
+    def _active_roller_name(self) -> str:
+        display = self.active_roller.get()
+        return "" if display == NO_ROLLER else display
 
     def roll_and_calculate(self) -> None:
         probability = self._calculate()
@@ -115,8 +119,31 @@ class Root(Tk):
         )
         result = roller.roll()
 
-        display = self.active_roller.get()
-        roller_name = "" if display == NO_ROLLER else display
+        record = RollRecord(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            dice=result.dice,
+            spec_dice=result.specialisation_dice,
+            successes=result.successes,
+            probability=probability,
+            roller_name=self._active_roller_name(),
+            roll_type="NORMAL",
+        )
+        self._record_and_emit(record)
+
+    def roll_damage_soak(self) -> None:
+        """Roll without botch subtraction (damage or soak roll)."""
+        probability = self._calculate(no_botch=True)
+
+        roller = Roller(
+            dice_number=self.dice_number.get(),
+            difficulty=self.difficulty.get(),
+            auto_success=self.auto_success.get(),
+            specialisation=self.specialisation.get(),
+            no_botch=True,
+        )
+        result = roller.roll()
 
         record = RollRecord(
             dice_number=self.dice_number.get(),
@@ -126,18 +153,36 @@ class Root(Tk):
             spec_dice=result.specialisation_dice,
             successes=result.successes,
             probability=probability,
-            roller_name=roller_name,
+            roller_name=self._active_roller_name(),
+            roll_type="DAMAGE",
         )
+        self._record_and_emit(record)
+
+    def roll_initiative(self) -> None:
+        from random import randint
+        raw = randint(1, 10)
+        bonus = self.dice_number.get()  # dice_number repurposed as flat bonus for Storyteller
+        total = raw + bonus
+
+        record = RollRecord(
+            dice_number=1,
+            difficulty=0,
+            auto_success=bonus,
+            dice=[raw],
+            spec_dice=[],
+            successes=total,
+            probability=0.0,
+            roller_name=self._active_roller_name(),
+            roll_type="INITIATIVE",
+        )
+        self._record_and_emit(record)
+
+    def _record_and_emit(self, record: RollRecord) -> None:
         self.roll_history.append(record)
         self._emit_roll(record)
 
         if self._session is not None:
             self._session.publish("roll", roll_record_to_dict(record))
-
-    def roll_initiative(self) -> None:
-        from random import randint
-        total = randint(1, 10) + self.dice_number.get()
-        self._interface.show_initiative(total)
 
     # ── Session management ─────────────────────────────────────────────────────
 

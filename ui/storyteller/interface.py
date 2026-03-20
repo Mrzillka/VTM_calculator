@@ -23,7 +23,6 @@ class Interface(BaseInterface):
         self.root = root
 
         self._additional_row: list[Widget] = []
-        self._initiative_var = tk.StringVar(value="")
         self._roller_cb: ttk.Combobox | None = None
 
         self._pc_panel = PCPanel(self)
@@ -152,6 +151,8 @@ class Interface(BaseInterface):
                           command=self.root.roll_and_calculate),
             self._tbutton(frm, "controls.initiative", style="M.TButton",
                           command=self.root.roll_initiative),
+            self._tbutton(frm, "controls.damage_soak", style="M.TButton",
+                          command=self.root.roll_damage_soak),
         ]])
 
     @frm(padding=2)
@@ -160,11 +161,9 @@ class Interface(BaseInterface):
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
 
-        ttk.Label(frm, textvariable=self._initiative_var,
-                  style="M.TLabel", anchor="center").grid(row=0, column=0, padx=8)
-        lang_btn.grid(row=0, column=1, padx=4)
+        lang_btn.grid(row=0, column=0, padx=4)
 
-        # Session block: New Session button + code label + Copy button
+        # Session block
         new_btn = self._tbutton(frm, "controls.new_session", style="S.TButton",
                                 command=self.root.new_session)
         new_btn.grid(row=1, column=0, columnspan=2, pady=(8, 2), sticky="ew")
