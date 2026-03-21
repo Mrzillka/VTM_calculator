@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tkinter as tk
 from tkinter import BooleanVar, IntVar, StringVar
 from tkinter import ttk
 from typing import Callable
@@ -264,7 +265,12 @@ class Interface(ttk.Frame):
     ) -> None:
         """Disable the specialisation entry until at least 4 dots are filled."""
         def _update(*_) -> None:
-            if self.root.locked.get():
+            # Guard against stale traces that fire after the widget is destroyed.
+            try:
+                exists = spec_entry.winfo_exists()
+            except tk.TclError:
+                return
+            if not exists or self.root.locked.get():
                 return
             if sum(v.get() for v in variables) >= 4:
                 spec_entry.configure(state="normal")
@@ -342,7 +348,12 @@ class Interface(ttk.Frame):
         cb_path: ttk.Combobox,
     ) -> None:
         def _update(*_) -> None:
-            if self._translating:
+            # Guard against stale traces referencing a destroyed combobox.
+            try:
+                exists = cb_path.winfo_exists()
+            except tk.TclError:
+                return
+            if not exists or self._translating:
                 return
             disc_display = name_var.get()
             en_key = self._disc_display_to_en(disc_display)
@@ -359,13 +370,18 @@ class Interface(ttk.Frame):
                 cb_path.configure(values=[])
                 cb_path.grid_remove()
 
-        name_var.trace_add("write", _update)
+        trace_id = name_var.trace_add("write", _update)
+        # Remove the trace when the combobox is destroyed to prevent accumulation.
+        cb_path.bind(
+            "<Destroy>",
+            lambda e, tid=trace_id: name_var.trace_remove("write", tid),
+        )
         _update()
 
     def _disc_display_to_en(self, display_name: str) -> str:
-        disc_map: dict = locale.raw("sheet.disciplines") or {}
-        reverse = {v: k for k, v in disc_map.items()}
-        return reverse.get(display_name, display_name)
+        # Search across all locales so EN names resolve correctly on a RU interface
+        # and vice versa.
+        return locale.reverse_lookup_en("sheet.disciplines", display_name)
 
     def _refresh_disc_values(self) -> None:
         names = list((locale.raw("sheet.disciplines") or {}).values())
@@ -764,9 +780,7 @@ class Interface(ttk.Frame):
         for idx, var in enumerate(variables):
             lbl = ttk.Label(frm, text="●" if var.get() else "○",
                             style="sheet.Dot.TLabel", cursor="hand2")
-            var.trace_add("write",
-                          lambda *_, l=lbl, v=var: l.configure(
-                              text="●" if v.get() else "○"))
+            var.trace_add("write", self._make_dot_trace(lbl, var))
             lbl.bind(
                 "<Button-1>",
                 lambda e, i=idx, v=variables: (
@@ -777,6 +791,17 @@ class Interface(ttk.Frame):
             if idx == 4:
                 row.append(ttk.Label(frm, text="·", style="sheet.Sep.TLabel"))
         place_widgets([row])
+
+    @staticmethod
+    def _make_dot_trace(label: ttk.Label, var: BooleanVar) -> Callable:
+        """Return a write-trace callback for a dot label, guarded against widget destruction."""
+        def _cb(*_) -> None:
+            try:
+                if label.winfo_exists():
+                    label.configure(text="●" if var.get() else "○")
+            except tk.TclError:
+                pass
+        return _cb
 
     @staticmethod
     def _set_dots(variables: list[BooleanVar], clicked: int) -> None:
