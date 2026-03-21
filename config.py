@@ -121,7 +121,9 @@ def _get_app_data_dir() -> Path:
 
 APP_DATA_DIR: Path = _get_app_data_dir()
 ENV_FILE_PATH: Path = APP_DATA_DIR / ".env"
+# Legacy path kept for one-time migration only.
 CHARACTER_FILE_PATH: Path = APP_DATA_DIR / "character.json"
+CHARACTERS_DIR: Path = APP_DATA_DIR / "characters"
 NPC_DIR: Path = APP_DATA_DIR / "npcs"
 PC_DIR: Path = APP_DATA_DIR / "pcs"
 
@@ -136,6 +138,7 @@ def get_server_port() -> int:
 def ensure_app_data_dir() -> None:
     """Create application data directories and .env file if they do not exist."""
     APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    CHARACTERS_DIR.mkdir(parents=True, exist_ok=True)
     NPC_DIR.mkdir(parents=True, exist_ok=True)
     PC_DIR.mkdir(parents=True, exist_ok=True)
     ENV_FILE_PATH.touch(exist_ok=True)

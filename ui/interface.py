@@ -175,6 +175,8 @@ class Interface(BaseInterface):
                               locale_key="controls.trackers")],
             [self._tbutton(frm, "controls.sheet", style="S.TButton",
                            command=self._open_character_sheet)],
+            [self._tbutton(frm, "controls.load_character", style="S.TButton",
+                           command=self.root.load_character_dialog)],
             [lang_btn],
         ])
 

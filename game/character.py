@@ -5,7 +5,7 @@ from pathlib import Path
 from random import choice
 from tkinter import BooleanVar, IntVar, StringVar
 
-from config import CHARACTER_FILE_PATH, NAMES, WOUND_LEVELS
+from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, NAMES, WOUND_LEVELS
 
 _ATTRIBUTES = {
     "Physical": ("Strength", "Dexterity", "Stamina"),
@@ -301,8 +301,15 @@ class Character:
         }
 
     def save(self, path: Path | None = None) -> None:
-        """Write all character data to *path*, defaulting to CHARACTER_FILE_PATH."""
-        save_path = path if path is not None else CHARACTER_FILE_PATH
+        """Write character data to *path*.
+
+        When *path* is None the file is saved to CHARACTERS_DIR under the
+        current character name, so different characters never overwrite each
+        other.
+        """
+        save_path = path if path is not None else (
+            CHARACTERS_DIR / f"{self.character_name.get()}.json"
+        )
         with open(save_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
 
@@ -398,10 +405,10 @@ class Character:
                 self.flaws[i]["cost"].set(entry.get("cost", 0))
 
     def load_from_file(self) -> bool:
-        """
-        Load character data from the JSON file.
+        """Load character data from the legacy single-file path.
 
         Returns True if the file was found and loaded, False otherwise.
+        Kept for migration use only; prefer loading via CHARACTERS_DIR.
         Does not call apply_trackers(); the caller is responsible for sequencing.
         """
         if not CHARACTER_FILE_PATH.exists():

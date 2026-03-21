@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import json
 import logging
 import queue
+import shutil
+from pathlib import Path
 from tkinter import BooleanVar, IntVar, StringVar, Tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 from tkinter import ttk
 from typing import Callable
 
 import dotenv
 
 from bot.tg_bot import TgBot
-from config import ENV_FILE_PATH, get_bot_token
+from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, ENV_FILE_PATH, get_bot_token
 from game.calculator import Calculator
 from game.character import Character
 from game.models import RollRecord
@@ -354,24 +357,91 @@ class Root(Tk):
     # ── Save / load ────────────────────────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID",      str(self.bot.chat_id))
-        dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",    str(self.bot.thread_id))
-        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",    locale.lang)
-        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE", self.session_code.get())
+        """Persist settings and current character (saved under its name)."""
+        dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID",         str(self.bot.chat_id))
+        dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",       str(self.bot.thread_id))
+        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",       locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",    self.session_code.get())
+        filename = f"{self.character.character_name.get()}.json"
+        dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
         self.character.save()
 
     def load_from_file(self) -> None:
+        """Restore settings and the last-used character from disk."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
         self.bot.chat_id   = env.get("CHAT_ID")
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") != "None" else None
         self.session_code.set(env.get("SESSION_CODE", ""))
 
-        if not self.character.load_from_file():
+        if not self._try_load_character(env):
             self.save_to_file()
             return
 
         self._interface.refresh_blood_cells()
         self.character.apply_trackers()
+
+    def _try_load_character(self, env: dict) -> bool:
+        """Attempt to load a character, with legacy migration as fallback.
+
+        Priority:
+        1. File named in LAST_CHARACTER env key inside CHARACTERS_DIR.
+        2. Legacy character.json in APP_DATA_DIR (migrated on first load).
+
+        Returns True if a character was loaded.
+        """
+        last = env.get("LAST_CHARACTER", "")
+        if last:
+            path = CHARACTERS_DIR / last
+            if path.exists():
+                with open(path, encoding="utf-8") as f:
+                    self.character.load(json.load(f))
+                return True
+
+        # One-time migration from the old single-file storage.
+        if CHARACTER_FILE_PATH.exists():
+            with open(CHARACTER_FILE_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            self.character.load(data)
+            self.character.save()   # writes to CHARACTERS_DIR / {name}.json
+            logger.info("Migrated legacy character.json → CHARACTERS_DIR")
+            return True
+
+        return False
+
+    def load_character_dialog(self) -> None:
+        """Open a file picker, copy the selected JSON to CHARACTERS_DIR, and load it."""
+        src = filedialog.askopenfilename(
+            title=locale.t("controls.load_character"),
+            filetypes=[("JSON files", "*.json")],
+        )
+        if not src:
+            return
+
+        src_path = Path(src)
+        try:
+            with open(src_path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as exc:
+            messagebox.showerror("Load Character", str(exc))
+            return
+
+        name = data.get("header", {}).get("character_name") or src_path.stem
+        dst = CHARACTERS_DIR / f"{name}.json"
+
+        if dst.exists() and dst.resolve() != src_path.resolve():
+            if not messagebox.askyesno(
+                "Load Character",
+                f"'{name}' already exists in your characters folder. Overwrite?",
+            ):
+                return
+
+        if src_path.resolve() != dst.resolve():
+            shutil.copy2(src_path, dst)
+
+        self.character.load(data)
+        self._interface.refresh_blood_cells()
+        self.character.apply_trackers()
+        self.save_to_file()
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
