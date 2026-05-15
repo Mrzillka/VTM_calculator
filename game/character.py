@@ -180,7 +180,7 @@ class Character:
             self.roll_penalty.set(0)
         else:
             wl = WOUND_LEVELS[level]
-            self.wounds_display.set(f"{wl.name} {wl.penalty}")
+            self.wounds_display.set(f"{wl.name} {wl.penalty}" if wl.penalty else wl.name)
             self.roll_penalty.set(wl.penalty)
 
     def heal(self) -> None:

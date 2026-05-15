@@ -187,6 +187,7 @@ class Interface(BaseInterface):
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_history_panel(self, frm: ttk.Frame) -> None:
-        ttk.Label(frm, text="⚄  Roll History", style="M.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        lbl = ttk.Label(frm, text=locale.t("roll_history"), style="M.TLabel")
+        lbl.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        locale.register(lbl, "roll_history")
         self._build_scrollable_history(frm, width=380, height=420)

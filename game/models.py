@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class RollResult:
     """Raw dice roll output from Roller."""
-    dice: list[int]
-    specialisation_dice: list[int]
+    dice: tuple[int, ...]
+    specialisation_dice: tuple[int, ...]
     successes: int
 
     @property
-    def all_dice(self) -> list[int]:
+    def all_dice(self) -> tuple[int, ...]:
         return self.dice + self.specialisation_dice
 
     @property

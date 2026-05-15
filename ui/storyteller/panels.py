@@ -203,10 +203,20 @@ class PCPanel(ttk.Frame):
         )
         if not src:
             return
-        dst = PC_DIR / Path(src).name
+        src_path = Path(src)
+        dst = PC_DIR / src_path.name
         if dst.exists():
-            messagebox.showinfo("PC Panel", f"{Path(src).name} is already loaded.")
-            return
+            if dst.resolve() == src_path.resolve():
+                return
+            if not messagebox.askyesno(
+                "Load PC",
+                f"'{src_path.name}' is already loaded. Overwrite?",
+            ):
+                return
+            for entry in self._entries:
+                if entry["path"].resolve() == dst.resolve():
+                    self._remove_entry(entry)
+                    break
         shutil.copy2(src, dst)
         self._load_file(dst)
 
@@ -333,7 +343,7 @@ class NPCPanel(ttk.Frame):
 
 # ── Card builders ──────────────────────────────────────────────────────────────
 
-def _card_buttons(parent: ttk.Frame, on_open: callable, on_remove: callable) -> ttk.Frame:
+def _card_buttons(parent: ttk.Frame, on_open: Callable, on_remove: Callable) -> ttk.Frame:
     frm = ttk.Frame(parent, style="flat.TFrame")
     ttk.Button(frm, text="Sheet", style="S.TButton", command=on_open).grid(row=0, column=0)
     ttk.Button(frm, text="✕", style="S.TButton", width=2, command=on_remove).grid(
@@ -346,8 +356,8 @@ def _build_pc_card(
     parent: ttk.Frame,
     char: Character,
     *,
-    on_open: callable,
-    on_remove: callable,
+    on_open: Callable,
+    on_remove: Callable,
 ) -> ttk.Frame:
     """Compact read-only PC summary card showing key GM stats."""
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
@@ -380,8 +390,8 @@ def _build_npc_card(
     parent: ttk.Frame,
     char: Character,
     *,
-    on_open: callable,
-    on_remove: callable,
+    on_open: Callable,
+    on_remove: Callable,
 ) -> ttk.Frame:
     """Compact editable NPC summary card showing key GM stats."""
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)

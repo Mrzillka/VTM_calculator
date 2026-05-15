@@ -40,7 +40,6 @@ def place_widgets(grid: list[list[Widget | None]]) -> None:
     for row_idx, row in enumerate(grid):
         for col_idx, widget in enumerate(row):
             widget.grid(column=col_idx, row=row_idx)
-            widget.update()
 
 
 def frm(padding: int = 5, style: str = "flat.TFrame") -> Callable:

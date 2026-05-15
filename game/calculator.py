@@ -68,7 +68,6 @@ class Calculator:
             if not self.specialisation:
                 return base
             # Adjust for specialisation chains (10 face already counted as hit in base)
-            dist: dict[int, float] = {k: v for k, v in base.items() if k != 1 or True}
             # Remove the 10-face hit from base[1] and re-add with chaining
             base_no_10 = dict(base)
             base_no_10[1] = max(0.0, base_no_10.get(1, 0.0) - p_10)

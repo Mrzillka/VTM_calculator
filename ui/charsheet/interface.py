@@ -84,6 +84,10 @@ class Interface(ttk.Frame):
 
     # ── Toolbar ───────────────────────────────────────────────────────────────
 
+
+
+
+
     @frm(padding=4, style="solid.TFrame")
     def _frm_toolbar(self, frm: ttk.Frame) -> None:
         save_btn = self._tbutton(frm, "sheet.save", style="sheet.save.TButton",

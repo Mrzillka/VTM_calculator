@@ -161,8 +161,8 @@ class Root(Tk):
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
             auto_success=self.auto_success.get(),
-            dice=result.dice,
-            spec_dice=result.specialisation_dice,
+            dice=list(result.dice),
+            spec_dice=list(result.specialisation_dice),
             successes=result.successes,
             probability=probability,
             roller_name=self.character.character_name.get(),
@@ -188,8 +188,8 @@ class Root(Tk):
             dice_number=self.dice_number.get(),
             difficulty=self.difficulty.get(),
             auto_success=self.auto_success.get(),
-            dice=result.dice,
-            spec_dice=result.specialisation_dice,
+            dice=list(result.dice),
+            spec_dice=list(result.specialisation_dice),
             successes=result.successes,
             probability=probability,
             roller_name=self.character.character_name.get(),
@@ -199,16 +199,17 @@ class Root(Tk):
 
     def roll_initiative(self) -> None:
         from random import randint
-        raw = randint(1, 10) + self.character.roll_penalty.get()
-        dex  = self.character.initiative_bonus_dex.get()
-        wits = self.character.initiative_bonus_wits.get()
-        total = raw + dex + wits
+        d10     = randint(1, 10)
+        penalty = self.character.roll_penalty.get()
+        dex     = self.character.initiative_bonus_dex.get()
+        wits    = self.character.initiative_bonus_wits.get()
+        total   = d10 + penalty + dex + wits
 
         record = RollRecord(
             dice_number=1,
             difficulty=0,
             auto_success=dex + wits,
-            dice=[raw],
+            dice=[d10],
             spec_dice=[],
             successes=total,
             probability=0.0,
@@ -218,7 +219,7 @@ class Root(Tk):
         self._record_and_emit(record)
 
         if self.is_send_to_telegram.get():
-            self._send_initiative_to_telegram(total, raw)
+            self._send_initiative_to_telegram(total, d10)
 
     def _record_and_emit(self, record: RollRecord) -> None:
         """Append *record* to history, notify callbacks, publish to session and Telegram."""
@@ -317,11 +318,11 @@ class Root(Tk):
         self._poll_status_update()
 
     def _poll_status_update(self) -> None:
-        self.pooling_state.set(
-            locale.t("controls.connecting") if self.bot.is_polling
-            else locale.t("controls.connect_tg")
-        )
-        self.after(1000, self._poll_status_update)
+        if self.bot.is_polling:
+            self.pooling_state.set(locale.t("controls.connecting"))
+            self.after(1000, self._poll_status_update)
+        else:
+            self.pooling_state.set(locale.t("controls.connect_tg"))
 
     def _send_roll_to_telegram(self, record: RollRecord) -> None:
         all_dice = record.dice + record.spec_dice
@@ -369,8 +370,8 @@ class Root(Tk):
     def load_from_file(self) -> None:
         """Restore settings and the last-used character from disk."""
         env = dotenv.dotenv_values(str(ENV_FILE_PATH))
-        self.bot.chat_id   = env.get("CHAT_ID")
-        self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") != "None" else None
+        self.bot.chat_id   = env.get("CHAT_ID")   if env.get("CHAT_ID")   not in (None, "None", "") else None
+        self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") not in (None, "None", "") else None
         self.session_code.set(env.get("SESSION_CODE", ""))
 
         if not self._try_load_character(env):

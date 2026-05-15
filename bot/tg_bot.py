@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from tkinter import messagebox
-
 from telegram import Bot, Update
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler
@@ -98,7 +96,7 @@ class TgBot:
         try:
             asyncio.run(self._send_message(text))
         except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Ошибка отправки", str(exc))
+            logger.error("Failed to send Telegram message: %s", exc)
 
     async def _send_message(self, text: str) -> None:
         bot = Bot(token=self.token)

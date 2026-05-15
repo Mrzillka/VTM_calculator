@@ -44,8 +44,8 @@ class Roller:
 
         successes = self._count_successes(dice, spec_dice)
         return RollResult(
-            dice=sorted(dice, reverse=True),
-            specialisation_dice=spec_dice,
+            dice=tuple(sorted(dice, reverse=True)),
+            specialisation_dice=tuple(spec_dice),
             successes=successes,
         )
 
