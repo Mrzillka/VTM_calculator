@@ -39,10 +39,13 @@
   "trackers": {
     "blood": "Blood",
     "max_blood": "Max Blood",
+    "blood_per_turn": "per turn:",
     "heal": "HEAL",
     "wounds": "Wounds",
     "humanity_path": "Humanity / Path",
-    "will": "Will"
+    "will": "Will",
+    "physical": "Physical",
+    "end_scene": "End Scene"
   },
   "wound_levels": {
     "Bruised": "Bruised",

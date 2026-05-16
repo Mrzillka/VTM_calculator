@@ -5,7 +5,7 @@ from pathlib import Path
 from random import choice
 from tkinter import BooleanVar, IntVar, StringVar
 
-from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, NAMES, WOUND_LEVELS
+from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, GENERATION_RULES, NAMES, WOUND_LEVELS
 
 _ATTRIBUTES = {
     "Physical": ("Strength", "Dexterity", "Stamina"),
@@ -60,11 +60,19 @@ class Character:
 
         self._init_vars()
 
-        self.initiative_bonus_dex = IntVar(value=0)
-        self.initiative_bonus_wits = IntVar(value=0)
+        # Computed attribute scores (updated via traces on dot BooleanVars).
+        self.dex_value  = IntVar(value=0)
+        self.wits_value = IntVar(value=0)
+        self._wire_attribute_value("Physical", "Dexterity", self.dex_value)
+        self._wire_attribute_value("Mental",   "Wits",      self.wits_value)
+
+        # Physical attribute blood boosts (scene-level, not persisted).
+        self.str_boost = IntVar(value=0)
+        self.dex_boost = IntVar(value=0)
+        self.sta_boost = IntVar(value=0)
 
         self.blood_max_value = IntVar(value=10)
-        self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(4)]
+        self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(5)]
         self.blood_value = IntVar(value=10)
 
         # -1 = unharmed; 0..len(WOUND_LEVELS)-1 = index into WOUND_LEVELS
@@ -79,6 +87,9 @@ class Character:
         self.will = [BooleanVar(value=False) for _ in range(10)]
         self.will_value = IntVar(value=0)
         self.willpower_max = IntVar(value=10)
+
+        self.blood_per_turn = StringVar(value="1")
+        self.generation.trace_add("write", lambda *_: self._on_generation_change())
 
     def _init_vars(self) -> None:
         def _dot_row(n: int = self._DOTS) -> list[BooleanVar]:
@@ -133,6 +144,56 @@ class Character:
             for _ in range(_MERIT_FLAW_ROWS)
         ]
 
+    # ── Attribute wiring ───────────────────────────────────────────────────────
+
+    def _wire_attribute_value(
+        self, category: str, name: str, out_var: IntVar
+    ) -> None:
+        """Keep *out_var* equal to the filled-dot count for an attribute."""
+        def _update(*_) -> None:
+            out_var.set(sum(v.get() for v in self.attributes[category][name]["vars"]))
+        for var in self.attributes[category][name]["vars"]:
+            var.trace_add("write", _update)
+        _update()
+
+    # ── Generation rules ───────────────────────────────────────────────────────
+
+    def _parse_generation(self) -> int:
+        digits = "".join(c for c in self.generation.get() if c.isdigit())
+        try:
+            return max(4, min(15, int(digits)))
+        except ValueError:
+            return 13
+
+    def _on_generation_change(self) -> None:
+        rules = GENERATION_RULES.get(self._parse_generation(), GENERATION_RULES[13])
+        self.blood_max_value.set(rules["blood_max"])
+        self.blood_per_turn.set(str(rules["blood_per_turn"]))
+
+    # ── Physical attribute boosts ──────────────────────────────────────────────
+
+    def boost_attribute(
+        self, boost_var: IntVar, base_vars: list[BooleanVar]
+    ) -> None:
+        """Spend 1 blood to raise a physical attribute by 1 for the scene."""
+        if self.blood_value.get() <= 0:
+            return
+        max_trait = GENERATION_RULES.get(
+            self._parse_generation(), GENERATION_RULES[13]
+        )["max_trait"]
+        base = sum(v.get() for v in base_vars)
+        if base + boost_var.get() >= max_trait:
+            return
+        self.blood_value.set(self.blood_value.get() - 1)
+        self.set_blood(load=True)
+        boost_var.set(boost_var.get() + 1)
+
+    def end_scene(self) -> None:
+        """Revert all physical attribute boosts to zero (blood already spent)."""
+        self.str_boost.set(0)
+        self.dex_boost.set(0)
+        self.sta_boost.set(0)
+
     # ── Trackers ───────────────────────────────────────────────────────────────
 
     def set_blood(self, row: int = 0, col: int = 0, *, load: bool = False) -> None:
@@ -148,7 +209,7 @@ class Character:
             if self.blood_value.get() != row * 10 + col + 1:
                 col += 1
 
-        for i in range(4):
+        for i in range(5):
             for j in range(10):
                 self.blood[i][j].set(i < row or (i == row and j < col))
 
@@ -228,10 +289,6 @@ class Character:
                 "generation":     self.generation.get(),
                 "heaven":         self.heaven.get(),
                 "concept":        self.concept.get(),
-            },
-            "initiative": {
-                "dex":  self.initiative_bonus_dex.get(),
-                "wits": self.initiative_bonus_wits.get(),
             },
             "trackers": {
                 "blood_value":     self.blood_value.get(),
@@ -330,10 +387,6 @@ class Character:
         self.generation.set(header.get("generation", "13th"))
         self.heaven.set(header.get("heaven", ""))
         self.concept.set(header.get("concept", ""))
-
-        initiative = data.get("initiative", {})
-        self.initiative_bonus_dex.set(initiative.get("dex", 0))
-        self.initiative_bonus_wits.set(initiative.get("wits", 0))
 
         trackers = data.get("trackers", {})
         self.blood_max_value.set(trackers.get("blood_max_value", 10))

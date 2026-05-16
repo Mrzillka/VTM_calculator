@@ -155,15 +155,24 @@ class Interface(ttk.Frame):
         ]
         place_widgets([[self._frm_field_group(frm, g) for g in groups]])
 
+    _GENERATION_VALUES: tuple[str, ...] = tuple(f"{n}th" for n in range(4, 16))
+
     @frm(padding=5)
     def _frm_field_group(self, frm: ttk.Frame, fields: list[tuple[str, StringVar]]) -> None:
         rows = []
         for field_key, var in fields:
             lbl = self._tlabel(frm, f"sheet.header.{field_key}",
                                width=10, anchor="e", style="sheet.S.TLabel")
-            entry = ttk.Entry(frm, textvariable=var, width=20, style="sheet.TEntry")
-            self._lockable.append(entry)
-            rows.append([lbl, entry])
+            if field_key == "Generation":
+                widget = ttk.Spinbox(
+                    frm, values=self._GENERATION_VALUES,
+                    textvariable=var, width=6, state="readonly",
+                    style="sheet.TSpinbox",
+                )
+            else:
+                widget = ttk.Entry(frm, textvariable=var, width=20, style="sheet.TEntry")
+            self._lockable.append(widget)
+            rows.append([lbl, widget])
         place_widgets(rows)
 
     # ── Attributes & Abilities ────────────────────────────────────────────────
@@ -578,7 +587,8 @@ class Interface(ttk.Frame):
             [self._frm_humanity_cells(frm)],
             [self._frm_tracker_header(frm, "sheet.sheet_trackers.blood_pool",
                                       self.character.blood_max_value,
-                                      self._refresh_sheet_blood_cells)],
+                                      self._refresh_sheet_blood_cells,
+                                      max_to=50)],
             [self._frm_sheet_blood_cells(frm)],
         ])
 
@@ -733,7 +743,7 @@ class Interface(ttk.Frame):
         self._sheet_blood_labels = []
         char = self.character
 
-        for i in range(4):
+        for i in range(5):
             row_labels: list[ttk.Label] = []
             for j in range(10):
                 var = char.blood[i][j]

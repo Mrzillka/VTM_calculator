@@ -127,6 +127,21 @@ CHARACTERS_DIR: Path = APP_DATA_DIR / "characters"
 NPC_DIR: Path = APP_DATA_DIR / "npcs"
 PC_DIR: Path = APP_DATA_DIR / "pcs"
 
+GENERATION_RULES: dict[int, dict] = {
+    4:  {"blood_max": 50, "blood_per_turn": 6, "max_trait": 9},
+    5:  {"blood_max": 40, "blood_per_turn": 5, "max_trait": 8},
+    6:  {"blood_max": 30, "blood_per_turn": 4, "max_trait": 7},
+    7:  {"blood_max": 20, "blood_per_turn": 3, "max_trait": 6},
+    8:  {"blood_max": 15, "blood_per_turn": 3, "max_trait": 6},
+    9:  {"blood_max": 14, "blood_per_turn": 2, "max_trait": 5},
+    10: {"blood_max": 13, "blood_per_turn": 1, "max_trait": 5},
+    11: {"blood_max": 12, "blood_per_turn": 1, "max_trait": 5},
+    12: {"blood_max": 11, "blood_per_turn": 1, "max_trait": 5},
+    13: {"blood_max": 10, "blood_per_turn": 1, "max_trait": 5},
+    14: {"blood_max": 10, "blood_per_turn": 1, "max_trait": 5},
+    15: {"blood_max": 10, "blood_per_turn": 1, "max_trait": 5},
+}
+
 DEFAULT_SERVER_PORT: int = 9999
 
 

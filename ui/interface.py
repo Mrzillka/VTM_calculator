@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import BooleanVar, Widget
+from tkinter import BooleanVar, StringVar, Widget
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
@@ -202,18 +202,28 @@ class Interface(BaseInterface):
     def _frm_blood_humanity_will(self, frm: ttk.Frame) -> None:
         place_widgets([
             [self._frm_blood(frm)],
+            [self._frm_physical_attributes(frm)],
             [self._frm_humanity(frm)],
             [self._frm_will(frm)],
         ])
 
     @frm(padding=5)
     def _frm_blood(self, frm: ttk.Frame) -> None:
+        char = self.root.character
         cells_frm = self._frm_blood_cells(frm)
         self._disable_blood_cells()
+
+        per_turn_frm = ttk.Frame(frm, style="flat.TFrame")
+        self._tlabel(per_turn_frm, "trackers.blood_per_turn",
+                     style="S.TLabel", anchor="e").grid(row=0, column=0, sticky="e")
+        ttk.Label(per_turn_frm, textvariable=char.blood_per_turn,
+                  style="S.TLabel", width=2).grid(row=0, column=1, sticky="w", padx=(4, 0))
+
         place_widgets([
             [self._tlabel(frm, "trackers.blood", width=12, anchor="n", style="M.TLabel")],
             [cells_frm],
             [self._frm_max_blood(frm)],
+            [per_turn_frm],
         ])
 
     @frm(padding=5)
@@ -221,7 +231,7 @@ class Interface(BaseInterface):
         self._blood_cells = []
         char = self.root.character
 
-        for i in range(4):
+        for i in range(5):
             row_labels: list[ttk.Label] = []
             for j in range(10):
                 var = char.blood[i][j]
@@ -260,12 +270,55 @@ class Interface(BaseInterface):
         place_widgets([[
             self._tlabel(frm, "trackers.max_blood", width=12, anchor="n", style="S.TLabel"),
             ttk.Spinbox(
-                frm, from_=1, to=40,
+                frm, from_=1, to=50,
                 textvariable=self.root.character.blood_max_value,
                 command=self._disable_blood_cells,
                 width=3, style="my.TSpinbox",
             ),
         ]])
+
+    @frm(padding=5)
+    def _frm_physical_attributes(self, frm: ttk.Frame) -> None:
+        char = self.root.character
+        attrs = [
+            ("Str", char.str_boost, char.attributes["Physical"]["Strength"]["vars"]),
+            ("Dex", char.dex_boost, char.attributes["Physical"]["Dexterity"]["vars"]),
+            ("Sta", char.sta_boost, char.attributes["Physical"]["Stamina"]["vars"]),
+        ]
+
+        self._tlabel(frm, "trackers.physical", style="M.TLabel").grid(
+            row=0, column=0, columnspan=3, sticky="w"
+        )
+
+        for row_idx, (label, boost_var, base_vars) in enumerate(attrs, start=1):
+            display_var = StringVar()
+
+            def _refresh(*_, bv=boost_var, bvars=base_vars, dv=display_var) -> None:
+                base  = sum(v.get() for v in bvars)
+                boost = bv.get()
+                dv.set(f"{base}+{boost}={base + boost}")
+
+            for bv in base_vars:
+                bv.trace_add("write", _refresh)
+            boost_var.trace_add("write", _refresh)
+            _refresh()
+
+            ttk.Label(frm, text=label, style="S.TLabel", width=4, anchor="e").grid(
+                row=row_idx, column=0, sticky="e"
+            )
+            ttk.Label(frm, textvariable=display_var, style="S.TLabel",
+                      width=8, anchor="center").grid(row=row_idx, column=1)
+            ttk.Button(
+                frm, text="+1",
+                command=lambda bv=boost_var, bvars=base_vars: char.boost_attribute(bv, bvars),
+                style="S.TButton", width=3,
+            ).grid(row=row_idx, column=2, padx=(4, 0))
+
+        end_row = len(attrs) + 1
+        self._tbutton(frm, "trackers.end_scene",
+                      command=char.end_scene, style="M.TButton").grid(
+            row=end_row, column=0, columnspan=3, sticky="ew", pady=(6, 0)
+        )
 
     @frm(padding=5)
     def _frm_wounds(self, frm: ttk.Frame) -> None:
@@ -405,13 +458,11 @@ class Interface(BaseInterface):
     @frm(padding=5)
     def _frm_initiative_spinboxes(self, frm: ttk.Frame) -> None:
         char = self.root.character
+        dex_lbl  = ttk.Label(frm, textvariable=char.dex_value,  width=3, style="S.TLabel", anchor="e")
+        wits_lbl = ttk.Label(frm, textvariable=char.wits_value, width=3, style="S.TLabel", anchor="e")
         place_widgets([
-            [self._tlabel(frm, "stats.dex", width=5, anchor="e", style="S.TLabel"),
-             ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_dex,
-                         width=3, style="my.TSpinbox")],
-            [self._tlabel(frm, "stats.wits", width=5, anchor="e", style="S.TLabel"),
-             ttk.Spinbox(frm, from_=0, to=10, textvariable=char.initiative_bonus_wits,
-                         width=3, style="my.TSpinbox")],
+            [self._tlabel(frm, "stats.dex",  width=5, anchor="e", style="S.TLabel"), dex_lbl],
+            [self._tlabel(frm, "stats.wits", width=5, anchor="e", style="S.TLabel"), wits_lbl],
         ])
 
     @frm(padding=5)

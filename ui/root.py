@@ -199,10 +199,11 @@ class Root(Tk):
 
     def roll_initiative(self) -> None:
         from random import randint
+        char    = self.character
         d10     = randint(1, 10)
-        penalty = self.character.roll_penalty.get()
-        dex     = self.character.initiative_bonus_dex.get()
-        wits    = self.character.initiative_bonus_wits.get()
+        penalty = char.roll_penalty.get()
+        dex     = char.dex_value.get() + char.dex_boost.get()
+        wits    = char.wits_value.get()
         total   = d10 + penalty + dex + wits
 
         record = RollRecord(
@@ -346,10 +347,11 @@ class Root(Tk):
         self.bot.send_async(msg)
 
     def _send_initiative_to_telegram(self, total: int, raw: int) -> None:
-        dex  = self.character.initiative_bonus_dex.get()
-        wits = self.character.initiative_bonus_wits.get()
+        char = self.character
+        dex  = char.dex_value.get() + char.dex_boost.get()
+        wits = char.wits_value.get()
         msg = (
-            f"<b><i>{self.character.character_name.get()}</i> rolled #INITIATIVE</b>\n"
+            f"<b><i>{char.character_name.get()}</i> rolled #INITIATIVE</b>\n"
             f"Result: <b>{total}</b>\n"
             f"<i>Rolled {raw} + {dex} Dex + {wits} Wits</i>"
         )

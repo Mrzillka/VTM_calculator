@@ -39,10 +39,13 @@
   "trackers": {
     "blood": "Кровь",
     "max_blood": "Макс. кровь",
+    "blood_per_turn": "в ход:",
     "heal": "ЛЕЧИТЬ",
     "wounds": "Раны",
     "humanity_path": "Человечность / Путь",
-    "will": "Воля"
+    "will": "Воля",
+    "physical": "Физические",
+    "end_scene": "Конец сцены"
   },
   "wound_levels": {
     "Bruised": "Задет",
