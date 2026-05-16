@@ -31,7 +31,8 @@ class Interface(BaseInterface):
 
     def _build(self) -> None:
         place_widgets([
-            [self._frm_center()],
+            [self._frm_top()],
+            [self._frm_history_row()],
             [self._frm_bottom()],
         ])
 
@@ -75,12 +76,10 @@ class Interface(BaseInterface):
     # ── Center block ──────────────────────────────────────────────────────────
 
     @frm(padding=4, style="solid.TFrame")
-    def _frm_center(self, frm: ttk.Frame) -> None:
+    def _frm_top(self, frm: ttk.Frame) -> None:
         self._trackers_frame = self._frm_trackers(frm)
         place_widgets([[
             self._frm_main(frm),
-            self._frm_history(frm),
-            self._frm_sidebar(frm),
             self._trackers_frame,
         ]])
         if not self.root.trackers.get():
@@ -163,7 +162,7 @@ class Interface(BaseInterface):
         ]])
 
     @frm(padding=5)
-    def _frm_sidebar(self, frm: ttk.Frame) -> None:
+    def _frm_utility_buttons(self, frm: ttk.Frame) -> None:
         lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
@@ -183,11 +182,11 @@ class Interface(BaseInterface):
     # ── Roll history ──────────────────────────────────────────────────────────
 
     @frm(padding=4, style="solid.TFrame")
-    def _frm_history(self, frm: ttk.Frame) -> None:
+    def _frm_history_row(self, frm: ttk.Frame) -> None:
         lbl = ttk.Label(frm, text=locale.t("roll_history"), style="M.TLabel")
         lbl.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
         locale.register(lbl, "roll_history")
-        self._build_scrollable_history(frm, width=300, height=340)
+        self._build_scrollable_history(frm, width=600, height=200)
 
     # ── Trackers ──────────────────────────────────────────────────────────────
 
@@ -433,6 +432,7 @@ class Interface(BaseInterface):
             self._frm_stat_label(frm, "stats.wounds",   char.wounds_display),
             self._frm_stat_label(frm, "stats.humanity", char.humanity_value),
             self._frm_stat_label(frm, "stats.will",     char.will_value),
+            self._frm_utility_buttons(frm),
         ]])
 
     @frm(padding=5)
