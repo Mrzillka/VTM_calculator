@@ -179,8 +179,27 @@ class Interface(ttk.Frame):
 
     @frm(padding=5)
     def _frm_attributes(self, frm: ttk.Frame) -> None:
-        self._place_stat_columns(frm, self.character.attributes,
-                                 "sheet.attr_categories", "sheet.attr_names")
+        char = self.character
+        boost_map = {
+            "Strength":  char.str_boost,
+            "Dexterity": char.dex_boost,
+            "Stamina":   char.sta_boost,
+        }
+        categories = char.attributes
+        headers = [
+            self._tlabel(frm, f"sheet.attr_categories.{name}", style="sheet.M.TLabel")
+            for name in categories
+        ]
+        contents = [
+            self._frm_stat_lines(
+                frm, data, "sheet.attr_names",
+                boost_map=(boost_map if cat == "Physical" else None),
+            )
+            for cat, data in categories.items()
+        ]
+        place_widgets([headers, contents])
+        for col in range(len(categories)):
+            frm.grid_columnconfigure(col, pad=14)
 
     @frm(padding=5)
     def _frm_abilities(self, frm: ttk.Frame) -> None:
@@ -230,6 +249,7 @@ class Interface(ttk.Frame):
         data: dict[str, dict[str, StringVar | list[BooleanVar]]],
         name_prefix: str,
         custom_entries: list[dict] | None = None,
+        boost_map: dict[str, IntVar] | None = None,
     ) -> None:
         """
         Build all stat rows directly in one shared grid so tkinter aligns
@@ -245,7 +265,10 @@ class Interface(ttk.Frame):
                                     width=15, anchor="e", style="sheet.S.TLabel")
             spec_entry = ttk.Entry(frm, textvariable=values["spec"],
                                    width=15, style="sheet.TEntry")
-            dots = self._frm_dots(frm, values["vars"])
+            if boost_map and label in boost_map:
+                dots = self._frm_dots_with_boost(frm, values["vars"], boost_map[label])
+            else:
+                dots = self._frm_dots(frm, values["vars"])
 
             self._lockable.append(spec_entry)
             self._wire_spec_state(spec_entry, values["vars"], values["spec"])
@@ -692,6 +715,13 @@ class Interface(ttk.Frame):
     def _refresh_wp_cells(self) -> None:
         if not self._wp_labels:
             return
+        try:
+            if not self._wp_labels[0].winfo_exists():
+                self._wp_labels = []
+                return
+        except tk.TclError:
+            self._wp_labels = []
+            return
         char = self.character
         courage = sum(v.get() for v in char.virtues[2]["vars"])
         current = char.will_value.get()
@@ -725,6 +755,13 @@ class Interface(ttk.Frame):
     def _refresh_humanity_cells(self) -> None:
         if not self._humanity_labels:
             return
+        try:
+            if not self._humanity_labels[0].winfo_exists():
+                self._humanity_labels = []
+                return
+        except tk.TclError:
+            self._humanity_labels = []
+            return
         char = self.character
         conscience = sum(v.get() for v in char.virtues[0]["vars"])
         current = char.humanity_value.get()
@@ -751,10 +788,7 @@ class Interface(ttk.Frame):
                     frm, text="●" if var.get() else "○",
                     width=2, style="sheet.Dot.TLabel", cursor="hand2",
                 )
-                var.trace_add(
-                    "write",
-                    lambda *_, l=lbl, v=var: l.configure(text="●" if v.get() else "○"),
-                )
+                var.trace_add("write", self._make_dot_trace(lbl, var))
                 lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
                 row_labels.append(lbl)
             self._sheet_blood_labels.append(row_labels)
@@ -767,6 +801,13 @@ class Interface(ttk.Frame):
 
     def _refresh_sheet_blood_cells(self) -> None:
         if not self._sheet_blood_labels:
+            return
+        try:
+            if not self._sheet_blood_labels[0][0].winfo_exists():
+                self._sheet_blood_labels = []
+                return
+        except tk.TclError:
+            self._sheet_blood_labels = []
             return
         char = self.character
         max_blood = char.blood_max_value.get()
@@ -787,6 +828,49 @@ class Interface(ttk.Frame):
             char.set_blood(load=True)
 
     # ── Dots ─────────────────────────────────────────────────────────────────
+
+    @frm(padding=0)
+    def _frm_dots_with_boost(
+        self, frm: ttk.Frame, variables: list[BooleanVar], boost_var: IntVar
+    ) -> None:
+        """Like _frm_dots but appends green boost-dot slots after the base dots."""
+        row: list[ttk.Label] = []
+        for idx, var in enumerate(variables):
+            lbl = ttk.Label(frm, text="●" if var.get() else "○",
+                            style="sheet.Dot.TLabel", cursor="hand2")
+            var.trace_add("write", self._make_dot_trace(lbl, var))
+            lbl.bind(
+                "<Button-1>",
+                lambda e, i=idx, v=variables: (
+                    None if self.root.locked.get() else self._set_dots(v, i)
+                ),
+            )
+            row.append(lbl)
+            if idx == 4:
+                row.append(ttk.Label(frm, text="·", style="sheet.Sep.TLabel"))
+
+        boost_dots: list[ttk.Label] = []
+        for _ in range(4):
+            lbl = ttk.Label(frm, text="○", style="sheet.Dot.TLabel", foreground="green3")
+            boost_dots.append(lbl)
+            row.append(lbl)
+
+        place_widgets([row])
+
+        def _refresh_boost(*_) -> None:
+            if not boost_dots:
+                return
+            try:
+                if not boost_dots[0].winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            boost = boost_var.get()
+            for i, lbl in enumerate(boost_dots):
+                lbl.configure(text="●" if i < boost else "○")
+
+        boost_var.trace_add("write", _refresh_boost)
+        _refresh_boost()
 
     @frm(padding=0)
     def _frm_dots(self, frm: ttk.Frame, variables: list[BooleanVar]) -> None:

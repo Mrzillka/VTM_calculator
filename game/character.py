@@ -481,3 +481,9 @@ class Character:
         self.set_wounds(load=True)
         self.set_humanity(load=True)
         self.set_will(load=True)
+        self.dex_value.set(
+            sum(v.get() for v in self.attributes["Physical"]["Dexterity"]["vars"])
+        )
+        self.wits_value.set(
+            sum(v.get() for v in self.attributes["Mental"]["Wits"]["vars"])
+        )

@@ -201,10 +201,8 @@ class Interface(BaseInterface):
     @frm(padding=5)
     def _frm_blood_humanity_will(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [self._frm_blood(frm)],
-            [self._frm_physical_attributes(frm)],
-            [self._frm_humanity(frm)],
-            [self._frm_will(frm)],
+            [self._frm_blood(frm),     self._frm_physical_attributes(frm)],
+            [self._frm_humanity(frm),  self._frm_will(frm)],
         ])
 
     @frm(padding=5)
@@ -222,8 +220,7 @@ class Interface(BaseInterface):
         place_widgets([
             [self._tlabel(frm, "trackers.blood", width=12, anchor="n", style="M.TLabel")],
             [cells_frm],
-            [self._frm_max_blood(frm)],
-            [per_turn_frm],
+            [self._frm_max_blood(frm), per_turn_frm],
         ])
 
     @frm(padding=5)
