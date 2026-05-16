@@ -407,14 +407,95 @@ class Interface(BaseInterface):
 
     @frm(padding=5, style="solid.TFrame")
     def _frm_bottom(self, frm) -> None:
+        self._frm_stats_row(frm).grid(row=0, column=0, sticky="ew")
+        self._frm_info_row(frm).grid(row=1, column=0, sticky="ew")
+        frm.grid_columnconfigure(0, weight=1)
+
+    @frm(padding=2, style="flat.TFrame")
+    def _frm_stats_row(self, frm: ttk.Frame) -> None:
         char = self.root.character
-        place_widgets([[
-            self._frm_options(frm),
+        stats = [
             self._frm_stat_label(frm, "stats.blood",    char.blood_value),
             self._frm_stat_label(frm, "stats.wounds",   char.wounds_display),
             self._frm_stat_label(frm, "stats.humanity", char.humanity_value),
             self._frm_stat_label(frm, "stats.will",     char.will_value),
-        ]])
+        ]
+        for col, w in enumerate(stats):
+            w.grid(row=0, column=col, sticky="nsew")
+            frm.grid_columnconfigure(col, weight=1)
+
+    @frm(padding=2, style="flat.TFrame")
+    def _frm_info_row(self, frm: ttk.Frame) -> None:
+        self._frm_probability(frm).grid(row=0, column=0, sticky="nsew")
+        self._frm_options(frm).grid(row=0, column=1, sticky="w")
+        self._frm_roll_stats(frm).grid(row=0, column=2, sticky="nsew")
+        frm.grid_columnconfigure(1, weight=1)
+
+    @frm(padding=5, style="solid.TFrame")
+    def _frm_probability(self, frm: ttk.Frame) -> None:
+        from game.calculator import Calculator
+        prob_var = StringVar(value="—")
+
+        def _update(*_) -> None:
+            root = self.root
+            try:
+                calc = Calculator(
+                    dice_number=root.dice_number.get(),
+                    difficulty=root.difficulty.get(),
+                    success_needed=root.success_needed.get(),
+                    auto_successes=root.auto_success.get(),
+                    specialisation=root.specialisation.get(),
+                )
+                prob_var.set(f"{calc.get_probability():.1f}%")
+            except Exception:
+                prob_var.set("—")
+
+        for var in (
+            self.root.dice_number, self.root.difficulty,
+            self.root.success_needed, self.root.auto_success,
+            self.root.specialisation,
+        ):
+            var.trace_add("write", lambda *_: _update())
+        _update()
+
+        place_widgets([
+            [self._tlabel(frm, "controls.chance", style="S.TLabel", anchor="center")],
+            [ttk.Label(frm, textvariable=prob_var, style="M.TLabel", anchor="center", width=8)],
+        ])
+
+    @frm(padding=5, style="solid.TFrame")
+    def _frm_roll_stats(self, frm: ttk.Frame) -> None:
+        summary_var = StringVar(value="—")
+        rates_var   = StringVar(value="")
+        delta_var   = StringVar(value="")
+        delta_lbl   = ttk.Label(frm, textvariable=delta_var, style="M.TLabel", anchor="center")
+
+        def _update(_record=None) -> None:
+            history = [r for r in self.root.roll_history if r.roll_type == "NORMAL"]
+            total = len(history)
+            if total == 0:
+                summary_var.set("—")
+                rates_var.set("")
+                delta_var.set("")
+                return
+            hits     = sum(1 for r in history if r.successes >= 1)
+            actual   = hits / total * 100
+            expected = sum(r.probability for r in history) / total
+            delta    = actual - expected
+            summary_var.set(f"{total} rolls · {hits} hits")
+            rates_var.set(f"Exp: {expected:.1f}%  Got: {actual:.1f}%")
+            sign = "+" if delta >= 0 else ""
+            delta_var.set(f"{sign}{delta:.1f}%")
+            delta_lbl.configure(foreground="#2d8a2d" if delta >= 0 else "#cc3333")
+
+        self.root.on_roll(_update)
+
+        place_widgets([
+            [self._tlabel(frm, "stats.roll_stats", style="S.TLabel", anchor="center")],
+            [ttk.Label(frm, textvariable=summary_var, style="S.TLabel", anchor="center", width=22)],
+            [ttk.Label(frm, textvariable=rates_var,   style="S.TLabel", anchor="center", width=22)],
+            [delta_lbl],
+        ])
 
     @frm(padding=5)
     def _frm_options(self, frm: ttk.Frame) -> None:
