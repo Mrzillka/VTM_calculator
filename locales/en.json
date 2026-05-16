@@ -34,7 +34,8 @@
     "will": "Will",
     "character_name": "Character name:",
     "dex": "Dex",
-    "wits": "Wits"
+    "wits": "Wits",
+    "roll_stats": "Roll Stats"
   },
   "trackers": {
     "blood": "Blood",

@@ -104,9 +104,8 @@ class Root(Tk):
             locale.set_lang(saved)
 
     def _configure_grid(self) -> None:
-        for col in range(4):
-            self.grid_columnconfigure(col, pad=10)
-        self.grid_rowconfigure(0, pad=10)
+        self.grid_columnconfigure(0, weight=1, pad=10)
+        self.grid_rowconfigure(0, weight=1, pad=10)
 
     def _configure_styles(self) -> None:
         configure_main_styles(ttk.Style())
