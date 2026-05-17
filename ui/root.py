@@ -161,7 +161,7 @@ class Root(Tk):
             difficulty=self.difficulty.get(),
             auto_success=self.auto_success.get(),
             dice=list(result.dice),
-            spec_dice=list(result.specialisation_dice),
+            specialisation_dice=list(result.specialisation_dice),
             successes=result.successes,
             probability=probability,
             roller_name=self.character.character_name.get(),
@@ -188,7 +188,7 @@ class Root(Tk):
             difficulty=self.difficulty.get(),
             auto_success=self.auto_success.get(),
             dice=list(result.dice),
-            spec_dice=list(result.specialisation_dice),
+            specialisation_dice=list(result.specialisation_dice),
             successes=result.successes,
             probability=probability,
             roller_name=self.character.character_name.get(),
@@ -210,7 +210,7 @@ class Root(Tk):
             difficulty=0,
             auto_success=dex + wits,
             dice=[d10],
-            spec_dice=[],
+            specialisation_dice=[],
             successes=total,
             probability=0.0,
             roller_name=self.character.character_name.get(),
@@ -325,7 +325,7 @@ class Root(Tk):
             self.pooling_state.set(locale.t("controls.connect_tg"))
 
     def _send_roll_to_telegram(self, record: RollRecord) -> None:
-        all_dice = record.dice + record.spec_dice
+        all_dice = record.dice + record.specialisation_dice
         roll_label = (
             locale.t("controls.damage_soak")
             if record.roll_type == "DAMAGE"

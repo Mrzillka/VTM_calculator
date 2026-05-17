@@ -9,13 +9,8 @@ class Roller:
     """
     Performs a dice roll according to VTM rules.
 
-    Args:
-        dice_number:    number of dice in the pool.
-        difficulty:     roll difficulty (2–10).
-        auto_success:   automatic successes.
-        specialisation: enable specialisation (reroll 10s).
-        penalty:        penalty (removes dice from the pool).
-        no_botch:       if True, 1s are treated as misses rather than botches.
+    Specialisation re-rolls each 10 in the pool once (recursively on another 10).
+    When no_botch is True, 1s are treated as misses rather than botches (damage/soak mode).
     """
 
     SIDES: int = 10

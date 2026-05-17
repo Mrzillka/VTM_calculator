@@ -22,7 +22,7 @@ class Interface(BaseInterface):
         super().__init__(root)
         self.root = root
 
-        self._additional_row: list[Widget] = []
+        self._additional_widgets: list[Widget] = []
         self._roller_cb: ttk.Combobox | None = None
 
         self._pc_panel = PCPanel(self)
@@ -55,11 +55,11 @@ class Interface(BaseInterface):
 
     def _toggle_additional_options(self) -> None:
         if self.root.additional_options.get():
-            for col_idx, widget in enumerate(self._additional_row):
+            for col_idx, widget in enumerate(self._additional_widgets):
                 widget.grid(column=col_idx, row=5)
                 widget.update()
         else:
-            for widget in self._additional_row:
+            for widget in self._additional_widgets:
                 widget.grid_remove()
 
     def _switch_language(self) -> None:
@@ -114,7 +114,7 @@ class Interface(BaseInterface):
                              command=self._toggle_additional_options),
         ])
 
-        roller_lbl = ttk.Label(frm, text="Rolls as:", style="M.TLabel", anchor="e", width=22)
+        roller_lbl = self._tlabel(frm, "controls.roller", style="M.TLabel", anchor="e", width=22)
         self._roller_cb = ttk.Combobox(
             frm,
             textvariable=root.active_roller,
@@ -128,7 +128,7 @@ class Interface(BaseInterface):
 
         place_widgets(rows)
 
-        self._additional_row = [
+        self._additional_widgets = [
             self._tlabel(frm, "controls.success_needed",
                          width=16, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=10, length=125,
@@ -137,11 +137,11 @@ class Interface(BaseInterface):
             ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
         ]
-        for col_idx, widget in enumerate(self._additional_row):
+        for col_idx, widget in enumerate(self._additional_widgets):
             widget.grid(column=col_idx, row=5)
             widget.update()
         if not root.additional_options.get():
-            for widget in self._additional_row:
+            for widget in self._additional_widgets:
                 widget.grid_remove()
 
     @frm(padding=5)

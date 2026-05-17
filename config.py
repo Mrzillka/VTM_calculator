@@ -14,7 +14,7 @@ def resource_path(relative: str) -> Path:
     return base / relative
 
 
-NAMES: tuple[str, ...] = (
+NPC_NAMES: tuple[str, ...] = (
     "Alex", "Greg", "John", "Bill", "Emma", "Richard",
     "Anna", "Thomas", "Andrew", "Maria", "Caren", "Carl",
 )
@@ -23,7 +23,6 @@ FONT = "Book Antiqua"
 
 
 class WoundLevel(NamedTuple):
-    """Wound level and its dice-pool penalty."""
     name: str
     penalty: int
 
