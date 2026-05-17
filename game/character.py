@@ -3,7 +3,10 @@ from __future__ import annotations
 from random import choice
 from tkinter import BooleanVar, IntVar, StringVar
 
-from config import GENERATION_RULES, NPC_NAMES, WOUND_LEVELS
+from config import (
+    BLOOD_COLS, BLOOD_ROWS, DEFAULT_GENERATION, GENERATION_RULES,
+    MAX_GENERATION, MAX_DOT_TRACKER, MIN_GENERATION, NPC_NAMES, WOUND_LEVELS,
+)
 from game.character_io import CharacterIO
 
 _ATTRIBUTES = {
@@ -70,9 +73,10 @@ class Character(CharacterIO):
         self.dex_boost = IntVar(value=0)
         self.sta_boost = IntVar(value=0)
 
-        self.blood_max_value = IntVar(value=10)
-        self.blood = [[BooleanVar(value=False) for _ in range(10)] for _ in range(5)]
-        self.blood_value = IntVar(value=10)
+        default_blood = GENERATION_RULES[DEFAULT_GENERATION]["blood_max"]
+        self.blood_max_value = IntVar(value=default_blood)
+        self.blood = [[BooleanVar(value=False) for _ in range(BLOOD_COLS)] for _ in range(BLOOD_ROWS)]
+        self.blood_value = IntVar(value=default_blood)
 
         # -1 = unharmed; 0..len(WOUND_LEVELS)-1 = index into WOUND_LEVELS
         self.wounds = [BooleanVar(value=False) for _ in range(len(WOUND_LEVELS))]
@@ -80,12 +84,12 @@ class Character(CharacterIO):
         self.wounds_display = StringVar(value="Unharmed")
         self.roll_penalty = IntVar(value=0)
 
-        self.humanity = [BooleanVar(value=False) for _ in range(10)]
+        self.humanity = [BooleanVar(value=False) for _ in range(MAX_DOT_TRACKER)]
         self.humanity_value = IntVar(value=0)
 
-        self.will = [BooleanVar(value=False) for _ in range(10)]
+        self.will = [BooleanVar(value=False) for _ in range(MAX_DOT_TRACKER)]
         self.will_value = IntVar(value=0)
-        self.willpower_max = IntVar(value=10)
+        self.willpower_max = IntVar(value=MAX_DOT_TRACKER)
 
         self.blood_per_turn = StringVar(value="1")
         self.generation.trace_add("write", lambda *_: self._on_generation_change())
@@ -160,12 +164,12 @@ class Character(CharacterIO):
     def _parse_generation(self) -> int:
         digits = "".join(c for c in self.generation.get() if c.isdigit())
         try:
-            return max(4, min(15, int(digits)))
+            return max(MIN_GENERATION, min(MAX_GENERATION, int(digits)))
         except ValueError:
-            return 13
+            return DEFAULT_GENERATION
 
     def _on_generation_change(self) -> None:
-        rules = GENERATION_RULES.get(self._parse_generation(), GENERATION_RULES[13])
+        rules = GENERATION_RULES.get(self._parse_generation(), GENERATION_RULES[DEFAULT_GENERATION])
         self.blood_max_value.set(rules["blood_max"])
         self.blood_per_turn.set(str(rules["blood_per_turn"]))
 
@@ -203,16 +207,16 @@ class Character(CharacterIO):
         """
         if load:
             val = self.blood_value.get()
-            row, col = divmod(val, 10)
+            row, col = divmod(val, BLOOD_COLS)
         else:
-            if self.blood_value.get() != row * 10 + col + 1:
+            if self.blood_value.get() != row * BLOOD_COLS + col + 1:
                 col += 1
 
-        for i in range(5):
-            for j in range(10):
+        for i in range(BLOOD_ROWS):
+            for j in range(BLOOD_COLS):
                 self.blood[i][j].set(i < row or (i == row and j < col))
 
-        self.blood_value.set(row * 10 + col)
+        self.blood_value.set(row * BLOOD_COLS + col)
 
     def set_wounds(self, clicked: int = 0, *, load: bool = False) -> None:
         """
@@ -258,7 +262,7 @@ class Character(CharacterIO):
         else:
             filled = self.humanity_value.get()
             level = clicked if filled == clicked + 1 else clicked + 1
-        for i in range(10):
+        for i in range(MAX_DOT_TRACKER):
             self.humanity[i].set(i < level)
         self.humanity_value.set(level)
 
@@ -269,7 +273,7 @@ class Character(CharacterIO):
         else:
             filled = self.will_value.get()
             level = clicked if filled == clicked + 1 else clicked + 1
-        for i in range(10):
+        for i in range(MAX_DOT_TRACKER):
             self.will[i].set(i < level)
         self.will_value.set(level)
 

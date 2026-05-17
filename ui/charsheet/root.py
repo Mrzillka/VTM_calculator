@@ -8,6 +8,7 @@ from typing import Callable
 
 from game.character import Character
 from ui.charsheet.interface import Interface
+from ui.constants import MOUSEWHEEL_DIVISOR, SHEET_HEIGHT, SHEET_MIN_HEIGHT, SHEET_MIN_WIDTH, SHEET_WIDTH
 from ui.styles import configure_sheet_styles
 from ui.utils import apply_icon
 
@@ -26,9 +27,9 @@ class Root(Toplevel):
     ) -> None:
         super().__init__(parent)
         self.title("Character Sheet")
-        self.resizable(True, False)
-        self.geometry("1150x750")
-        self.minsize(700, 450)
+        self.resizable(False, False)
+        self.geometry(f"{SHEET_WIDTH}x{SHEET_HEIGHT}")
+        self.minsize(SHEET_MIN_WIDTH, SHEET_MIN_HEIGHT)
 
         apply_icon(self, "icon.ico", inherit=False)
 
@@ -76,7 +77,7 @@ class Root(Toplevel):
 
     def _setup_mousewheel(self, canvas: tk.Canvas) -> None:
         def _scroll_win(e: tk.Event) -> None:
-            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+            canvas.yview_scroll(int(-1 * (e.delta / MOUSEWHEEL_DIVISOR)), "units")
 
         def _scroll_up(e: tk.Event = None) -> None:
             canvas.yview_scroll(-1, "units")

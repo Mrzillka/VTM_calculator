@@ -10,6 +10,7 @@ from typing import Callable
 
 from config import NPC_DIR, PC_DIR
 from game.character import Character
+from ui.constants import MOUSEWHEEL_DIVISOR
 
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ def _make_scroll_canvas(parent: ttk.Frame, *, width: int, height: int) -> ttk.Fr
     canvas.bind("<Configure>", lambda e: canvas.itemconfig(wid, width=e.width))
 
     def _scroll(e: tk.Event) -> None:
-        canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        canvas.yview_scroll(int(-1 * (e.delta / MOUSEWHEEL_DIVISOR)), "units")
 
     canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _scroll))
     canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))

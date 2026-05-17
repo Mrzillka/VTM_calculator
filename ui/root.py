@@ -21,6 +21,7 @@ from game.roller import Roller
 from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
+from ui.constants import BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
 from ui.interface import Interface
 from ui.styles import configure_main_styles
 from ui.utils import apply_icon, place_widgets
@@ -40,7 +41,7 @@ class Root(Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("VTM calculator")
-        self.resizable(True, True)
+        self.resizable(False, False)
 
         apply_icon(self, "icon.ico")
 
@@ -93,7 +94,7 @@ class Root(Tk):
         self._session: NtfySession | None = None
         self._tracker_send_job: str | None = None
         self._setup_tracker_traces()
-        self.after(100, self._poll_net_queue)
+        self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
 
@@ -274,7 +275,7 @@ class Root(Tk):
             return
         if self._tracker_send_job:
             self.after_cancel(self._tracker_send_job)
-        self._tracker_send_job = self.after(500, self._send_trackers_now)
+        self._tracker_send_job = self.after(TRACKER_DEBOUNCE_MS, self._send_trackers_now)
 
     def _send_trackers_now(self) -> None:
         self._tracker_send_job = None
@@ -308,7 +309,7 @@ class Root(Tk):
         except queue.Empty:
             pass
         finally:
-            self.after(100, self._poll_net_queue)
+            self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Telegram ───────────────────────────────────────────────────────────────
 
@@ -320,7 +321,7 @@ class Root(Tk):
     def _poll_status_update(self) -> None:
         if self.bot.is_polling:
             self.pooling_state.set(locale.t("controls.connecting"))
-            self.after(1000, self._poll_status_update)
+            self.after(BOT_STATUS_POLL_MS, self._poll_status_update)
         else:
             self.pooling_state.set(locale.t("controls.connect_tg"))
 

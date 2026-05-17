@@ -15,6 +15,8 @@ class Calculator:
     """
 
     SIDES: int = 10
+    # Chains modelled to this depth; residual probability ≈ 10⁻²⁰.
+    _SPEC_CHAIN_DEPTH: int = 20
 
     def __init__(
             self,
@@ -73,7 +75,7 @@ class Calculator:
             base_no_10[1] = max(0.0, base_no_10.get(1, 0.0) - p_10)
             dist = dict(base_no_10)
             chain_p = p_10
-            for depth in range(1, 21):
+            for depth in range(1, self._SPEC_CHAIN_DEPTH + 1):
                 for score, p in base_no_10.items():
                     k = score + depth
                     dist[k] = dist.get(k, 0.0) + chain_p * p
@@ -93,7 +95,7 @@ class Calculator:
 
             dist = dict(base)
             chain_p = p_10
-            for depth in range(1, 21):
+            for depth in range(1, self._SPEC_CHAIN_DEPTH + 1):
                 for score, p in base.items():
                     k = score + depth
                     dist[k] = dist.get(k, 0.0) + chain_p * p
