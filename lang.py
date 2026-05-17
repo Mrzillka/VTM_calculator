@@ -20,23 +20,23 @@ class _Locale:
 
     def __init__(self, lang: str = "en") -> None:
         self._lang: str = lang if lang in _SUPPORTED else "en"
-        self._data: dict[str, Any] = {}
-        self._all_data: dict[str, dict[str, Any]] = {}
+        self._strings: dict[str, Any] = {}
+        self._all_strings: dict[str, dict[str, Any]] = {}  # keyed by language code
         self._callbacks: list[Callable[[], None]] = []
         self._load_all()
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _load_all(self) -> None:
-        """Load every supported locale file into _all_data and set _data."""
+        """Load every supported locale file into _all_strings and set _data."""
         for lang in _SUPPORTED:
             path = LOCALE_DIR / f"{lang}.json"
             with open(path, encoding="utf-8") as f:
-                self._all_data[lang] = json.load(f)
-        self._data = self._all_data[self._lang]
+                self._all_strings[lang] = json.load(f)
+        self._strings = self._all_strings[self._lang]
 
     def _load(self) -> None:
-        self._data = self._all_data[self._lang]
+        self._strings = self._all_strings[self._lang]
 
     @staticmethod
     def _navigate(data: dict[str, Any], section: str) -> dict[str, Any]:
@@ -57,7 +57,7 @@ class _Locale:
 
     def t(self, key: str) -> str:
         """Return translated string for a dot-separated *key*; falls back to the key itself."""
-        node: Any = self._data
+        node: Any = self._strings
         for part in key.split("."):
             if isinstance(node, dict):
                 node = node.get(part, key)
@@ -67,7 +67,7 @@ class _Locale:
 
     def raw(self, key: str) -> Any:
         """Return the raw JSON value (list, dict, str, …) for a dot-separated *key*."""
-        node: Any = self._data
+        node: Any = self._strings
         for part in key.split("."):
             if isinstance(node, dict):
                 node = node.get(part)
@@ -88,7 +88,7 @@ class _Locale:
         """
         if not value:
             return value
-        for lang_data in self._all_data.values():
+        for lang_data in self._all_strings.values():
             section_map = self._navigate(lang_data, section)
             reverse = {v: k for k, v in section_map.items()}
             if value in reverse:
@@ -104,7 +104,7 @@ class _Locale:
         it is not a known entry (i.e. a user-entered custom string).
         """
         en_key = self.reverse_lookup_en(section, value)
-        current_map = self._navigate(self._data, section)
+        current_map = self._navigate(self._strings, section)
         return current_map.get(en_key, value)
 
     def switch(self) -> None:

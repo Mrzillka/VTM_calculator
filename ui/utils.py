@@ -39,7 +39,8 @@ def place_widgets(grid: list[list[Widget | None]]) -> None:
     """Place widgets in a grid layout (row=y, column=x)."""
     for row_idx, row in enumerate(grid):
         for col_idx, widget in enumerate(row):
-            widget.grid(column=col_idx, row=row_idx)
+            if widget is not None:
+                widget.grid(column=col_idx, row=row_idx)
 
 
 def frm(padding: int = 5, style: str = "flat.TFrame") -> Callable:

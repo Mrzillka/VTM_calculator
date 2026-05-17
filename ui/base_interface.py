@@ -27,19 +27,8 @@ _COUNT_STYLE: dict[str, str] = {
 }
 
 
-class BaseInterface(ttk.Frame):
-    """
-    Shared helpers and roll-history widget used by all interface variants.
-
-    Subclasses that use the history panel must call _build_scrollable_history()
-    during construction.
-    """
-
-    _history_canvas: tk.Canvas
-    _history_inner: ttk.Frame
-    _history_win_id: int
-
-    # ── Locale helpers ────────────────────────────────────────────────────────
+class LocaleWidgetsMixin:
+    """Mixin providing locale-aware widget factory methods."""
 
     def _tlabel(self, parent: ttk.Frame, key: str, **kwargs) -> ttk.Label:
         lbl = ttk.Label(parent, text=locale.t(key), **kwargs)
@@ -50,6 +39,19 @@ class BaseInterface(ttk.Frame):
         btn = ttk.Button(parent, text=locale.t(key), **kwargs)
         locale.register(btn, key)
         return btn
+
+
+class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
+    """
+    Shared helpers and roll-history widget used by all interface variants.
+
+    Subclasses that use the history panel must call _build_scrollable_history()
+    during construction.
+    """
+
+    _history_canvas: tk.Canvas
+    _history_inner: ttk.Frame
+    _history_win_id: int
 
     # ── Dot toggle ────────────────────────────────────────────────────────────
 
@@ -190,7 +192,6 @@ class BaseInterface(ttk.Frame):
             )
             current_row += 1
 
-        # Meta line: dice count, difficulty, optional auto-successes, roll type badge.
         meta_text = (
             f"{record.dice_number}d  •  diff {record.difficulty}"
             + (f"  •  auto +{record.auto_success}" if record.auto_success else "")
@@ -208,8 +209,8 @@ class BaseInterface(ttk.Frame):
             row=current_row, column=0, columnspan=2, sticky="w", pady=(2, 0))
         current_row += 1
 
-        if record.spec_dice:
-            spec_text = "spec: " + "  ".join(map(str, sorted(record.spec_dice, reverse=True)))
+        if record.specialisation_dice:
+            spec_text = "spec: " + "  ".join(map(str, sorted(record.specialisation_dice, reverse=True)))
             ttk.Label(frame, text=spec_text, style="HistoryMeta.TLabel").grid(
                 row=current_row, column=0, sticky="w")
             current_row += 1

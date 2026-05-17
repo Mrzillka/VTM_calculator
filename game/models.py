@@ -1,6 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
+
+
+def _compute_outcome(successes: int) -> str:
+    if successes >= 1:
+        return "SUCCESS"
+    if successes < 0:
+        return "BOTCH"
+    return "FAILURE"
 
 
 @dataclass(frozen=True)
@@ -16,11 +25,7 @@ class RollResult:
 
     @property
     def outcome(self) -> str:
-        if self.successes >= 1:
-            return "SUCCESS"
-        if self.successes < 0:
-            return "BOTCH"
-        return "FAILURE"
+        return _compute_outcome(self.successes)
 
 
 @dataclass
@@ -30,18 +35,13 @@ class RollRecord:
     difficulty: int
     auto_success: int
     dice: list[int]
-    spec_dice: list[int]
+    specialisation_dice: list[int]
     successes: int
     probability: float
     # Empty string means the Storyteller rolled (no specific character).
     roller_name: str = field(default="")
-    # "NORMAL" | "DAMAGE" | "INITIATIVE"
-    roll_type: str = field(default="NORMAL")
+    roll_type: Literal["NORMAL", "DAMAGE", "INITIATIVE"] = field(default="NORMAL")
 
     @property
     def outcome(self) -> str:
-        if self.successes >= 1:
-            return "SUCCESS"
-        if self.successes < 0:
-            return "BOTCH"
-        return "FAILURE"
+        return _compute_outcome(self.successes)
