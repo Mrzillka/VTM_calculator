@@ -25,7 +25,8 @@
     "join_session":  "Join",
     "leave_session": "Leave",
     "new_session":   "New Session",
-    "copy_code":     "Copy"
+    "copy_code":     "Copy",
+    "roller":        "Rolls as:"
   },
   "stats": {
     "blood": "Blood",

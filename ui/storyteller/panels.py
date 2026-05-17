@@ -93,8 +93,8 @@ def _panel_header(parent: ttk.Frame, title: str, btn_text: str, btn_cmd) -> None
 class PCPanel(ttk.Frame):
     """Scrollable GM panel showing read-only player character summary cards."""
 
-    _WIDTH = 260
-    _HEIGHT = 420
+    WIDTH = 260
+    HEIGHT = 420
 
     def __init__(self, parent: ttk.Frame) -> None:
         super().__init__(parent, style="solid.TFrame", padding=4)
@@ -105,7 +105,7 @@ class PCPanel(ttk.Frame):
 
     def _build(self) -> None:
         _panel_header(self, "Players", "+ Load PC", self._browse_and_load)
-        self._inner = _make_scroll_canvas(self, width=self._WIDTH, height=self._HEIGHT)
+        self._inner = _make_scroll_canvas(self, width=self.WIDTH, height=self.HEIGHT)
 
     # ── Network callbacks ──────────────────────────────────────────────────────
 
@@ -247,8 +247,8 @@ class PCPanel(ttk.Frame):
 class NPCPanel(ttk.Frame):
     """Scrollable GM panel for creating and managing NPC summary cards."""
 
-    _WIDTH = 260
-    _HEIGHT = 420
+    WIDTH = 260
+    HEIGHT = 420
 
     def __init__(
         self,
@@ -269,7 +269,7 @@ class NPCPanel(ttk.Frame):
 
     def _build(self) -> None:
         _panel_header(self, "NPCs", "+ New NPC", self._create_npc)
-        self._inner = _make_scroll_canvas(self, width=self._WIDTH, height=self._HEIGHT)
+        self._inner = _make_scroll_canvas(self, width=self.WIDTH, height=self.HEIGHT)
 
     def _notify(self) -> None:
         if self._on_roster_change:
