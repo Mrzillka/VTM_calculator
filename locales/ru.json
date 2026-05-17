@@ -29,7 +29,8 @@
     "roller":        "Бросает:",
     "stats_tab":     "Статы",
     "dark_mode":     "🌙 Тёмная",
-    "light_mode":    "☀ Светлая"
+    "light_mode":    "☀ Светлая",
+    "settings":      "⚙ Настройки"
   },
   "stats": {
     "blood": "Кровь",

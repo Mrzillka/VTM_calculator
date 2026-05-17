@@ -29,7 +29,8 @@
     "roller":        "Rolls as:",
     "stats_tab":     "Stats",
     "dark_mode":     "🌙 Dark",
-    "light_mode":    "☀ Light"
+    "light_mode":    "☀ Light",
+    "settings":      "⚙ Settings"
   },
   "stats": {
     "blood": "Blood",

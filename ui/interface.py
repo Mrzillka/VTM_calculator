@@ -90,10 +90,15 @@ class Interface(BaseInterface):
         stats_tab = self._frm_stats_tab(nb)
         nb.add(stats_tab, text=locale.t("controls.stats_tab"))
 
+        # Tab 4: Settings
+        settings_tab = self._frm_settings_tab(nb)
+        nb.add(settings_tab, text=locale.t("controls.settings"))
+
         def _update_tab_titles() -> None:
             nb.tab(0, text=locale.t("roll_history"))
             nb.tab(1, text=locale.t("controls.trackers"))
             nb.tab(2, text=locale.t("controls.stats_tab"))
+            nb.tab(3, text=locale.t("controls.settings"))
             self._rebuild_stats_tab()
 
         locale.on_change(_update_tab_titles)
@@ -638,8 +643,6 @@ class Interface(BaseInterface):
     def _frm_options(self, frm: ttk.Frame) -> None:
         place_widgets([[
             self._frm_name(frm),
-            self._frm_action_buttons(frm),
-            self._frm_session(frm),
             self._frm_nav_buttons(frm),
         ]])
 
@@ -688,10 +691,58 @@ class Interface(BaseInterface):
 
     @frm(padding=5)
     def _frm_nav_buttons(self, frm: ttk.Frame) -> None:
+        place_widgets([
+            [self._tbutton(frm, "controls.sheet", style="S.TButton",
+                           command=self._open_character_sheet)],
+        ])
+
+    @frm(padding=8, style="solid.TFrame")
+    def _frm_settings_tab(self, frm: ttk.Frame) -> None:
+        root = self.root
+        pad = {"pady": 3, "padx": 4}
+
+        # Session code label + entry
+        self._tlabel(frm, "controls.session_code", style="S.TLabel", anchor="e").grid(
+            row=0, column=0, sticky="e", **pad)
+        ttk.Entry(frm, textvariable=root.session_code,
+                  width=14, style="my.TEntry").grid(row=0, column=1, sticky="ew", **pad)
+
+        # Join / Leave button
+        btn_var = tk.StringVar(value=locale.t("controls.join_session"))
+
+        def _update_btn(*_) -> None:
+            key = "controls.leave_session" if root.is_connected.get() else "controls.join_session"
+            btn_var.set(locale.t(key))
+
+        root.is_connected.trace_add("write", _update_btn)
+        locale.on_change(_update_btn)
+
+        def _on_click() -> None:
+            if root.is_connected.get():
+                root.leave_session()
+            else:
+                root.join_session()
+
+        ttk.Button(frm, textvariable=btn_var, command=_on_click,
+                   style="S.TButton").grid(row=1, column=0, columnspan=2, **pad)
+
+        # Telegram
+        ttk.Button(frm, textvariable=root.pooling_state,
+                   command=root.start_bot_polling,
+                   style="S.TButton").grid(row=2, column=0, columnspan=2, **pad)
+
+        # Load character
+        self._tbutton(frm, "controls.load_character", style="S.TButton",
+                      command=root.load_character_dialog).grid(
+            row=3, column=0, columnspan=2, **pad)
+
+        # Language
         lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
+        lang_btn.grid(row=4, column=0, columnspan=2, **pad)
 
+        # Theme
         theme_var = tk.StringVar()
 
         def _upd_theme_btn(*_) -> None:
@@ -701,18 +752,10 @@ class Interface(BaseInterface):
         _upd_theme_btn()
         locale.on_change(_upd_theme_btn)
         theme.on_change(_upd_theme_btn)
+        ttk.Button(frm, textvariable=theme_var, style="S.TButton",
+                   command=root.toggle_theme).grid(row=5, column=0, columnspan=2, **pad)
 
-        theme_btn = ttk.Button(frm, textvariable=theme_var, style="S.TButton",
-                               command=self.root.toggle_theme)
-
-        place_widgets([
-            [self._tbutton(frm, "controls.sheet", style="S.TButton",
-                           command=self._open_character_sheet)],
-            [self._tbutton(frm, "controls.load_character", style="S.TButton",
-                           command=self.root.load_character_dialog)],
-            [lang_btn],
-            [theme_btn],
-        ])
+        frm.grid_columnconfigure(1, weight=1)
 
     @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:
