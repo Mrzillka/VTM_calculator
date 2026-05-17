@@ -19,6 +19,7 @@ from network.session import NtfySession
 from ui.constants import NET_POLL_MS
 from ui.storyteller.interface import Interface
 from ui.styles import configure_main_styles
+from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class Root(Tk):
         apply_icon(self, "icon_storyteller.ico")
 
         self._restore_lang_pref()
+        self._restore_theme_pref()
 
         self.dice_number        = IntVar(value=5)
         self.difficulty         = IntVar(value=6)
@@ -73,8 +75,30 @@ class Root(Tk):
         if saved != locale.lang:
             locale.set_lang(saved)
 
+    def _restore_theme_pref(self) -> None:
+        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        theme.set_mode(env.get("THEME_PREF", "light"))
+
     def _configure_styles(self) -> None:
-        configure_main_styles(ttk.Style())
+        s = ttk.Style()
+        s.theme_use("clam")
+        configure_main_styles(s, theme.palette)
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.configure(bg=theme.palette["bg"])
+
+    def toggle_theme(self) -> None:
+        theme.toggle()
+        s = ttk.Style()
+        configure_main_styles(s, theme.palette)
+        self.configure(bg=theme.palette["bg"])
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.save_lang_pref()
 
     def _build_interface(self) -> None:
         self._interface = Interface(self)
@@ -224,7 +248,8 @@ class Root(Tk):
     # ── Persistence ────────────────────────────────────────────────────────────
 
     def save_lang_pref(self) -> None:
-        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF", locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",  locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF", theme.mode)
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

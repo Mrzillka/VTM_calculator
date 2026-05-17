@@ -8,6 +8,7 @@ from typing import Callable
 from game.character import Character
 from lang import locale
 from ui.base_interface import LocaleWidgetsMixin
+from ui.theme import theme
 from ui.charsheet._section_mixins import _AttributesMixin, _AdvantagesMixin, _TrackersMixin
 from ui.utils import frm, place_widgets
 
@@ -183,7 +184,8 @@ class Interface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _TrackersMixin, L
 
         boost_dots: list[ttk.Label] = []
         for _ in range(4):
-            lbl = ttk.Label(frm, text="○", style="sheet.Dot.TLabel", foreground="green3")
+            lbl = ttk.Label(frm, text="○", style="sheet.Dot.TLabel",
+                            foreground=theme.palette["boost_dot"])
             boost_dots.append(lbl)
             row.append(lbl)
 
@@ -201,7 +203,16 @@ class Interface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _TrackersMixin, L
             for i, lbl in enumerate(boost_dots):
                 lbl.configure(text="●" if i < boost else "○")
 
+        def _upd_boost_colors() -> None:
+            try:
+                if boost_dots and boost_dots[0].winfo_exists():
+                    for lbl in boost_dots:
+                        lbl.configure(foreground=theme.palette["boost_dot"])
+            except tk.TclError:
+                pass
+
         boost_var.trace_add("write", _refresh_boost)
+        theme.on_change(_upd_boost_colors)
         _refresh_boost()
 
     @frm(padding=0)

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, SPEC_MIN_DOTS, WOUND_LEVELS
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.theme import theme
 from ui.constants import (
     AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
     HISTORY_HEIGHT, HISTORY_WIDTH, SCALE_LENGTH, SUCCESS_NEEDED_MAX,
@@ -190,7 +191,7 @@ class Interface(BaseInterface):
 
     @frm(padding=0, style="solid.TFrame")
     def _frm_stats_tab(self, outer: ttk.Frame) -> None:
-        canvas = tk.Canvas(outer, highlightthickness=0)
+        canvas = tk.Canvas(outer, highlightthickness=0, bg=theme.palette["bg"])
         scrollbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -209,6 +210,23 @@ class Interface(BaseInterface):
         self._stats_tab_frame = inner
         self._stats_rebuild_pending = False
         self._build_stats_content(inner)
+
+        def _update_stats_canvas_bg() -> None:
+            try:
+                if canvas.winfo_exists():
+                    canvas.configure(bg=theme.palette["bg"])
+            except tk.TclError:
+                pass
+
+        def _on_theme_stats() -> None:
+            try:
+                if self._stats_tab_frame.winfo_exists():
+                    self._rebuild_stats_tab()
+            except tk.TclError:
+                pass
+
+        theme.on_change(_update_stats_canvas_bg)
+        theme.on_change(_on_theme_stats)
 
         char = self.root.character
         for cat_data in char.attributes.values():
@@ -244,14 +262,15 @@ class Interface(BaseInterface):
             row.pack(anchor="w", fill="x", pady=(1, 0))
             ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
             dot_lbl = ttk.Label(row, text="●" * count, anchor="w", style="S.TLabel")
-            dot_lbl.configure(foreground="#8b1a1a")
+            dot_lbl.configure(foreground=theme.palette["dot_fg"])
             dot_lbl.pack(side="left", padx=(3, 0))
             if spec and count >= SPEC_MIN_DOTS:
                 spec_row = ttk.Frame(col_frame, style="flat.TFrame")
                 spec_row.pack(anchor="w", fill="x", pady=(0, 2))
                 ttk.Label(spec_row, width=13, style="S.TLabel").pack(side="left")
                 spec_lbl = ttk.Label(spec_row, text=f"({spec})", anchor="w", style="S.TLabel")
-                spec_lbl.configure(foreground="#555555", font=("TkDefaultFont", 8, "italic"))
+                spec_lbl.configure(foreground=theme.palette["spec_fg"],
+                                   font=("TkDefaultFont", 8, "italic"))
                 spec_lbl.pack(side="left", padx=(3, 0))
 
         def _build_section(
@@ -602,7 +621,9 @@ class Interface(BaseInterface):
             rates_var.set(f"Exp: {expected:.1f}%  Got: {actual:.1f}%")
             sign = "+" if delta >= 0 else ""
             delta_var.set(f"{sign}{delta:.1f}%")
-            delta_lbl.configure(foreground="#2d8a2d" if delta >= 0 else "#cc3333")
+            delta_lbl.configure(
+                foreground=theme.palette["delta_pos"] if delta >= 0 else theme.palette["delta_neg"]
+            )
 
         self.root.on_roll(_update)
 
@@ -673,12 +694,26 @@ class Interface(BaseInterface):
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
 
+        theme_var = tk.StringVar()
+
+        def _upd_theme_btn(*_) -> None:
+            key = "controls.dark_mode" if theme.mode == "light" else "controls.light_mode"
+            theme_var.set(locale.t(key))
+
+        _upd_theme_btn()
+        locale.on_change(_upd_theme_btn)
+        theme.on_change(_upd_theme_btn)
+
+        theme_btn = ttk.Button(frm, textvariable=theme_var, style="S.TButton",
+                               command=self.root.toggle_theme)
+
         place_widgets([
             [self._tbutton(frm, "controls.sheet", style="S.TButton",
                            command=self._open_character_sheet)],
             [self._tbutton(frm, "controls.load_character", style="S.TButton",
                            command=self.root.load_character_dialog)],
             [lang_btn],
+            [theme_btn],
         ])
 
     @frm(padding=2, style="solid.TFrame")

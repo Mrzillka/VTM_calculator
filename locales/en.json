@@ -27,7 +27,9 @@
     "new_session":   "New Session",
     "copy_code":     "Copy",
     "roller":        "Rolls as:",
-    "stats_tab":     "Stats"
+    "stats_tab":     "Stats",
+    "dark_mode":     "🌙 Dark",
+    "light_mode":    "☀ Light"
   },
   "stats": {
     "blood": "Blood",

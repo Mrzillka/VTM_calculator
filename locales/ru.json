@@ -27,7 +27,9 @@
     "new_session":   "Новая сессия",
     "copy_code":     "Копировать",
     "roller":        "Бросает:",
-    "stats_tab":     "Статы"
+    "stats_tab":     "Статы",
+    "dark_mode":     "🌙 Тёмная",
+    "light_mode":    "☀ Светлая"
   },
   "stats": {
     "blood": "Кровь",

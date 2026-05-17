@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.theme import theme
 from ui.constants import (
     AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
     SCALE_LENGTH, ST_HISTORY_HEIGHT, ST_HISTORY_WIDTH, SUCCESS_NEEDED_MAX,
@@ -164,8 +165,21 @@ class Interface(BaseInterface):
         lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
-
         lang_btn.grid(row=0, column=0, padx=4)
+
+        theme_var = tk.StringVar()
+
+        def _upd_theme_btn(*_) -> None:
+            key = "controls.dark_mode" if theme.mode == "light" else "controls.light_mode"
+            theme_var.set(locale.t(key))
+
+        _upd_theme_btn()
+        locale.on_change(_upd_theme_btn)
+        theme.on_change(_upd_theme_btn)
+
+        theme_btn = ttk.Button(frm, textvariable=theme_var, style="S.TButton",
+                               command=self.root.toggle_theme)
+        theme_btn.grid(row=0, column=1, padx=4)
 
         # Session block
         new_btn = self._tbutton(frm, "controls.new_session", style="S.TButton",

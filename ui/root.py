@@ -24,6 +24,7 @@ from network.session import NtfySession
 from ui.constants import BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
 from ui.interface import Interface
 from ui.styles import configure_main_styles
+from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class Root(Tk):
         apply_icon(self, "icon.ico")
 
         self._restore_lang_pref()
+        self._restore_theme_pref()
 
         # ── Character ──────────────────────────────────────────────────────────
         self.character = Character()
@@ -104,12 +106,34 @@ class Root(Tk):
         if saved != locale.lang:
             locale.set_lang(saved)
 
+    def _restore_theme_pref(self) -> None:
+        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        theme.set_mode(env.get("THEME_PREF", "light"))
+
     def _configure_grid(self) -> None:
         self.grid_columnconfigure(0, weight=1, pad=10)
         self.grid_rowconfigure(0, weight=1, pad=10)
 
     def _configure_styles(self) -> None:
-        configure_main_styles(ttk.Style())
+        s = ttk.Style()
+        s.theme_use("clam")
+        configure_main_styles(s, theme.palette)
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.configure(bg=theme.palette["bg"])
+
+    def toggle_theme(self) -> None:
+        theme.toggle()
+        s = ttk.Style()
+        configure_main_styles(s, theme.palette)
+        self.configure(bg=theme.palette["bg"])
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.save_to_file()
 
     def _build_interface(self) -> None:
         self._interface = Interface(self)
@@ -364,6 +388,7 @@ class Root(Tk):
         dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID",         str(self.bot.chat_id))
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",       str(self.bot.thread_id))
         dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",       locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF",      theme.mode)
         dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",    self.session_code.get())
         filename = f"{self.character.character_name.get()}.json"
         dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
