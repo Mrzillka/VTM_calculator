@@ -213,7 +213,7 @@ class Interface(BaseInterface):
         place_widgets([
             [self._tlabel(frm, "trackers.blood", width=12, anchor="n", style="M.TLabel")],
             [cells_frm],
-            [self._frm_max_blood(frm), per_turn_frm],
+            [per_turn_frm],
         ])
 
     @frm(padding=5)
@@ -254,18 +254,6 @@ class Interface(BaseInterface):
         if char.blood_value.get() > max_blood:
             char.blood_value.set(max_blood)
             char.set_blood(load=True)
-
-    @frm(padding=5)
-    def _frm_max_blood(self, frm: ttk.Frame) -> None:
-        place_widgets([[
-            self._tlabel(frm, "trackers.max_blood", width=12, anchor="n", style="S.TLabel"),
-            ttk.Spinbox(
-                frm, from_=1, to=50,
-                textvariable=self.root.character.blood_max_value,
-                command=self._disable_blood_cells,
-                width=3, style="my.TSpinbox",
-            ),
-        ]])
 
     @frm(padding=5)
     def _frm_physical_attributes(self, frm: ttk.Frame) -> None:
