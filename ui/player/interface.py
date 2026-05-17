@@ -562,12 +562,22 @@ class Interface(BaseInterface):
             )
             abil_cb.configure(
                 postcommand=lambda cb=abil_cb: cb.configure(
-                    values=[locale.translate_known("sheet.ability_names", n)
-                            for n in root.character.all_pool_names()]
+                    values=self._build_abil_cb_values()
                 )
             )
             abil_cb.grid(row=r, column=1, padx=2, pady=1, sticky="ew")
             self._qr_abil_cbs.append(abil_cb)
+
+            _prev_abil = [abil_var.get()]
+
+            def _on_abil_sel(event, var=abil_var, prev=_prev_abil):
+                val = var.get()
+                if val.startswith("──"):
+                    var.set(prev[0])
+                else:
+                    prev[0] = val
+
+            abil_cb.bind("<<ComboboxSelected>>", _on_abil_sel)
 
             ttk.Spinbox(
                 frm, textvariable=diff_var,
@@ -601,11 +611,44 @@ class Interface(BaseInterface):
         locale.on_change(self._refresh_qr_values)
         self._refresh_qr_values()
 
+    def _build_abil_cb_values(self) -> list[str]:
+        char = self.root.character
+        values: list[str] = []
+        seen: set[str] = set()
+
+        for cat_name, cat_data in char.abilities.items():
+            values.append(f"── {locale.t(f'sheet.ability_categories.{cat_name}')} ──")
+            for name in cat_data:
+                values.append(locale.translate_known("sheet.ability_names", name))
+                seen.add(name)
+
+        custom_names = []
+        for cat_rows in char.custom_abilities.values():
+            for row in cat_rows:
+                n = row["name"].get().strip()
+                if n and n not in seen:
+                    custom_names.append(locale.translate_known("sheet.ability_names", n))
+                    seen.add(n)
+        if custom_names:
+            values.append("── Custom ──")
+            values.extend(custom_names)
+
+        disc_names = [row["name"].get().strip() for row in char.disciplines if row["name"].get().strip()]
+        if disc_names:
+            values.append(f"── {locale.t('sheet.adv_columns.Disciplines')} ──")
+            values.extend(disc_names)
+
+        bg_names = [row["name"].get().strip() for row in char.backgrounds if row["name"].get().strip()]
+        if bg_names:
+            values.append(f"── {locale.t('sheet.adv_columns.Backgrounds')} ──")
+            values.extend(bg_names)
+
+        return values
+
     def _refresh_qr_values(self) -> None:
         root = self.root
         attr_vals = list((locale.raw("sheet.attr_names") or {}).values())
-        abil_vals = [locale.translate_known("sheet.ability_names", n)
-                     for n in root.character.all_pool_names()]
+        abil_vals = self._build_abil_cb_values()
         for (attr_var, abil_var, *_), attr_cb, abil_cb in zip(
             root.quick_rolls, self._qr_attr_cbs, self._qr_abil_cbs
         ):

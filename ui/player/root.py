@@ -336,6 +336,10 @@ class Root(Tk):
             self.session_code, self.character.character_name,
         ):
             var.trace_add("write", lambda *_: self._schedule_save())
+        for av, bv, dv, sv in self.quick_rolls:
+            for var in (av, bv, dv, sv):
+                var.trace_add("write", lambda *_: self._schedule_save())
+        self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
 
     def _schedule_save(self) -> None:
         if self._autosave_job:
@@ -451,7 +455,21 @@ class Root(Tk):
         dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",    self.session_code.get())
         filename = f"{self.character.character_name.get()}.json"
         dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
-        self.character.save()
+        char_data = self.character.to_dict()
+        char_data["quick_rolls"] = [
+            {
+                "attr": locale.reverse_lookup_en("sheet.attr_names", av.get()),
+                "abil": locale.reverse_lookup_en("sheet.ability_names", bv.get()),
+                "diff": dv.get(),
+                "spec": sv.get(),
+            }
+            for av, bv, dv, sv in self.quick_rolls
+        ]
+        char_data["quick_penalty"] = self.quick_penalty.get()
+        save_path = CHARACTERS_DIR / filename
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(char_data, f, indent=2, ensure_ascii=False)
 
     def load_from_file(self) -> None:
         """Restore settings and the last-used character from disk."""
@@ -481,7 +499,9 @@ class Root(Tk):
             path = CHARACTERS_DIR / last
             if path.exists():
                 with open(path, encoding="utf-8") as f:
-                    self.character.load(json.load(f))
+                    data = json.load(f)
+                self.character.load(data)
+                self._load_quick_rolls(data)
                 return True
 
         # One-time migration from the old single-file storage.
@@ -526,9 +546,22 @@ class Root(Tk):
             shutil.copy2(src_path, dst)
 
         self.character.load(data)
+        self._load_quick_rolls(data)
         self._interface.refresh_blood_cells()
         self.character.apply_trackers()
         self.save_to_file()
+
+    def _load_quick_rolls(self, data: dict) -> None:
+        for (attr_var, abil_var, diff_var, spec_var), entry in zip(
+            self.quick_rolls, data.get("quick_rolls", [])
+        ):
+            attr_name = entry.get("attr", "")
+            abil_name = entry.get("abil", "")
+            attr_var.set(locale.translate_known("sheet.attr_names", attr_name))
+            abil_var.set(locale.translate_known("sheet.ability_names", abil_name))
+            diff_var.set(entry.get("diff", 6))
+            spec_var.set(bool(entry.get("spec", False)))
+        self.quick_penalty.set(data.get("quick_penalty", 0))
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
