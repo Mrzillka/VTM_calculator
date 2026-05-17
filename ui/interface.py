@@ -5,7 +5,7 @@ from tkinter import BooleanVar, StringVar, Widget
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, WOUND_LEVELS
+from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, SPEC_MIN_DOTS, WOUND_LEVELS
 from lang import locale
 from ui.base_interface import BaseInterface
 from ui.constants import (
@@ -239,13 +239,20 @@ class Interface(BaseInterface):
     def _build_stats_content(self, parent: ttk.Frame) -> None:
         char = self.root.character
 
-        def _stat_row(col_frame: ttk.Frame, name: str, count: int) -> None:
+        def _stat_row(col_frame: ttk.Frame, name: str, count: int, spec: str = "") -> None:
             row = ttk.Frame(col_frame, style="flat.TFrame")
-            row.pack(anchor="w", fill="x", pady=1)
+            row.pack(anchor="w", fill="x", pady=(1, 0))
             ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
             dot_lbl = ttk.Label(row, text="●" * count, anchor="w", style="S.TLabel")
             dot_lbl.configure(foreground="#8b1a1a")
             dot_lbl.pack(side="left", padx=(3, 0))
+            if spec and count >= SPEC_MIN_DOTS:
+                spec_row = ttk.Frame(col_frame, style="flat.TFrame")
+                spec_row.pack(anchor="w", fill="x", pady=(0, 2))
+                ttk.Label(spec_row, width=13, style="S.TLabel").pack(side="left")
+                spec_lbl = ttk.Label(spec_row, text=f"({spec})", anchor="w", style="S.TLabel")
+                spec_lbl.configure(foreground="#555555", font=("TkDefaultFont", 8, "italic"))
+                spec_lbl.pack(side="left", padx=(3, 0))
 
         def _build_section(
             categories: dict,
@@ -260,11 +267,11 @@ class Interface(BaseInterface):
                     col_frame,
                     text=locale.t(f"{cat_locale_prefix}.{cat_name}"),
                     style="M.TLabel",
-                ).pack(anchor="w", pady=(0, 2))
+                ).pack(anchor="center", pady=(0, 2))
                 for stat_name, stat_data in cat_data.items():
                     count = sum(v.get() for v in stat_data["vars"])
                     if count > 0:
-                        _stat_row(col_frame, locale.t(f"{name_locale_prefix}.{stat_name}"), count)
+                        _stat_row(col_frame, locale.t(f"{name_locale_prefix}.{stat_name}"), count, stat_data["spec"].get())
 
         _build_section(char.attributes, "sheet.attr_categories", "sheet.attr_names", 0)
 
@@ -283,7 +290,7 @@ class Interface(BaseInterface):
                 name = row["name"].get().strip()
                 count = sum(v.get() for v in row["vars"])
                 if name and count > 0:
-                    _stat_row(col_frame, name, count)
+                    _stat_row(col_frame, name, count, row["spec"].get())
 
     # ── Roll history ──────────────────────────────────────────────────────────
 
