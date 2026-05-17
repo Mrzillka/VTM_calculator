@@ -736,7 +736,7 @@ class Interface(BaseInterface):
         delta_lbl   = ttk.Label(frm, textvariable=delta_var, style="M.TLabel", anchor="center")
 
         def _update(_record=None) -> None:
-            history = [r for r in self.root.roll_history if r.roll_type == "NORMAL"]
+            history = [r for r in self.root.roll_history if r.roll_type in ("NORMAL", "QUICK")]
             total = len(history)
             if total == 0:
                 summary_var.set("—")

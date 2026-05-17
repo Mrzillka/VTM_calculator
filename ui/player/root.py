@@ -247,6 +247,15 @@ class Root(Tk):
             dice_pool -= 1
         penalty   = self.character.roll_penalty.get() - self.quick_penalty.get()
 
+        effective_dice = max(1, max(1, dice_pool) + penalty)
+        probability = Calculator(
+            dice_number=effective_dice,
+            difficulty=diff_var.get(),
+            success_needed=1,
+            auto_successes=0,
+            specialisation=spec_var.get(),
+        ).get_probability()
+
         roller = Roller(
             dice_number=max(1, dice_pool),
             difficulty=diff_var.get(),
@@ -261,7 +270,7 @@ class Root(Tk):
             dice=list(result.dice),
             specialisation_dice=list(result.specialisation_dice),
             successes=result.successes,
-            probability=0.0,
+            probability=probability,
             roller_name=self.character.character_name.get(),
             roll_type="QUICK",
         )
