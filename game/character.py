@@ -283,9 +283,11 @@ class Character(CharacterIO):
         """Dot count for any attribute, ability, custom ability, discipline, or background by name."""
         if not name:
             return 0
+        _boosts = {"Strength": self.str_boost, "Dexterity": self.dex_boost, "Stamina": self.sta_boost}
         for cat in self.attributes.values():
             if name in cat:
-                return sum(v.get() for v in cat[name]["vars"])
+                base = sum(v.get() for v in cat[name]["vars"])
+                return base + _boosts[name].get() if name in _boosts else base
         for cat in self.abilities.values():
             if name in cat:
                 return sum(v.get() for v in cat[name]["vars"])

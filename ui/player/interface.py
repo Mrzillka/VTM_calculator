@@ -535,7 +535,7 @@ class Interface(BaseInterface):
         root = self.root
 
         self._tlabel(frm, "controls.quick_rolls", style="S.TLabel").grid(
-            row=0, column=0, columnspan=4, sticky="w")
+            row=0, column=0, columnspan=5, sticky="w")
 
         pen_var = StringVar()
         def _upd_pen(*_):
@@ -543,12 +543,12 @@ class Interface(BaseInterface):
         root.quick_penalty.trace_add("write", _upd_pen)
         _upd_pen()
         ttk.Label(frm, textvariable=pen_var, style="S.TLabel").grid(
-            row=0, column=4, padx=(6, 2))
+            row=0, column=5, padx=(6, 2))
 
         self._qr_attr_cbs: list[ttk.Combobox] = []
         self._qr_abil_cbs: list[ttk.Combobox] = []
 
-        for i, (attr_var, abil_var, diff_var) in enumerate(root.quick_rolls):
+        for i, (attr_var, abil_var, diff_var, spec_var) in enumerate(root.quick_rolls):
             r = i + 1
             attr_cb = ttk.Combobox(
                 frm, textvariable=attr_var,
@@ -575,18 +575,26 @@ class Interface(BaseInterface):
                 width=3, style="my.TSpinbox",
             ).grid(row=r, column=2, padx=2)
 
+            spec_dot = ttk.Label(frm, text="●" if spec_var.get() else "○",
+                                 style="S.TLabel", cursor="hand2")
+            spec_var.trace_add("write",
+                               lambda *_, d=spec_dot, v=spec_var: d.configure(
+                                   text="●" if v.get() else "○"))
+            spec_dot.bind("<Button-1>", lambda e, v=spec_var: v.set(not v.get()))
+            spec_dot.grid(row=r, column=3, padx=(4, 0))
+
             ttk.Button(
                 frm, text="▶", width=2,
                 command=lambda idx=i: root.quick_roll(idx),
                 style="S.TButton",
-            ).grid(row=r, column=3, padx=(2, 0))
+            ).grid(row=r, column=4, padx=(2, 0))
 
         ttk.Scale(
             frm, from_=5, to=0, orient=tk.VERTICAL,
             variable=root.quick_penalty, length=88,
             style="Vertical.TScale",
             command=lambda s: root.scaler(s, root.quick_penalty),
-        ).grid(row=1, column=4, rowspan=4, padx=(6, 2), sticky="ns")
+        ).grid(row=1, column=5, rowspan=4, padx=(6, 2), sticky="ns")
 
         frm.grid_columnconfigure(1, weight=1)
 
@@ -598,7 +606,7 @@ class Interface(BaseInterface):
         attr_vals = list((locale.raw("sheet.attr_names") or {}).values())
         abil_vals = [locale.translate_known("sheet.ability_names", n)
                      for n in root.character.all_pool_names()]
-        for (attr_var, abil_var, _), attr_cb, abil_cb in zip(
+        for (attr_var, abil_var, *_), attr_cb, abil_cb in zip(
             root.quick_rolls, self._qr_attr_cbs, self._qr_abil_cbs
         ):
             attr_cb.configure(values=attr_vals)

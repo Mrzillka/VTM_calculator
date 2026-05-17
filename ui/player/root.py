@@ -71,10 +71,11 @@ class Root(Tk):
         # ── Quick rolls ────────────────────────────────────────────────────────
         _attr_names = [a for attrs in ATTRIBUTES.values() for a in attrs]
         _abil_names = [a for abils in ABILITIES.values() for a in abils]
-        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar]] = [
+        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar, BooleanVar]] = [
             (StringVar(value=_attr_names[0]),
              StringVar(value=_abil_names[0]),
-             IntVar(value=6))
+             IntVar(value=6),
+             BooleanVar(value=False))
             for _ in range(4)
         ]
         self.quick_penalty = IntVar(value=0)
@@ -235,7 +236,7 @@ class Root(Tk):
         self._record_and_emit(record)
 
     def quick_roll(self, index: int) -> None:
-        attr_var, abil_var, diff_var = self.quick_rolls[index]
+        attr_var, abil_var, diff_var, spec_var = self.quick_rolls[index]
         attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_var.get())
         abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_var.get())
         attr_val  = self.character.get_stat_value(attr_name)
@@ -247,7 +248,7 @@ class Root(Tk):
             dice_number=max(1, dice_pool),
             difficulty=diff_var.get(),
             penalty=penalty,
-            specialisation=self.specialisation.get(),
+            specialisation=spec_var.get(),
         )
         result = roller.roll()
         record = RollRecord(
