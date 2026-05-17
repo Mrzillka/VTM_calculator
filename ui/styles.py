@@ -28,11 +28,13 @@ def configure_main_styles(s: ttk.Style, palette: dict[str, str]) -> None:
     s.configure("flat.TFrame", background=bg, relief="flat")
     s.configure("solid.TFrame", background=bg, relief="solid", bordercolor=bdr)
 
+    crim = palette["dot_fg"]   # blood-red / crimson accent
+
     # ── Labels ────────────────────────────────────────────────────────────────
     s.configure("TLabel",            background=bg, foreground=fg)
-    s.configure("title.TLabel",      background=bg, foreground=fg,
+    s.configure("title.TLabel",      background=bg, foreground=crim,
                 font=(FONT, 20, "bold", "italic"))
-    s.configure("L.TLabel",          background=bg, foreground=fg,
+    s.configure("L.TLabel",          background=bg, foreground=crim,
                 font=(FONT, 18, "bold"))
     s.configure("M.TLabel",          background=bg, foreground=fg,
                 font=(FONT, 15, "italic"))
@@ -106,11 +108,11 @@ def configure_main_styles(s: ttk.Style, palette: dict[str, str]) -> None:
 
     # ── Notebook ─────────────────────────────────────────────────────────────
     s.configure("TNotebook", background=bg, bordercolor=bdr, tabmargins=0)
-    s.configure("TNotebook.Tab", background=palette["tab_bg"], foreground=fg,
+    s.configure("TNotebook.Tab", background=palette["tab_bg"], foreground=palette["disabled_fg"],
                 padding=(8, 4))
     s.map("TNotebook.Tab",
           background=[("selected", palette["tab_sel"]), ("active", bac)],
-          foreground=[("selected", fg)])
+          foreground=[("selected", crim), ("active", fg)])
 
     # ── Separator ─────────────────────────────────────────────────────────────
     s.configure("TSeparator", background=bdr)
@@ -157,9 +159,10 @@ def configure_sheet_styles(s: ttk.Style, palette: dict[str, str]) -> None:
                 font=(FONT, 10))
     s.map("sheet.TCheckbutton", background=[("active", bg)])
 
-    s.configure("sheet.title.TLabel", background=bg, foreground=fg,
+    crim = palette["dot_fg"]
+    s.configure("sheet.title.TLabel", background=bg, foreground=crim,
                 font=(FONT, 15, "bold", "italic"))
-    s.configure("sheet.L.TLabel",     background=bg, foreground=fg,
+    s.configure("sheet.L.TLabel",     background=bg, foreground=crim,
                 font=(FONT, 15, "italic"))
     s.configure("sheet.M.TLabel",     background=bg, foreground=fg,
                 font=(FONT, 12, "italic"))
