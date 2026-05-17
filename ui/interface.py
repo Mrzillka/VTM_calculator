@@ -85,9 +85,15 @@ class Interface(BaseInterface):
         track_tab = self._frm_trackers(nb)
         nb.add(track_tab, text=locale.t("controls.trackers"))
 
+        # Tab 3: Stats (read-only attribute/ability snapshot)
+        stats_tab = self._frm_stats_tab(nb)
+        nb.add(stats_tab, text=locale.t("controls.stats_tab"))
+
         def _update_tab_titles() -> None:
             nb.tab(0, text=locale.t("roll_history"))
             nb.tab(1, text=locale.t("controls.trackers"))
+            nb.tab(2, text=locale.t("controls.stats_tab"))
+            self._rebuild_stats_tab()
 
         locale.on_change(_update_tab_titles)
         return nb
@@ -179,6 +185,105 @@ class Interface(BaseInterface):
             self._tbutton(frm, "controls.damage_soak", style="M.TButton",
                           command=self.root.roll_damage_soak),
         ]])
+
+    # ── Stats tab ─────────────────────────────────────────────────────────────
+
+    @frm(padding=0, style="solid.TFrame")
+    def _frm_stats_tab(self, outer: ttk.Frame) -> None:
+        canvas = tk.Canvas(outer, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
+
+        inner = ttk.Frame(canvas, padding=5)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(win_id, width=e.width))
+        self._bind_mousewheel(canvas)
+
+        self._stats_tab_frame = inner
+        self._stats_rebuild_pending = False
+        self._build_stats_content(inner)
+
+        char = self.root.character
+        for cat_data in char.attributes.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+        for cat_data in char.abilities.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+        for cat_rows in char.custom_abilities.values():
+            for row in cat_rows:
+                for var in row["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+
+    def _schedule_stats_rebuild(self, *_) -> None:
+        if not self._stats_rebuild_pending:
+            self._stats_rebuild_pending = True
+            self._stats_tab_frame.after(0, self._rebuild_stats_tab)
+
+    def _rebuild_stats_tab(self) -> None:
+        self._stats_rebuild_pending = False
+        frm = self._stats_tab_frame
+        for child in frm.winfo_children():
+            child.destroy()
+        self._build_stats_content(frm)
+
+    def _build_stats_content(self, parent: ttk.Frame) -> None:
+        char = self.root.character
+
+        def _stat_row(col_frame: ttk.Frame, name: str, count: int) -> None:
+            row = ttk.Frame(col_frame, style="flat.TFrame")
+            row.pack(anchor="w", fill="x", pady=1)
+            ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
+            dot_lbl = ttk.Label(row, text="●" * count, anchor="w", style="S.TLabel")
+            dot_lbl.configure(foreground="#8b1a1a")
+            dot_lbl.pack(side="left", padx=(3, 0))
+
+        def _build_section(
+            categories: dict,
+            cat_locale_prefix: str,
+            name_locale_prefix: str,
+            row_offset: int,
+        ) -> None:
+            for col_idx, (cat_name, cat_data) in enumerate(categories.items()):
+                col_frame = ttk.Frame(parent, style="flat.TFrame")
+                col_frame.grid(row=row_offset, column=col_idx, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(
+                    col_frame,
+                    text=locale.t(f"{cat_locale_prefix}.{cat_name}"),
+                    style="M.TLabel",
+                ).pack(anchor="w", pady=(0, 2))
+                for stat_name, stat_data in cat_data.items():
+                    count = sum(v.get() for v in stat_data["vars"])
+                    if count > 0:
+                        _stat_row(col_frame, locale.t(f"{name_locale_prefix}.{stat_name}"), count)
+
+        _build_section(char.attributes, "sheet.attr_categories", "sheet.attr_names", 0)
+
+        ttk.Separator(parent, orient="horizontal").grid(
+            row=1, column=0, columnspan=3, sticky="ew", pady=4,
+        )
+
+        _build_section(char.abilities, "sheet.ability_categories", "sheet.ability_names", 2)
+
+        for col_idx, cat_name in enumerate(char.abilities):
+            slaves = parent.grid_slaves(row=2, column=col_idx)
+            if not slaves:
+                continue
+            col_frame = slaves[0]
+            for row in char.custom_abilities.get(cat_name, []):
+                name = row["name"].get().strip()
+                count = sum(v.get() for v in row["vars"])
+                if name and count > 0:
+                    _stat_row(col_frame, name, count)
 
     # ── Roll history ──────────────────────────────────────────────────────────
 

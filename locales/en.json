@@ -26,7 +26,8 @@
     "leave_session": "Leave",
     "new_session":   "New Session",
     "copy_code":     "Copy",
-    "roller":        "Rolls as:"
+    "roller":        "Rolls as:",
+    "stats_tab":     "Stats"
   },
   "stats": {
     "blood": "Blood",

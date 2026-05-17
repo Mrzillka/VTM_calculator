@@ -26,7 +26,8 @@
     "leave_session": "Выйти",
     "new_session":   "Новая сессия",
     "copy_code":     "Копировать",
-    "roller":        "Бросает:"
+    "roller":        "Бросает:",
+    "stats_tab":     "Статы"
   },
   "stats": {
     "blood": "Кровь",
