@@ -46,8 +46,9 @@ class Root(Tk):
 
         apply_icon(self, "icon.ico")
 
-        self._restore_lang_pref()
-        self._restore_theme_pref()
+        _env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        self._restore_lang_pref(_env)
+        self._restore_theme_pref(_env)
 
         # ── Character ──────────────────────────────────────────────────────────
         self.character = Character()
@@ -115,14 +116,12 @@ class Root(Tk):
 
     # ── Setup ──────────────────────────────────────────────────────────────────
 
-    def _restore_lang_pref(self) -> None:
-        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+    def _restore_lang_pref(self, env: dict) -> None:
         saved = env.get("LANG_PREF", "en")
         if saved != locale.lang:
             locale.set_lang(saved)
 
-    def _restore_theme_pref(self) -> None:
-        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+    def _restore_theme_pref(self, env: dict) -> None:
         theme.set_mode(env.get("THEME_PREF", "light"))
 
     def _configure_grid(self) -> None:

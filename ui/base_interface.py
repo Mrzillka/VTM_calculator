@@ -205,6 +205,8 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
         )
         if record.roll_type == "DAMAGE":
             meta_text += f"  •  {locale.t('controls.damage_soak')}"
+        elif record.roll_type == "QUICK":
+            meta_text += f"  •  {locale.t('controls.quick_rolls')}"
 
         ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
             row=current_row, column=0, sticky="w")
