@@ -32,7 +32,8 @@
     "dark_mode":     "🌙 Dark",
     "light_mode":    "☀ Light",
     "settings":      "⚙ Settings",
-    "quick_rolls":   "Quick Rolls"
+    "quick_rolls":        "Quick Rolls",
+    "unskilled_penalty":  "Unskilled −1 die"
   },
   "stats": {
     "blood": "Blood",

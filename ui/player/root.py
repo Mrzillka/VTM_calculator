@@ -79,6 +79,7 @@ class Root(Tk):
             for _ in range(4)
         ]
         self.quick_penalty = IntVar(value=0)
+        self.default_skill_penalty = BooleanVar(value=True)
 
         # ── UI flags ───────────────────────────────────────────────────────────
         self.additional_options   = BooleanVar(value=False)
@@ -242,6 +243,8 @@ class Root(Tk):
         attr_val  = self.character.get_stat_value(attr_name)
         abil_val  = self.character.get_stat_value(abil_name)
         dice_pool = attr_val + abil_val
+        if abil_name and abil_val == 0 and self.default_skill_penalty.get():
+            dice_pool -= 1
         penalty   = self.character.roll_penalty.get() - self.quick_penalty.get()
 
         roller = Roller(
@@ -340,6 +343,7 @@ class Root(Tk):
             for var in (av, bv, dv, sv):
                 var.trace_add("write", lambda *_: self._schedule_save())
         self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
+        self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
 
     def _schedule_save(self) -> None:
         if self._autosave_job:
@@ -452,7 +456,8 @@ class Root(Tk):
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",       str(self.bot.thread_id))
         dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",       locale.lang)
         dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF",      theme.mode)
-        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",    self.session_code.get())
+        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",      self.session_code.get())
+        dotenv.set_key(str(ENV_FILE_PATH), "UNSKILLED_PENALTY", "1" if self.default_skill_penalty.get() else "0")
         filename = f"{self.character.character_name.get()}.json"
         dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
         char_data = self.character.to_dict()
@@ -477,6 +482,7 @@ class Root(Tk):
         self.bot.chat_id   = env.get("CHAT_ID")   if env.get("CHAT_ID")   not in (None, "None", "") else None
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") not in (None, "None", "") else None
         self.session_code.set(env.get("SESSION_CODE", ""))
+        self.default_skill_penalty.set(env.get("UNSKILLED_PENALTY", "1") == "1")
 
         if not self._try_load_character(env):
             self.save_to_file()

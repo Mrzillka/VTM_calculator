@@ -557,6 +557,17 @@ class Interface(BaseInterface):
             attr_cb.grid(row=r, column=0, padx=2, pady=1)
             self._qr_attr_cbs.append(attr_cb)
 
+            _prev_attr = [attr_var.get()]
+
+            def _on_attr_sel(event, var=attr_var, prev=_prev_attr):
+                val = var.get()
+                if val.startswith("──"):
+                    var.set(prev[0])
+                else:
+                    prev[0] = val
+
+            attr_cb.bind("<<ComboboxSelected>>", _on_attr_sel)
+
             abil_cb = ttk.Combobox(
                 frm, textvariable=abil_var, state="readonly", width=18,
             )
@@ -611,6 +622,14 @@ class Interface(BaseInterface):
         locale.on_change(self._refresh_qr_values)
         self._refresh_qr_values()
 
+    def _build_attr_cb_values(self) -> list[str]:
+        values: list[str] = []
+        for cat_name, cat_data in self.root.character.attributes.items():
+            values.append(f"── {locale.t(f'sheet.attr_categories.{cat_name}')} ──")
+            for name in cat_data:
+                values.append(locale.translate_known("sheet.attr_names", name))
+        return values
+
     def _build_abil_cb_values(self) -> list[str]:
         char = self.root.character
         values: list[str] = []
@@ -647,7 +666,7 @@ class Interface(BaseInterface):
 
     def _refresh_qr_values(self) -> None:
         root = self.root
-        attr_vals = list((locale.raw("sheet.attr_names") or {}).values())
+        attr_vals = self._build_attr_cb_values()
         abil_vals = self._build_abil_cb_values()
         for (attr_var, abil_var, *_), attr_cb, abil_cb in zip(
             root.quick_rolls, self._qr_attr_cbs, self._qr_abil_cbs
@@ -864,6 +883,10 @@ class Interface(BaseInterface):
         theme.on_change(_upd_theme_btn)
         ttk.Button(frm, textvariable=theme_var, style="S.TButton",
                    command=root.toggle_theme).grid(row=5, column=0, columnspan=2, **pad)
+
+        self._dot_toggle(frm, locale.t("controls.unskilled_penalty"),
+                         root.default_skill_penalty,
+                         locale_key="controls.unskilled_penalty").grid(row=6, column=0, columnspan=2, **pad)
 
         frm.grid_columnconfigure(1, weight=1)
 

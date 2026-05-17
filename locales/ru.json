@@ -32,7 +32,8 @@
     "dark_mode":     "🌙 Тёмная",
     "light_mode":    "☀ Светлая",
     "settings":      "⚙ Настройки",
-    "quick_rolls":   "Быстрые броски"
+    "quick_rolls":        "Быстрые броски",
+    "unskilled_penalty":  "Без навыка −1 куб"
   },
   "stats": {
     "blood": "Кровь",
