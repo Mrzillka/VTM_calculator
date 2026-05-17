@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.constants import (
+    AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
+    SCALE_LENGTH, ST_HISTORY_HEIGHT, ST_HISTORY_WIDTH, SUCCESS_NEEDED_MAX,
+)
 from ui.storyteller.panels import NPCPanel, PCPanel
 from ui.storyteller.constants import NO_ROLLER
 from ui.utils import frm, place_widgets
@@ -84,26 +88,26 @@ class Interface(BaseInterface):
 
         rows.append([
             self._tlabel(frm, "controls.dice", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=15, length=125,
+            ttk.Scale(frm, from_=DICE_MIN, to=DICE_MAX, length=SCALE_LENGTH,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
-            ttk.Spinbox(frm, from_=1, to=50, textvariable=root.dice_number,
+            ttk.Spinbox(frm, from_=DICE_MIN, to=50, textvariable=root.dice_number,
                         width=3, style="my.TSpinbox"),
         ])
         rows.append([
             self._tlabel(frm, "controls.difficulty", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=2, to=10, length=125,
+            ttk.Scale(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, length=SCALE_LENGTH,
                       variable=root.difficulty, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.difficulty)),
-            ttk.Spinbox(frm, from_=2, to=10, textvariable=root.difficulty,
+            ttk.Spinbox(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, textvariable=root.difficulty,
                         width=3, style="my.TSpinbox"),
         ])
         rows.append([
             self._tlabel(frm, "controls.auto_success", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=0, to=5, length=125,
+            ttk.Scale(frm, from_=0, to=AUTO_SUCCESS_MAX, length=SCALE_LENGTH,
                       variable=root.auto_success, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.auto_success)),
-            ttk.Spinbox(frm, from_=0, to=5, textvariable=root.auto_success,
+            ttk.Spinbox(frm, from_=0, to=AUTO_SUCCESS_MAX, textvariable=root.auto_success,
                         width=3, style="my.TSpinbox"),
         ])
         rows.append([
@@ -131,10 +135,10 @@ class Interface(BaseInterface):
         self._additional_widgets = [
             self._tlabel(frm, "controls.success_needed",
                          width=16, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=10, length=125,
+            ttk.Scale(frm, from_=1, to=SUCCESS_NEEDED_MAX, length=SCALE_LENGTH,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
-            ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
+            ttk.Spinbox(frm, from_=1, to=SUCCESS_NEEDED_MAX, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
         ]
         for col_idx, widget in enumerate(self._additional_widgets):
@@ -190,4 +194,4 @@ class Interface(BaseInterface):
         lbl = ttk.Label(frm, text=locale.t("roll_history"), style="M.TLabel")
         lbl.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
         locale.register(lbl, "roll_history")
-        self._build_scrollable_history(frm, width=380, height=420)
+        self._build_scrollable_history(frm, width=ST_HISTORY_WIDTH, height=ST_HISTORY_HEIGHT)

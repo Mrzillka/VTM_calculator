@@ -5,9 +5,13 @@ from tkinter import BooleanVar, StringVar, Widget
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from config import WOUND_LEVELS
+from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, WOUND_LEVELS
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.constants import (
+    AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
+    HISTORY_HEIGHT, HISTORY_WIDTH, SCALE_LENGTH, SUCCESS_NEEDED_MAX,
+)
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
@@ -103,27 +107,27 @@ class Interface(BaseInterface):
 
         rows.append([
             self._tlabel(frm, "controls.dice", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=15, length=125,
+            ttk.Scale(frm, from_=DICE_MIN, to=DICE_MAX, length=SCALE_LENGTH,
                       variable=root.dice_number, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.dice_number)),
-            ttk.Spinbox(frm, from_=1, to=50, textvariable=root.dice_number,
+            ttk.Spinbox(frm, from_=DICE_MIN, to=50, textvariable=root.dice_number,
                         width=3, style="my.TSpinbox"),
             ttk.Label(frm, textvariable=root.character.roll_penalty, width=3, style="S.TLabel"),
         ])
         rows.append([
             self._tlabel(frm, "controls.difficulty", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=2, to=10, length=125,
+            ttk.Scale(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, length=SCALE_LENGTH,
                       variable=root.difficulty, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.difficulty)),
-            ttk.Spinbox(frm, from_=2, to=10, textvariable=root.difficulty,
+            ttk.Spinbox(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, textvariable=root.difficulty,
                         width=3, style="my.TSpinbox"),
         ])
         rows.append([
             self._tlabel(frm, "controls.auto_success", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=0, to=5, length=125,
+            ttk.Scale(frm, from_=0, to=AUTO_SUCCESS_MAX, length=SCALE_LENGTH,
                       variable=root.auto_success, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.auto_success)),
-            ttk.Spinbox(frm, from_=0, to=5, textvariable=root.auto_success,
+            ttk.Spinbox(frm, from_=0, to=AUTO_SUCCESS_MAX, textvariable=root.auto_success,
                         width=3, style="my.TSpinbox"),
         ])
         rows.append([
@@ -140,10 +144,10 @@ class Interface(BaseInterface):
 
         self._additional_row = [
             self._tlabel(frm, "controls.success_needed", width=16, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=10, length=125,
+            ttk.Scale(frm, from_=1, to=SUCCESS_NEEDED_MAX, length=SCALE_LENGTH,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
-            ttk.Spinbox(frm, from_=1, to=10, textvariable=root.success_needed,
+            ttk.Spinbox(frm, from_=1, to=SUCCESS_NEEDED_MAX, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
         ]
         for col_idx, widget in enumerate(self._additional_row):
@@ -180,7 +184,7 @@ class Interface(BaseInterface):
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_history(self, frm: ttk.Frame) -> None:
-        self._build_scrollable_history(frm, width=300, height=340)
+        self._build_scrollable_history(frm, width=HISTORY_WIDTH, height=HISTORY_HEIGHT)
 
     # ── Trackers ──────────────────────────────────────────────────────────────
 
@@ -221,9 +225,9 @@ class Interface(BaseInterface):
         self._blood_cells = []
         char = self.root.character
 
-        for i in range(5):
+        for i in range(BLOOD_ROWS):
             row_labels: list[ttk.Label] = []
-            for j in range(10):
+            for j in range(BLOOD_COLS):
                 var = char.blood[i][j]
                 lbl = ttk.Label(
                     frm, text="●" if var.get() else "○",
@@ -243,7 +247,7 @@ class Interface(BaseInterface):
         max_blood = char.blood_max_value.get()
         for i, row in enumerate(self._blood_cells):
             for j, lbl in enumerate(row):
-                active = i * 10 + j < max_blood
+                active = i * BLOOD_COLS + j < max_blood
                 if active:
                     lbl.configure(cursor="hand2", foreground="")
                     lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
@@ -355,7 +359,7 @@ class Interface(BaseInterface):
         char = self.root.character
         labels = [
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
-            for i in range(10)
+            for i in range(MAX_DOT_TRACKER)
         ]
         self._will_dots: list[ttk.Label] = []
         for i, var in enumerate(char.will):
@@ -389,7 +393,7 @@ class Interface(BaseInterface):
     def _frm_dot_tracker(self, frm: ttk.Frame, variables: list[BooleanVar], command) -> None:
         labels = [
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
-            for i in range(10)
+            for i in range(MAX_DOT_TRACKER)
         ]
         dots = []
         for i, var in enumerate(variables):

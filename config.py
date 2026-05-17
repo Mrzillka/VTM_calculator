@@ -126,6 +126,19 @@ CHARACTERS_DIR: Path = APP_DATA_DIR / "characters"
 NPC_DIR: Path = APP_DATA_DIR / "npcs"
 PC_DIR: Path = APP_DATA_DIR / "pcs"
 
+# ── Character sheet grid / tracker sizes ──────────────────────────────────────
+BLOOD_ROWS: int = 5        # rows in the blood-pool grid
+BLOOD_COLS: int = 10       # columns in the blood-pool grid (matches d10 sides)
+MAX_BLOOD_POOL: int = 50   # maximum possible blood pool (4th gen)
+MAX_DOT_TRACKER: int = 10  # dots in humanity and willpower trackers
+VIRTUE_DOTS: int = 5       # dot count per virtue (Conscience, Self-Control, Courage)
+SPEC_MIN_DOTS: int = 4     # filled dots required to unlock specialisation entry
+
+# ── Generation bounds ─────────────────────────────────────────────────────────
+MIN_GENERATION: int = 4
+MAX_GENERATION: int = 15
+DEFAULT_GENERATION: int = 13
+
 GENERATION_RULES: dict[int, dict] = {
     4:  {"blood_max": 50, "blood_per_turn": 6, "max_trait": 9},
     5:  {"blood_max": 40, "blood_per_turn": 5, "max_trait": 8},

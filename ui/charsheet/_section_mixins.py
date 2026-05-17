@@ -5,7 +5,7 @@ from tkinter import BooleanVar, IntVar, StringVar
 from tkinter import ttk
 from typing import Callable
 
-from config import DISCIPLINE_PATHS, FLAWS, MERITS, WOUND_LEVELS
+from config import BLOOD_COLS, BLOOD_ROWS, DISCIPLINE_PATHS, FLAWS, MAX_BLOOD_POOL, MAX_DOT_TRACKER, MERITS, SPEC_MIN_DOTS, WOUND_LEVELS
 from lang import locale
 from ui.utils import frm, place_widgets
 
@@ -148,7 +148,7 @@ class _AttributesMixin:
                 return
             if not exists or self.root.locked.get():
                 return
-            if sum(v.get() for v in variables) >= 4:
+            if sum(v.get() for v in variables) >= SPEC_MIN_DOTS:
                 spec_entry.configure(state="normal")
             else:
                 spec_var.set("")
@@ -450,14 +450,14 @@ class _TrackersMixin:
             [self._frm_tracker_header(frm, "sheet.sheet_trackers.willpower",
                                       self.character.willpower_max,
                                       self._refresh_wp_cells,
-                                      max_to=10)],
+                                      max_to=MAX_DOT_TRACKER)],
             [self._frm_wp_cells(frm)],
             [self._tlabel(frm, "sheet.sheet_trackers.humanity", style="sheet.M.TLabel")],
             [self._frm_humanity_cells(frm)],
             [self._frm_tracker_header(frm, "sheet.sheet_trackers.blood_pool",
                                       self.character.blood_max_value,
                                       self._refresh_sheet_blood_cells,
-                                      max_to=50)],
+                                      max_to=MAX_BLOOD_POOL)],
             [self._frm_sheet_blood_cells(frm)],
         ])
 
@@ -541,7 +541,7 @@ class _TrackersMixin:
     @frm(padding=0)
     def _frm_wp_cells(self, frm: ttk.Frame) -> None:
         char = self.character
-        self._willpower_labels = self._build_tracker_dot_row(frm, 10, self._click_will)
+        self._willpower_labels = self._build_tracker_dot_row(frm, MAX_DOT_TRACKER, self._click_will)
 
         char.will_value.trace_add("write", lambda *_: self._refresh_wp_cells())
         char.willpower_max.trace_add("write", lambda *_: self._refresh_wp_cells())
@@ -588,7 +588,7 @@ class _TrackersMixin:
     @frm(padding=0)
     def _frm_humanity_cells(self, frm: ttk.Frame) -> None:
         char = self.character
-        self._humanity_dot_labels = self._build_tracker_dot_row(frm, 10, char.set_humanity)
+        self._humanity_dot_labels = self._build_tracker_dot_row(frm, MAX_DOT_TRACKER, char.set_humanity)
 
         char.humanity_value.trace_add("write", lambda *_: self._refresh_humanity_cells())
         for v in char.virtues[0]["vars"]:
@@ -624,9 +624,9 @@ class _TrackersMixin:
         self._sheet_blood_labels = []
         char = self.character
 
-        for i in range(5):
+        for i in range(BLOOD_ROWS):
             row_labels: list[ttk.Label] = []
-            for j in range(10):
+            for j in range(BLOOD_COLS):
                 var = char.blood[i][j]
                 lbl = ttk.Label(
                     frm, text="●" if var.get() else "○",
@@ -658,7 +658,7 @@ class _TrackersMixin:
 
         for i, row in enumerate(self._sheet_blood_labels):
             for j, lbl in enumerate(row):
-                active = i * 10 + j < max_blood
+                active = i * BLOOD_COLS + j < max_blood
                 if active:
                     lbl.configure(cursor="hand2", foreground="")
                     lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))

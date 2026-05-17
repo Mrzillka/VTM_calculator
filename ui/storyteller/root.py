@@ -16,6 +16,7 @@ from game.roller import Roller
 from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
+from ui.constants import NET_POLL_MS
 from ui.storyteller.interface import Interface
 from ui.styles import configure_main_styles
 from ui.utils import apply_icon, place_widgets
@@ -36,7 +37,7 @@ class Root(Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("VTM Storyteller")
-        self.resizable(True, True)
+        self.resizable(False, False)
 
         apply_icon(self, "icon_storyteller.ico")
 
@@ -62,7 +63,7 @@ class Root(Tk):
 
         self._configure_styles()
         self._build_interface()
-        self.after(100, self._poll_net_queue)
+        self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
 
@@ -218,7 +219,7 @@ class Root(Tk):
         except queue.Empty:
             pass
         finally:
-            self.after(100, self._poll_net_queue)
+            self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Persistence ────────────────────────────────────────────────────────────
 

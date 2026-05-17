@@ -6,6 +6,7 @@ from tkinter import ttk
 from typing import TYPE_CHECKING, Callable
 
 from lang import locale
+from ui.constants import MOUSEWHEEL_DIVISOR
 from ui.utils import place_widgets
 
 if TYPE_CHECKING:
@@ -88,7 +89,7 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
     @staticmethod
     def _bind_mousewheel(canvas: tk.Canvas) -> None:
         def _scroll(e: tk.Event) -> None:
-            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+            canvas.yview_scroll(int(-1 * (e.delta / MOUSEWHEEL_DIVISOR)), "units")
 
         canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>", _scroll))
         canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
