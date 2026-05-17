@@ -31,7 +31,8 @@
     "stats_tab":     "Stats",
     "dark_mode":     "🌙 Dark",
     "light_mode":    "☀ Light",
-    "settings":      "⚙ Settings"
+    "settings":      "⚙ Settings",
+    "quick_rolls":   "Quick Rolls"
   },
   "stats": {
     "blood": "Blood",

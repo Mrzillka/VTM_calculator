@@ -92,6 +92,8 @@ def configure_main_styles(s: ttk.Style, palette: dict[str, str]) -> None:
     s.configure("Horizontal.TScale", background=bg, troughcolor=tro,
                 bordercolor=bdr)
     s.configure("my.Horizontal.TScale", font=(FONT, 10))
+    s.configure("Vertical.TScale", background=bg, troughcolor=tro,
+                bordercolor=bdr)
 
     # ── Scrollbar ─────────────────────────────────────────────────────────────
     s.configure("TScrollbar", background=tro, troughcolor=bg,

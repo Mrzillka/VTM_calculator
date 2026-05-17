@@ -31,7 +31,8 @@
     "stats_tab":     "Статы",
     "dark_mode":     "🌙 Тёмная",
     "light_mode":    "☀ Светлая",
-    "settings":      "⚙ Настройки"
+    "settings":      "⚙ Настройки",
+    "quick_rolls":   "Быстрые броски"
   },
   "stats": {
     "blood": "Кровь",

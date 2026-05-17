@@ -15,7 +15,7 @@ import dotenv
 from bot.tg_bot import TgBot
 from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, ENV_FILE_PATH, get_bot_token
 from game.calculator import Calculator
-from game.character import Character
+from game.character import ABILITIES, ATTRIBUTES, Character
 from game.models import RollRecord
 from game.roller import Roller
 from lang import locale
@@ -67,6 +67,17 @@ class Root(Tk):
         self.success_needed = IntVar(value=1)
         self.auto_success   = IntVar(value=0)
         self.specialisation = BooleanVar(value=False)
+
+        # ── Quick rolls ────────────────────────────────────────────────────────
+        _attr_names = [a for attrs in ATTRIBUTES.values() for a in attrs]
+        _abil_names = [a for abils in ABILITIES.values() for a in abils]
+        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar]] = [
+            (StringVar(value=_attr_names[0]),
+             StringVar(value=_abil_names[0]),
+             IntVar(value=6))
+            for _ in range(4)
+        ]
+        self.quick_penalty = IntVar(value=0)
 
         # ── UI flags ───────────────────────────────────────────────────────────
         self.additional_options   = BooleanVar(value=False)
@@ -220,6 +231,35 @@ class Root(Tk):
             probability=probability,
             roller_name=self.character.character_name.get(),
             roll_type="DAMAGE",
+        )
+        self._record_and_emit(record)
+
+    def quick_roll(self, index: int) -> None:
+        attr_var, abil_var, diff_var = self.quick_rolls[index]
+        attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_var.get())
+        abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_var.get())
+        attr_val  = self.character.get_stat_value(attr_name)
+        abil_val  = self.character.get_stat_value(abil_name)
+        dice_pool = attr_val + abil_val
+        penalty   = self.character.roll_penalty.get() - self.quick_penalty.get()
+
+        roller = Roller(
+            dice_number=max(1, dice_pool),
+            difficulty=diff_var.get(),
+            penalty=penalty,
+            specialisation=self.specialisation.get(),
+        )
+        result = roller.roll()
+        record = RollRecord(
+            dice_number=dice_pool,
+            difficulty=diff_var.get(),
+            auto_success=0,
+            dice=list(result.dice),
+            specialisation_dice=list(result.specialisation_dice),
+            successes=result.successes,
+            probability=0.0,
+            roller_name=self.character.character_name.get(),
+            roll_type="QUICK",
         )
         self._record_and_emit(record)
 

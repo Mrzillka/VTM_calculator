@@ -9,13 +9,13 @@ from config import (
 )
 from game.character_io import CharacterIO
 
-_ATTRIBUTES = {
+ATTRIBUTES = {
     "Physical": ("Strength", "Dexterity", "Stamina"),
     "Social": ("Charisma", "Manipulation", "Appearance"),
     "Mental": ("Perception", "Intelligence", "Wits"),
 }
 
-_ABILITIES = {
+ABILITIES = {
     "Talents": ("Alertness", "Athletics", "Brawl", "Dodge", "Empathy",
                 "Expression", "Intimidation", "Leadership", "Streetwise", "Subterfuge"),
     "Skills": ("Animal Ken", "Crafts", "Drive", "Etiquette", "Firearms",
@@ -103,7 +103,7 @@ class Character(CharacterIO):
                 attribute: {'spec': StringVar(), 'vars': _dot_row()}
                 for attribute in attributes
             }
-            for category, attributes in _ATTRIBUTES.items()
+            for category, attributes in ATTRIBUTES.items()
         }
 
         self.abilities: dict[str, dict[str, dict[str, StringVar | list[BooleanVar]]]] = {
@@ -111,7 +111,7 @@ class Character(CharacterIO):
                 ability: {'spec': StringVar(), 'vars': _dot_row()}
                 for ability in abilities
             }
-            for category, abilities in _ABILITIES.items()
+            for category, abilities in ABILITIES.items()
         }
 
         # Extra user-defined ability rows, 3 per category.
@@ -120,7 +120,7 @@ class Character(CharacterIO):
                 {'name': StringVar(), 'spec': StringVar(), 'vars': _dot_row()}
                 for _ in range(_CUSTOM_ABILITY_ROWS)
             ]
-            for category in _ABILITIES
+            for category in ABILITIES
         }
 
         self.backgrounds: list[dict[str, StringVar | list[BooleanVar]]] = [
@@ -276,4 +276,50 @@ class Character(CharacterIO):
         for i in range(MAX_DOT_TRACKER):
             self.will[i].set(i < level)
         self.will_value.set(level)
+
+    # ── Quick roll helpers ─────────────────────────────────────────────────────
+
+    def get_stat_value(self, name: str) -> int:
+        """Dot count for any attribute, ability, custom ability, discipline, or background by name."""
+        if not name:
+            return 0
+        for cat in self.attributes.values():
+            if name in cat:
+                return sum(v.get() for v in cat[name]["vars"])
+        for cat in self.abilities.values():
+            if name in cat:
+                return sum(v.get() for v in cat[name]["vars"])
+        for cat_rows in self.custom_abilities.values():
+            for row in cat_rows:
+                if row["name"].get() == name:
+                    return sum(v.get() for v in row["vars"])
+        for row in self.disciplines:
+            if row["name"].get() == name:
+                return sum(v.get() for v in row["vars"])
+        for row in self.backgrounds:
+            if row["name"].get() == name:
+                return sum(v.get() for v in row["vars"])
+        return 0
+
+    def all_pool_names(self) -> list[str]:
+        """All names usable in the second slot of a quick roll (ability, custom, discipline, background)."""
+        names: list[str] = [n for cat in self.abilities.values() for n in cat]
+        seen = set(names)
+        for cat_rows in self.custom_abilities.values():
+            for row in cat_rows:
+                n = row["name"].get().strip()
+                if n and n not in seen:
+                    names.append(n)
+                    seen.add(n)
+        for row in self.disciplines:
+            n = row["name"].get().strip()
+            if n and n not in seen:
+                names.append(n)
+                seen.add(n)
+        for row in self.backgrounds:
+            n = row["name"].get().strip()
+            if n and n not in seen:
+                names.append(n)
+                seen.add(n)
+        return names
 
