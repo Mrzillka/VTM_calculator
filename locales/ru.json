@@ -34,7 +34,8 @@
     "will": "Воля",
     "character_name": "Имя персонажа:",
     "dex": "Лов",
-    "wits": "Смек"
+    "wits": "Смек",
+    "roll_stats": "Статистика"
   },
   "trackers": {
     "blood": "Кровь",

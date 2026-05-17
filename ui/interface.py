@@ -21,7 +21,6 @@ class Interface(BaseInterface):
         super().__init__(root)
         self.root = root
 
-        self._trackers_frame: ttk.Frame | None = None
         self._additional_row: list[Widget] = []
         self._sheet_window = None
         self._blood_cells: list[list[ttk.Label]] = []
@@ -39,14 +38,6 @@ class Interface(BaseInterface):
         self._disable_blood_cells()
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
-
-    def _toggle_trackers(self) -> None:
-        if self._trackers_frame is None:
-            return
-        if self.root.trackers.get():
-            self._trackers_frame.grid()
-        else:
-            self._trackers_frame.grid_remove()
 
     def _toggle_additional_options(self) -> None:
         if self.root.additional_options.get():
@@ -76,15 +67,26 @@ class Interface(BaseInterface):
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_center(self, frm: ttk.Frame) -> None:
-        self._trackers_frame = self._frm_trackers(frm)
-        place_widgets([[
-            self._frm_main(frm),
-            self._frm_history(frm),
-            self._frm_sidebar(frm),
-            self._trackers_frame,
-        ]])
-        if not self.root.trackers.get():
-            self._trackers_frame.grid_remove()
+        nb = self._build_tabs(frm)
+        place_widgets([[self._frm_main(frm), nb]])
+
+    def _build_tabs(self, parent: ttk.Frame) -> ttk.Notebook:
+        nb = ttk.Notebook(parent)
+
+        # Tab 1: Roll History
+        hist_tab = self._frm_history(nb)
+        nb.add(hist_tab, text=locale.t("roll_history"))
+
+        # Tab 2: Trackers
+        track_tab = self._frm_trackers(nb)
+        nb.add(track_tab, text=locale.t("controls.trackers"))
+
+        def _update_tab_titles() -> None:
+            nb.tab(0, text=locale.t("roll_history"))
+            nb.tab(1, text=locale.t("controls.trackers"))
+
+        locale.on_change(_update_tab_titles)
+        return nb
 
     @frm(padding=5)
     def _frm_main(self, frm: ttk.Frame) -> None:
@@ -162,31 +164,10 @@ class Interface(BaseInterface):
                           command=self.root.roll_damage_soak),
         ]])
 
-    @frm(padding=5)
-    def _frm_sidebar(self, frm: ttk.Frame) -> None:
-        lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
-                              command=self._switch_language)
-        locale.register(lang_btn, "lang_btn")
-
-        place_widgets([
-            [self._dot_toggle(frm, locale.t("controls.trackers"),
-                              self.root.trackers,
-                              command=self._toggle_trackers,
-                              locale_key="controls.trackers")],
-            [self._tbutton(frm, "controls.sheet", style="S.TButton",
-                           command=self._open_character_sheet)],
-            [self._tbutton(frm, "controls.load_character", style="S.TButton",
-                           command=self.root.load_character_dialog)],
-            [lang_btn],
-        ])
-
     # ── Roll history ──────────────────────────────────────────────────────────
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_history(self, frm: ttk.Frame) -> None:
-        lbl = ttk.Label(frm, text=locale.t("roll_history"), style="M.TLabel")
-        lbl.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
-        locale.register(lbl, "roll_history")
         self._build_scrollable_history(frm, width=300, height=340)
 
     # ── Trackers ──────────────────────────────────────────────────────────────
@@ -426,14 +407,95 @@ class Interface(BaseInterface):
 
     @frm(padding=5, style="solid.TFrame")
     def _frm_bottom(self, frm) -> None:
+        self._frm_stats_row(frm).grid(row=0, column=0, sticky="ew")
+        self._frm_info_row(frm).grid(row=1, column=0, sticky="ew")
+        frm.grid_columnconfigure(0, weight=1)
+
+    @frm(padding=2, style="flat.TFrame")
+    def _frm_stats_row(self, frm: ttk.Frame) -> None:
         char = self.root.character
-        place_widgets([[
-            self._frm_options(frm),
+        stats = [
             self._frm_stat_label(frm, "stats.blood",    char.blood_value),
             self._frm_stat_label(frm, "stats.wounds",   char.wounds_display),
             self._frm_stat_label(frm, "stats.humanity", char.humanity_value),
             self._frm_stat_label(frm, "stats.will",     char.will_value),
-        ]])
+        ]
+        for col, w in enumerate(stats):
+            w.grid(row=0, column=col, sticky="nsew")
+            frm.grid_columnconfigure(col, weight=1)
+
+    @frm(padding=2, style="flat.TFrame")
+    def _frm_info_row(self, frm: ttk.Frame) -> None:
+        self._frm_probability(frm).grid(row=0, column=0, sticky="nsew")
+        self._frm_options(frm).grid(row=0, column=1, sticky="w")
+        self._frm_roll_stats(frm).grid(row=0, column=2, sticky="nsew")
+        frm.grid_columnconfigure(1, weight=1)
+
+    @frm(padding=5, style="solid.TFrame")
+    def _frm_probability(self, frm: ttk.Frame) -> None:
+        from game.calculator import Calculator
+        prob_var = StringVar(value="—")
+
+        def _update(*_) -> None:
+            root = self.root
+            try:
+                calc = Calculator(
+                    dice_number=root.dice_number.get(),
+                    difficulty=root.difficulty.get(),
+                    success_needed=root.success_needed.get(),
+                    auto_successes=root.auto_success.get(),
+                    specialisation=root.specialisation.get(),
+                )
+                prob_var.set(f"{calc.get_probability():.1f}%")
+            except Exception:
+                prob_var.set("—")
+
+        for var in (
+            self.root.dice_number, self.root.difficulty,
+            self.root.success_needed, self.root.auto_success,
+            self.root.specialisation,
+        ):
+            var.trace_add("write", lambda *_: _update())
+        _update()
+
+        place_widgets([
+            [self._tlabel(frm, "controls.chance", style="S.TLabel", anchor="center")],
+            [ttk.Label(frm, textvariable=prob_var, style="M.TLabel", anchor="center", width=8)],
+        ])
+
+    @frm(padding=5, style="solid.TFrame")
+    def _frm_roll_stats(self, frm: ttk.Frame) -> None:
+        summary_var = StringVar(value="—")
+        rates_var   = StringVar(value="")
+        delta_var   = StringVar(value="")
+        delta_lbl   = ttk.Label(frm, textvariable=delta_var, style="M.TLabel", anchor="center")
+
+        def _update(_record=None) -> None:
+            history = [r for r in self.root.roll_history if r.roll_type == "NORMAL"]
+            total = len(history)
+            if total == 0:
+                summary_var.set("—")
+                rates_var.set("")
+                delta_var.set("")
+                return
+            hits     = sum(1 for r in history if r.successes >= 1)
+            actual   = hits / total * 100
+            expected = sum(r.probability for r in history) / total
+            delta    = actual - expected
+            summary_var.set(f"{total} rolls · {hits} hits")
+            rates_var.set(f"Exp: {expected:.1f}%  Got: {actual:.1f}%")
+            sign = "+" if delta >= 0 else ""
+            delta_var.set(f"{sign}{delta:.1f}%")
+            delta_lbl.configure(foreground="#2d8a2d" if delta >= 0 else "#cc3333")
+
+        self.root.on_roll(_update)
+
+        place_widgets([
+            [self._tlabel(frm, "stats.roll_stats", style="S.TLabel", anchor="center")],
+            [ttk.Label(frm, textvariable=summary_var, style="S.TLabel", anchor="center", width=22)],
+            [ttk.Label(frm, textvariable=rates_var,   style="S.TLabel", anchor="center", width=22)],
+            [delta_lbl],
+        ])
 
     @frm(padding=5)
     def _frm_options(self, frm: ttk.Frame) -> None:
@@ -442,6 +504,7 @@ class Interface(BaseInterface):
             self._frm_initiative_spinboxes(frm),
             self._frm_action_buttons(frm),
             self._frm_session(frm),
+            self._frm_nav_buttons(frm),
         ]])
 
     @frm(padding=5)
@@ -498,6 +561,20 @@ class Interface(BaseInterface):
 
         ttk.Button(frm, textvariable=btn_var, command=_on_click,
                    style="S.TButton").grid(row=1, column=0, columnspan=2, pady=(4, 0))
+
+    @frm(padding=5)
+    def _frm_nav_buttons(self, frm: ttk.Frame) -> None:
+        lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
+                              command=self._switch_language)
+        locale.register(lang_btn, "lang_btn")
+
+        place_widgets([
+            [self._tbutton(frm, "controls.sheet", style="S.TButton",
+                           command=self._open_character_sheet)],
+            [self._tbutton(frm, "controls.load_character", style="S.TButton",
+                           command=self.root.load_character_dialog)],
+            [lang_btn],
+        ])
 
     @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:
