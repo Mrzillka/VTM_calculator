@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import BooleanVar, StringVar, Widget
+from tkinter import BooleanVar, StringVar
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
@@ -16,7 +16,7 @@ from ui.constants import (
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
-    from ui.root import Root
+    from ui.player.root import Root
 
 
 class Interface(BaseInterface):
@@ -26,7 +26,6 @@ class Interface(BaseInterface):
         super().__init__(root)
         self.root = root
 
-        self._additional_row: list[Widget] = []
         self._sheet_window = None
         self._blood_cells: list[list[ttk.Label]] = []
 
@@ -43,15 +42,6 @@ class Interface(BaseInterface):
         self._disable_blood_cells()
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
-
-    def _toggle_additional_options(self) -> None:
-        if self.root.additional_options.get():
-            for col_idx, widget in enumerate(self._additional_row):
-                widget.grid(column=col_idx, row=4)
-                widget.update()
-        else:
-            for widget in self._additional_row:
-                widget.grid_remove()
 
     def _open_character_sheet(self) -> None:
         if self._sheet_window is not None and self._sheet_window.winfo_exists():
@@ -146,28 +136,16 @@ class Interface(BaseInterface):
             self._dot_toggle(frm, locale.t("controls.specialisation"),
                              root.specialisation,
                              locale_key="controls.specialisation"),
-            self._dot_toggle(frm, locale.t("controls.send_telegram"),
-                             root.is_send_to_telegram,
-                             locale_key="controls.send_telegram"),
-            self._dot_toggle(frm, "∨", root.additional_options,
-                             command=self._toggle_additional_options),
         ])
-        place_widgets(rows)
-
-        self._additional_row = [
-            self._tlabel(frm, "controls.success_needed", width=16, style="M.TLabel", anchor="e"),
+        rows.append([
+            self._tlabel(frm, "controls.success_needed", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=SUCCESS_NEEDED_MAX, length=SCALE_LENGTH,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
             ttk.Spinbox(frm, from_=1, to=SUCCESS_NEEDED_MAX, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
-        ]
-        for col_idx, widget in enumerate(self._additional_row):
-            widget.grid(column=col_idx, row=4)
-            widget.update()
-        if not root.additional_options.get():
-            for widget in self._additional_row:
-                widget.grid_remove()
+        ])
+        place_widgets(rows)
 
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
@@ -724,12 +702,16 @@ class Interface(BaseInterface):
                 root.join_session()
 
         ttk.Button(frm, textvariable=btn_var, command=_on_click,
-                   style="S.TButton").grid(row=1, column=0, columnspan=2, **pad)
+                   style="S.TButton").grid(row=0, column=2, columnspan=1, **pad)
 
         # Telegram
         ttk.Button(frm, textvariable=root.pooling_state,
                    command=root.start_bot_polling,
-                   style="S.TButton").grid(row=2, column=0, columnspan=2, **pad)
+                   style="S.TButton").grid(row=1, column=0, columnspan=2, **pad)
+
+        self._dot_toggle(frm, locale.t("controls.send_telegram"),
+                         root.is_send_to_telegram,
+                         locale_key="controls.send_telegram").grid(row=2, column=0, columnspan=2, **pad)
 
         # Load character
         self._tbutton(frm, "controls.load_character", style="S.TButton",

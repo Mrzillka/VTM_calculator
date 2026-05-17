@@ -18,6 +18,7 @@
     "sheet": "Sheet",
     "load_character": "Load Char",
     "save": "💾 Save",
+    "bot_tg": "Bot Telegram",
     "connect_tg": "Connect to Telegram",
     "connecting": "Connecting...",
     "chance": "Chance:",

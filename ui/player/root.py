@@ -22,7 +22,7 @@ from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
 from ui.constants import AUTOSAVE_DEBOUNCE_MS, BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
-from ui.interface import Interface
+from ui.player.interface import Interface
 from ui.styles import configure_main_styles
 from ui.theme import theme
 from ui.utils import apply_icon, place_widgets

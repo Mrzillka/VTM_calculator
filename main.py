@@ -1,7 +1,7 @@
 import logging
 
 from config import ensure_app_data_dir
-from ui.root import Root
+from ui.player.root import Root
 
 logging.basicConfig(
     format="%(asctime)s  %(name)-5s  %(levelname)-5s  %(message)s",
