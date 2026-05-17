@@ -21,7 +21,7 @@ from game.roller import Roller
 from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
-from ui.constants import BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
+from ui.constants import AUTOSAVE_DEBOUNCE_MS, BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
 from ui.interface import Interface
 from ui.styles import configure_main_styles
 from ui.theme import theme
@@ -95,7 +95,9 @@ class Root(Tk):
         self._net_queue: queue.Queue[tuple[str, object]] = queue.Queue()
         self._session: NtfySession | None = None
         self._tracker_send_job: str | None = None
+        self._autosave_job: str | None = None
         self._setup_tracker_traces()
+        self._setup_autosave_traces()
         self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
@@ -282,6 +284,22 @@ class Root(Tk):
         self._session.publish("sheet", self.character.to_dict())
 
     # ── Tracker auto-send (debounced) ──────────────────────────────────────────
+
+    def _setup_autosave_traces(self) -> None:
+        for var in (
+            self.character.blood_value, self.character.blood_max_value,
+            self.character.wounds_value, self.character.humanity_value,
+            self.character.will_value, self.character.willpower_max,
+            self.dice_number, self.difficulty, self.success_needed,
+            self.auto_success, self.specialisation,
+            self.session_code, self.character.character_name,
+        ):
+            var.trace_add("write", lambda *_: self._schedule_save())
+
+    def _schedule_save(self) -> None:
+        if self._autosave_job:
+            self.after_cancel(self._autosave_job)
+        self._autosave_job = self.after(AUTOSAVE_DEBOUNCE_MS, self.save_to_file)
 
     def _setup_tracker_traces(self) -> None:
         for var in (

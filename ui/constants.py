@@ -12,6 +12,7 @@ MOUSEWHEEL_DIVISOR: int = 120
 # ── Polling / debounce intervals (ms) ────────────────────────────────────────
 NET_POLL_MS: int = 100
 TRACKER_DEBOUNCE_MS: int = 500
+AUTOSAVE_DEBOUNCE_MS: int = 1500
 BOT_STATUS_POLL_MS: int = 1000
 
 # ── Roll-control widget sizes ─────────────────────────────────────────────────

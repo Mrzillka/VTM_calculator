@@ -656,8 +656,6 @@ class Interface(BaseInterface):
         place_widgets([
             [ttk.Button(frm, textvariable=self.root.pooling_state,
                         command=self.root.start_bot_polling, style="S.TButton")],
-            [self._tbutton(frm, "controls.save",
-                           command=self.root.save_to_file, style="S.TButton")],
         ])
 
     @frm(padding=5)
