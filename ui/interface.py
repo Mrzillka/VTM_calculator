@@ -155,11 +155,23 @@ class Interface(BaseInterface):
 
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
+        char = self.root.character
+        initiative_var = StringVar()
+
+        def _update_initiative_text(*_) -> None:
+            bonus = char.dex_value.get() + char.dex_boost.get() + char.wits_value.get()
+            initiative_var.set(f"{locale.t('controls.initiative')} (+{bonus})")
+
+        for var in (char.dex_value, char.dex_boost, char.wits_value):
+            var.trace_add("write", _update_initiative_text)
+        locale.on_change(_update_initiative_text)
+        _update_initiative_text()
+
         place_widgets([[
             self._tbutton(frm, "controls.roll", style="L.TButton",
                           command=self.root.roll_and_calculate),
-            self._tbutton(frm, "controls.initiative", style="M.TButton",
-                          command=self.root.roll_initiative),
+            ttk.Button(frm, textvariable=initiative_var, style="M.TButton",
+                       command=self.root.roll_initiative),
             self._tbutton(frm, "controls.damage_soak", style="M.TButton",
                           command=self.root.roll_damage_soak),
         ]])
@@ -501,7 +513,6 @@ class Interface(BaseInterface):
     def _frm_options(self, frm: ttk.Frame) -> None:
         place_widgets([[
             self._frm_name(frm),
-            self._frm_initiative_spinboxes(frm),
             self._frm_action_buttons(frm),
             self._frm_session(frm),
             self._frm_nav_buttons(frm),
@@ -513,16 +524,6 @@ class Interface(BaseInterface):
             [self._tlabel(frm, "stats.character_name", anchor="e", style="M.TLabel")],
             [ttk.Entry(frm, textvariable=self.root.character.character_name, width=20,
                        style="my.TEntry")],
-        ])
-
-    @frm(padding=5)
-    def _frm_initiative_spinboxes(self, frm: ttk.Frame) -> None:
-        char = self.root.character
-        dex_lbl  = ttk.Label(frm, textvariable=char.dex_value,  width=3, style="S.TLabel", anchor="e")
-        wits_lbl = ttk.Label(frm, textvariable=char.wits_value, width=3, style="S.TLabel", anchor="e")
-        place_widgets([
-            [self._tlabel(frm, "stats.dex",  width=5, anchor="e", style="S.TLabel"), dex_lbl],
-            [self._tlabel(frm, "stats.wits", width=5, anchor="e", style="S.TLabel"), wits_lbl],
         ])
 
     @frm(padding=5)
