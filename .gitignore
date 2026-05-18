@@ -92,3 +92,5 @@ dmypy.json
 /test.py
 /setap.py
 /main_character.py
+/build.py
+/version_info.txt
