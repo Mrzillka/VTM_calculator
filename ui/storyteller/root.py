@@ -38,7 +38,8 @@ class Root(Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("VTM Storyteller")
-        self.resizable(False, False)
+        self.resizable(True, True)
+        self.minsize(920, 560)
 
         apply_icon(self, "icon_storyteller.ico")
 

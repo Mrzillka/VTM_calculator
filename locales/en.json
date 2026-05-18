@@ -33,7 +33,13 @@
     "light_mode":    "☀ Light",
     "settings":      "⚙ Settings",
     "quick_rolls":        "Quick Rolls",
-    "unskilled_penalty":  "Unskilled −1 die"
+    "unskilled_penalty":  "Unskilled −1 die",
+    "dice_short":         "Dice",
+    "diff_short":         "Diff"
+  },
+  "panels": {
+    "players": "Players",
+    "npcs":    "NPCs"
   },
   "stats": {
     "blood": "Blood",

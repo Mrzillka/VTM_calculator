@@ -33,7 +33,13 @@
     "light_mode":    "☀ Светлая",
     "settings":      "⚙ Настройки",
     "quick_rolls":        "Быстрые броски",
-    "unskilled_penalty":  "Без навыка −1 куб"
+    "unskilled_penalty":  "Без навыка −1 куб",
+    "dice_short":         "Куб.",
+    "diff_short":         "Сл."
+  },
+  "panels": {
+    "players": "Игроки",
+    "npcs":    "НПС"
   },
   "stats": {
     "blood": "Кровь",

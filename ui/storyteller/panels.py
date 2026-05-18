@@ -256,9 +256,11 @@ class NPCPanel(ttk.Frame):
         parent: ttk.Frame,
         *,
         on_roster_change: Callable[[], None] | None = None,
+        on_set_roller: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__(parent, style="solid.TFrame", padding=4)
         self._on_roster_change = on_roster_change
+        self._on_set_roller = on_set_roller
         self._entries: list[dict] = []
         self._sheet_wins: dict[Path, tk.Toplevel] = {}
         self._build()
@@ -311,10 +313,15 @@ class NPCPanel(ttk.Frame):
     def _append_card(self, entry: dict) -> None:
         char = entry["char"]
         path = entry["path"]
+        set_roller_cb = (
+            (lambda c=char: self._on_set_roller(c.character_name.get()))
+            if self._on_set_roller else None
+        )
         card = _build_npc_card(
             self._inner, char,
             on_open=lambda c=char, p=path: self._open_sheet(c, p),
             on_remove=lambda e=entry: self._remove_entry(e),
+            on_set_roller=set_roller_cb,
         )
         entry["card"] = card
         card.pack(fill="x", padx=2, pady=(0, 4))
@@ -344,11 +351,22 @@ class NPCPanel(ttk.Frame):
 
 # ── Card builders ──────────────────────────────────────────────────────────────
 
-def _card_buttons(parent: ttk.Frame, on_open: Callable, on_remove: Callable) -> ttk.Frame:
+def _card_buttons(
+    parent: ttk.Frame,
+    on_open: Callable,
+    on_remove: Callable,
+    *,
+    on_set_roller: Callable | None = None,
+) -> ttk.Frame:
     frm = ttk.Frame(parent, style="flat.TFrame")
-    ttk.Button(frm, text="Sheet", style="S.TButton", command=on_open).grid(row=0, column=0)
+    col = 0
+    if on_set_roller:
+        ttk.Button(frm, text="▶", style="S.TButton", width=2,
+                   command=on_set_roller).grid(row=0, column=col, padx=(0, 4))
+        col += 1
+    ttk.Button(frm, text="Sheet", style="S.TButton", command=on_open).grid(row=0, column=col)
     ttk.Button(frm, text="✕", style="S.TButton", width=2, command=on_remove).grid(
-        row=0, column=1, padx=(4, 0)
+        row=0, column=col + 1, padx=(4, 0)
     )
     return frm
 
@@ -393,6 +411,7 @@ def _build_npc_card(
     *,
     on_open: Callable,
     on_remove: Callable,
+    on_set_roller: Callable | None = None,
 ) -> ttk.Frame:
     """Compact editable NPC summary card showing key GM stats."""
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
@@ -401,7 +420,9 @@ def _build_npc_card(
     ttk.Label(frame, textvariable=char.character_name, style="M.TLabel").grid(
         row=0, column=0, sticky="w"
     )
-    _card_buttons(frame, on_open, on_remove).grid(row=0, column=1, sticky="e")
+    _card_buttons(frame, on_open, on_remove, on_set_roller=on_set_roller).grid(
+        row=0, column=1, sticky="e"
+    )
 
     sub = ttk.Frame(frame, style="flat.TFrame")
     ttk.Label(sub, textvariable=char.clan,    style="HistoryMeta.TLabel").grid(row=0, column=0, sticky="w")
