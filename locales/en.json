@@ -35,7 +35,11 @@
     "quick_rolls":        "Quick Rolls",
     "unskilled_penalty":  "Unskilled −1 die",
     "dice_short":         "Dice",
-    "diff_short":         "Diff"
+    "diff_short":         "Diff",
+    "settings_character": "Character",
+    "settings_session":   "Session",
+    "settings_telegram":  "Telegram",
+    "settings_app":       "App"
   },
   "panels": {
     "players": "Players",
@@ -71,6 +75,61 @@
     "Crippled": "Crippled",
     "Incapacitated": "Incapacitated",
     "Torpor": "Torpor"
+  },
+  "chargen": {
+    "title": "Create Character",
+    "step": "Step",
+    "btn_create": "New Char",
+    "btn_next": "Next →",
+    "btn_back": "← Back",
+    "btn_finish": "Finish ✓",
+    "steps": {
+      "concept":      "Character Concept",
+      "attributes":   "Attributes",
+      "abilities":    "Abilities",
+      "advantages":   "Advantages",
+      "merits_flaws": "Merits & Flaws",
+      "freebies":     "Freebie Points"
+    },
+    "tutorial": {
+      "concept":      "Define who your character is. Your clan determines starting disciplines. Affiliation sets how many attribute points you receive.",
+      "attributes":   "Assign priorities to each category — Primary gets the most points. Each attribute starts at 1; distribute the rest. Max 5 per attribute. Spend all points before continuing.",
+      "abilities":    "Assign priorities to each ability category, then distribute dots. Creation cap: 3 dots per ability. Spend all points before continuing.",
+      "advantages":   "Spend background points on resources and contacts. Clan disciplines are pre-filled — distribute your 3 discipline dots. Invest all 7 virtue points across the three virtues.",
+      "merits_flaws": "Merits grant useful traits; flaws give extra points in exchange for drawbacks. Selection is free — proceed when ready.",
+      "freebies":     "Spend your freebie points anywhere you like. Each dot costs 1 point. You may leave points unspent."
+    },
+    "affiliations": {
+      "Camarilla":   "Camarilla",
+      "Anarch":      "Anarch",
+      "Sabbat":      "Sabbat",
+      "Independent": "Independent"
+    },
+    "labels": {
+      "name":                    "Name",
+      "clan":                    "Clan",
+      "nature":                  "Nature",
+      "demeanor":                "Demeanor",
+      "affiliation":             "Affiliation",
+      "generation":              "Generation",
+      "primary":                 "Primary",
+      "secondary":               "Secondary",
+      "tertiary":                "Tertiary",
+      "remaining":               "Remaining",
+      "remaining_prefix":        "Remaining:",
+      "freebie_remaining":       "Freebie points remaining",
+      "freebie_remaining_prefix":"Freebie points remaining:",
+      "trackers":                "Trackers"
+    },
+    "errors": {
+      "name_required":           "Character name is required.",
+      "clan_required":           "Please select a clan.",
+      "affiliation_required":    "Please select an affiliation.",
+      "attr_points_remaining":   "You still have {n} unspent attribute point(s).",
+      "ability_points_remaining":"You still have {n} unspent ability point(s).",
+      "adv_points_remaining":    "You still have unspent advantage points (backgrounds, disciplines, or virtues).",
+      "flaw_max":                "Total flaw points cannot exceed 7."
+    }
   },
   "sheet": {
     "title": "Vampire the Masquerade",

@@ -27,6 +27,7 @@ class Interface(BaseInterface):
         self.root = root
 
         self._sheet_window = None
+        self._chargen_window = None
         self._blood_cells: list[list[ttk.Label]] = []
 
         self._build()
@@ -53,6 +54,25 @@ class Interface(BaseInterface):
             character=self.root.character,
             send_sheet_callback=self.root.send_sheet_to_server,
         )
+
+    def _open_chargen(self) -> None:
+        if self._chargen_window is not None and self._chargen_window.winfo_exists():
+            self._chargen_window.lift()
+            self._chargen_window.focus_force()
+            return
+        from game.character import Character
+        from ui.chargen.root import Root as ChargenRoot
+        self._chargen_window = ChargenRoot(
+            character=Character(),
+            on_finish=self._on_chargen_finish,
+        )
+
+    def _on_chargen_finish(self, new_char) -> None:
+        data = new_char.to_dict()
+        self.root.character.load(data)
+        self.refresh_blood_cells()
+        self.root.character.apply_trackers()
+        self.root.save_to_file()
 
     def _switch_language(self) -> None:
         locale.switch()
@@ -789,15 +809,31 @@ class Interface(BaseInterface):
     @frm(padding=8, style="solid.TFrame")
     def _frm_settings_tab(self, frm: ttk.Frame) -> None:
         root = self.root
-        pad = {"pady": 3, "padx": 4}
 
-        # Session code label + entry
-        self._tlabel(frm, "controls.session_code", style="S.TLabel", anchor="e").grid(
-            row=0, column=0, sticky="e", **pad)
-        ttk.Entry(frm, textvariable=root.session_code,
-                  width=14, style="my.TEntry").grid(row=0, column=1, sticky="ew", **pad)
+        def _section(key: str) -> ttk.LabelFrame:
+            lf = ttk.LabelFrame(frm, text=locale.t(key), padding=(8, 4))
+            locale.on_change(lambda *_: lf.configure(text=locale.t(key)))
+            lf.pack(fill="x", pady=(0, 6))
+            lf.grid_columnconfigure(0, weight=1)
+            return lf
 
-        # Join / Leave button
+        # ── Character ─────────────────────────────────────────────────────────
+        char_lf = _section("controls.settings_character")
+        self._tbutton(char_lf, "controls.load_character", style="S.TButton",
+                      command=root.load_character_dialog).grid(
+            row=0, column=0, sticky="ew", padx=(0, 3), pady=2)
+        self._tbutton(char_lf, "chargen.btn_create", style="S.TButton",
+                      command=self._open_chargen).grid(
+            row=0, column=1, sticky="ew", padx=(3, 0), pady=2)
+        char_lf.grid_columnconfigure(1, weight=1)
+
+        # ── Session ───────────────────────────────────────────────────────────
+        sess_lf = _section("controls.settings_session")
+        self._tlabel(sess_lf, "controls.session_code", style="S.TLabel").grid(
+            row=0, column=0, sticky="w", pady=2)
+        ttk.Entry(sess_lf, textvariable=root.session_code,
+                  width=12, style="my.TEntry").grid(row=0, column=1, sticky="ew", padx=(4, 4), pady=2)
+
         btn_var = tk.StringVar(value=locale.t("controls.join_session"))
 
         def _update_btn(*_) -> None:
@@ -813,30 +849,23 @@ class Interface(BaseInterface):
             else:
                 root.join_session()
 
-        ttk.Button(frm, textvariable=btn_var, command=_on_click,
-                   style="S.TButton").grid(row=0, column=2, columnspan=1, **pad)
+        ttk.Button(sess_lf, textvariable=btn_var, command=_on_click,
+                   style="S.TButton").grid(row=0, column=2, pady=2)
+        sess_lf.grid_columnconfigure(1, weight=1)
 
-        # Telegram
-        ttk.Button(frm, textvariable=root.pooling_state,
+        # ── Telegram ──────────────────────────────────────────────────────────
+        tg_lf = _section("controls.settings_telegram")
+        ttk.Button(tg_lf, textvariable=root.pooling_state,
                    command=root.start_bot_polling,
-                   style="S.TButton").grid(row=1, column=0, columnspan=2, **pad)
-
-        self._dot_toggle(frm, locale.t("controls.send_telegram"),
+                   style="S.TButton").grid(row=0, column=0, sticky="ew", pady=2)
+        self._dot_toggle(tg_lf, locale.t("controls.send_telegram"),
                          root.is_send_to_telegram,
-                         locale_key="controls.send_telegram").grid(row=2, column=0, columnspan=2, **pad)
+                         locale_key="controls.send_telegram").grid(
+            row=1, column=0, sticky="w", pady=2)
 
-        # Load character
-        self._tbutton(frm, "controls.load_character", style="S.TButton",
-                      command=root.load_character_dialog).grid(
-            row=3, column=0, columnspan=2, **pad)
+        # ── App ───────────────────────────────────────────────────────────────
+        app_lf = _section("controls.settings_app")
 
-        # Language
-        lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
-                              command=self._switch_language)
-        locale.register(lang_btn, "lang_btn")
-        lang_btn.grid(row=4, column=0, columnspan=2, **pad)
-
-        # Theme
         theme_var = tk.StringVar()
 
         def _upd_theme_btn(*_) -> None:
@@ -846,14 +875,20 @@ class Interface(BaseInterface):
         _upd_theme_btn()
         locale.on_change(_upd_theme_btn)
         theme.on_change(_upd_theme_btn)
-        ttk.Button(frm, textvariable=theme_var, style="S.TButton",
-                   command=root.toggle_theme).grid(row=5, column=0, columnspan=2, **pad)
+        ttk.Button(app_lf, textvariable=theme_var, style="S.TButton",
+                   command=root.toggle_theme).grid(
+            row=0, column=0, sticky="ew", padx=(0, 3), pady=2)
 
-        self._dot_toggle(frm, locale.t("controls.unskilled_penalty"),
+        lang_btn = ttk.Button(app_lf, text=locale.t("lang_btn"), style="S.TButton",
+                              command=self._switch_language)
+        locale.register(lang_btn, "lang_btn")
+        lang_btn.grid(row=0, column=1, sticky="ew", padx=(3, 0), pady=2)
+
+        self._dot_toggle(app_lf, locale.t("controls.unskilled_penalty"),
                          root.default_skill_penalty,
-                         locale_key="controls.unskilled_penalty").grid(row=6, column=0, columnspan=2, **pad)
-
-        frm.grid_columnconfigure(1, weight=1)
+                         locale_key="controls.unskilled_penalty").grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=2)
+        app_lf.grid_columnconfigure(1, weight=1)
 
     @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:

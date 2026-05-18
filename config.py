@@ -134,6 +134,11 @@ MAX_DOT_TRACKER: int = 10  # dots in humanity and willpower trackers
 VIRTUE_DOTS: int = 5       # dot count per virtue (Conscience, Self-Control, Courage)
 SPEC_MIN_DOTS: int = 4     # filled dots required to unlock specialisation entry
 
+# ── Character-creation rules ──────────────────────────────────────────────────
+# Optional rule: starting Willpower must be at least this value.
+# Set to 0 to disable and derive Willpower purely from Courage.
+CHARGEN_MIN_WILLPOWER: int = 5
+
 # ── Generation bounds ─────────────────────────────────────────────────────────
 MIN_GENERATION: int = 4
 MAX_GENERATION: int = 15
