@@ -209,8 +209,7 @@ class ChargenInterface(
 
         self.bg_remaining.set(r.backgrounds)
         self.disc_remaining.set(r.disciplines)
-        # 7 virtue points, but each virtue starts at 1 (3 pre-filled) → 4 remaining
-        self.virtue_remaining.set(r.virtues - len(self.character.virtues))
+        self.virtue_remaining.set(r.virtues)
         self.freebie_remaining.set(r.freebies)
 
         self._clan_disciplines = CharGen.clan_disciplines(self.character.clan.get())
