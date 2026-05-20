@@ -21,7 +21,7 @@ class StepDef(NamedTuple):
     validate: Callable[[], str | None]
 
 
-class Wizard(
+class ChargenInterface(
     ttk.Frame, LocaleWidgetsMixin,
     _ConceptMixin, _AttributesMixin, _AbilitiesMixin,
     _AdvantagesMixin, _MeritsMixin, _FreebiesMixin,
@@ -296,8 +296,8 @@ class Wizard(
         self.character.save()
         if self._on_finish is not None:
             self._on_finish(self.character)
-        from ui.charsheet.root import Root as CharacterSheet
-        new_sheet = CharacterSheet(character=self.character)
+        from ui.charsheet.root import CharsheetWindow
+        new_sheet = CharsheetWindow(character=self.character)
         self.winfo_toplevel().destroy()
         new_sheet.lift()
         new_sheet.focus_force()

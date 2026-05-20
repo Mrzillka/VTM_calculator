@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import ensure_app_data_dir
-from ui.storyteller.root import Root
+from ui.storyteller.root import StorytellerRoot
 
 logging.basicConfig(
     format="%(asctime)s  %(name)-5s  %(levelname)-5s  %(message)s",
@@ -16,7 +16,7 @@ logging.basicConfig(
 
 def main() -> None:
     ensure_app_data_dir()
-    app = Root()
+    app = StorytellerRoot()
     app.mainloop()
 
 

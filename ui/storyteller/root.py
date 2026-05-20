@@ -17,7 +17,7 @@ from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
 from ui.constants import NET_POLL_MS
-from ui.storyteller.interface import Interface
+from ui.storyteller.interface import StorytellerInterface
 from ui.styles import configure_main_styles
 from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
@@ -32,7 +32,7 @@ def _generate_topic() -> str:
     return "vtm-" + secrets.token_hex(6)
 
 
-class Root(Tk):
+class StorytellerRoot(Tk):
     """Main window for the Storyteller application."""
 
     def __init__(self) -> None:
@@ -102,7 +102,7 @@ class Root(Tk):
         self.save_lang_pref()
 
     def _build_interface(self) -> None:
-        self._interface = Interface(self)
+        self._interface = StorytellerInterface(self)
         place_widgets([[self._interface]])
 
     # ── Locale ─────────────────────────────────────────────────────────────────

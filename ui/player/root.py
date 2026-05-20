@@ -22,7 +22,7 @@ from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
 from ui.constants import AUTOSAVE_DEBOUNCE_MS, BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
-from ui.player.interface import Interface
+from ui.player.interface import PlayerInterface
 from ui.styles import configure_main_styles
 from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
@@ -30,7 +30,7 @@ from ui.utils import apply_icon, place_widgets
 logger = logging.getLogger(__name__)
 
 
-class Root(Tk):
+class PlayerRoot(Tk):
     """
     Main application window for VTM Calculator (Player).
 
@@ -150,7 +150,7 @@ class Root(Tk):
         self.save_to_file()
 
     def _build_interface(self) -> None:
-        self._interface = Interface(self)
+        self._interface = PlayerInterface(self)
         place_widgets([[self._interface]])
 
     # ── Locale ─────────────────────────────────────────────────────────────────

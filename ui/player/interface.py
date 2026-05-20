@@ -16,13 +16,13 @@ from ui.constants import (
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
-    from ui.player.root import Root
+    from ui.player.root import PlayerRoot
 
 
-class Interface(BaseInterface):
+class PlayerInterface(BaseInterface):
     """Root widget of the main application interface."""
 
-    def __init__(self, root: "Root") -> None:
+    def __init__(self, root: "PlayerRoot") -> None:
         super().__init__(root)
         self.root = root
 
@@ -49,8 +49,8 @@ class Interface(BaseInterface):
             self._sheet_window.lift()
             self._sheet_window.focus_force()
             return
-        from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet(
+        from ui.charsheet.root import CharsheetWindow
+        self._sheet_window = CharsheetWindow(
             character=self.root.character,
             send_sheet_callback=self.root.send_sheet_to_server,
         )
@@ -61,8 +61,8 @@ class Interface(BaseInterface):
             self._chargen_window.focus_force()
             return
         from game.character import Character
-        from ui.chargen.root import Root as ChargenRoot
-        self._chargen_window = ChargenRoot(
+        from ui.chargen.root import ChargenWindow
+        self._chargen_window = ChargenWindow(
             character=Character(),
             on_finish=self._on_chargen_finish,
         )

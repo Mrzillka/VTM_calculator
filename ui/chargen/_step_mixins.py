@@ -11,7 +11,7 @@ from lang import locale
 from ui.constants import MOUSEWHEEL_DIVISOR
 
 if TYPE_CHECKING:
-    from ui.chargen.wizard import Wizard
+    from ui.chargen.interface import ChargenInterface
 
 
 # ── Helper shared by mixins ────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ def _color_remaining(lbl: ttk.Label, var: IntVar) -> None:
 
 class _ConceptMixin:
 
-    def _build_step_concept(self: "Wizard") -> ttk.Frame:
+    def _build_step_concept(self: "ChargenInterface") -> ttk.Frame:
         from game.chargen import AFFILIATIONS, ARCHETYPES, CLANS, GENERATION_CHOICES
         frm = ttk.Frame(self._content_area, padding=8)
 
@@ -79,7 +79,7 @@ class _ConceptMixin:
 
         return frm
 
-    def _validate_concept(self: "Wizard") -> str | None:
+    def _validate_concept(self: "ChargenInterface") -> str | None:
         if not self.character.character_name.get().strip():
             return locale.t("chargen.errors.name_required")
         if not self.character.clan.get():
@@ -93,7 +93,7 @@ class _ConceptMixin:
 
 class _AttributesMixin:
 
-    def _build_step_attributes(self: "Wizard") -> ttk.Frame:
+    def _build_step_attributes(self: "ChargenInterface") -> ttk.Frame:
         frm = ttk.Frame(self._content_area, padding=4)
 
         # ── Priority selection ─────────────────────────────────────────────────
@@ -147,7 +147,7 @@ class _AttributesMixin:
 
         return frm
 
-    def _build_attr_dots(self: "Wizard", parent, row, char_vars, remaining_var, min_dots=0):
+    def _build_attr_dots(self: "ChargenInterface", parent, row, char_vars, remaining_var, min_dots=0):
         for col, var in enumerate(char_vars[:5]):
             dot = ttk.Label(parent, text="●" if var.get() else "○",
                             width=2, style="S.TLabel", cursor="hand2")
@@ -158,7 +158,7 @@ class _AttributesMixin:
                      self._wizard_dot_click(cv, idx, rv, md, 5))
             dot.grid(row=row, column=col + 1)
 
-    def _on_attr_priority_change(self: "Wizard", changed_slot: int) -> None:
+    def _on_attr_priority_change(self: "ChargenInterface", changed_slot: int) -> None:
         new_cat = locale.reverse_lookup_en("sheet.attr_categories",
                                            self._attr_priority_vars[changed_slot].get())
         old_cat = self._attr_priority_cats[changed_slot]
@@ -182,7 +182,7 @@ class _AttributesMixin:
             ) - n_attrs  # subtract 1 minimum per attribute
             self.attr_remaining[cat].set(pool - max(0, spent))
 
-    def _validate_attributes(self: "Wizard") -> str | None:
+    def _validate_attributes(self: "ChargenInterface") -> str | None:
         total = sum(v.get() for v in self.attr_remaining.values())
         if total != 0:
             return locale.t("chargen.errors.attr_points_remaining").format(n=total)
@@ -193,7 +193,7 @@ class _AttributesMixin:
 
 class _AbilitiesMixin:
 
-    def _build_step_abilities(self: "Wizard") -> ttk.Frame:
+    def _build_step_abilities(self: "ChargenInterface") -> ttk.Frame:
         frm = ttk.Frame(self._content_area, padding=4)
 
         cats = list(self.character.abilities.keys())
@@ -240,7 +240,7 @@ class _AbilitiesMixin:
 
         return frm
 
-    def _build_abil_dots(self: "Wizard", parent, row, char_vars, remaining_var):
+    def _build_abil_dots(self: "ChargenInterface", parent, row, char_vars, remaining_var):
         for col, var in enumerate(char_vars[:3]):
             dot = ttk.Label(parent, text="●" if var.get() else "○",
                             width=2, style="S.TLabel", cursor="hand2")
@@ -251,7 +251,7 @@ class _AbilitiesMixin:
                      self._wizard_dot_click(cv, idx, rv, 0, 3))
             dot.grid(row=row, column=col + 1)
 
-    def _on_abil_priority_change(self: "Wizard", changed_slot: int) -> None:
+    def _on_abil_priority_change(self: "ChargenInterface", changed_slot: int) -> None:
         new_cat = locale.reverse_lookup_en("sheet.ability_categories",
                                            self._abil_priority_vars[changed_slot].get())
         old_cat = self._abil_priority_cats[changed_slot]
@@ -273,7 +273,7 @@ class _AbilitiesMixin:
             )
             self.ability_remaining[cat].set(pool - spent)
 
-    def _validate_abilities(self: "Wizard") -> str | None:
+    def _validate_abilities(self: "ChargenInterface") -> str | None:
         total = sum(v.get() for v in self.ability_remaining.values())
         if total != 0:
             return locale.t("chargen.errors.ability_points_remaining").format(n=total)
@@ -284,7 +284,7 @@ class _AbilitiesMixin:
 
 class _AdvantagesMixin:
 
-    def _build_step_advantages(self: "Wizard") -> ttk.Frame:
+    def _build_step_advantages(self: "ChargenInterface") -> ttk.Frame:
         frm = ttk.Frame(self._content_area, padding=4)
 
         nb = ttk.Notebook(frm)
@@ -296,7 +296,7 @@ class _AdvantagesMixin:
 
         return frm
 
-    def _build_backgrounds_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_backgrounds_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         tab = ttk.Frame(parent, padding=4)
 
         rem_frm = ttk.Frame(tab)
@@ -324,7 +324,7 @@ class _AdvantagesMixin:
 
         return tab
 
-    def _build_disciplines_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_disciplines_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         tab = ttk.Frame(parent, padding=4)
 
         rem_frm = ttk.Frame(tab)
@@ -359,7 +359,7 @@ class _AdvantagesMixin:
 
         return tab
 
-    def _build_virtues_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_virtues_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         tab = ttk.Frame(parent, padding=4)
 
         rem_frm = ttk.Frame(tab)
@@ -386,7 +386,7 @@ class _AdvantagesMixin:
 
         return tab
 
-    def _validate_advantages(self: "Wizard") -> str | None:
+    def _validate_advantages(self: "ChargenInterface") -> str | None:
         remaining_vars = [self.bg_remaining, self.disc_remaining, self.virtue_remaining]
         if any(v.get() != 0 for v in remaining_vars):
             return locale.t("chargen.errors.adv_points_remaining")
@@ -397,7 +397,7 @@ class _AdvantagesMixin:
 
 class _MeritsMixin:
 
-    def _build_step_merits(self: "Wizard") -> ttk.Frame:
+    def _build_step_merits(self: "ChargenInterface") -> ttk.Frame:
         frm = ttk.Frame(self._content_area, padding=4)
 
         merit_names = [""] + sorted(MERITS.keys())
@@ -472,7 +472,7 @@ class _MeritsMixin:
 
         return frm
 
-    def _validate_merits(self: "Wizard") -> str | None:
+    def _validate_merits(self: "ChargenInterface") -> str | None:
         flaw_total = sum(r["cost"].get() for r in self.character.flaws)
         if flaw_total > 7:
             return locale.t("chargen.errors.flaw_max")
@@ -483,7 +483,7 @@ class _MeritsMixin:
 
 class _FreebiesMixin:
 
-    def _build_step_freebies(self: "Wizard") -> ttk.Frame:
+    def _build_step_freebies(self: "ChargenInterface") -> ttk.Frame:
         frm = ttk.Frame(self._content_area, padding=4)
 
         rem_frm = ttk.Frame(frm)
@@ -505,7 +505,7 @@ class _FreebiesMixin:
 
         return frm
 
-    def _build_freebies_attrs_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_freebies_attrs_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         tab = ttk.Frame(parent, padding=4)
         row_idx = 0
         for cat, attrs in self.character.attributes.items():
@@ -534,7 +534,7 @@ class _FreebiesMixin:
                 row_idx += 1
         return tab
 
-    def _build_freebies_advantages_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_freebies_advantages_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         import tkinter as tk
         outer = ttk.Frame(parent)
         outer.grid_rowconfigure(0, weight=1)
@@ -653,7 +653,7 @@ class _FreebiesMixin:
 
         return outer
 
-    def _build_freebies_trackers_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_freebies_trackers_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         from config import MAX_DOT_TRACKER
         tab = ttk.Frame(parent, padding=8)
 
@@ -727,7 +727,7 @@ class _FreebiesMixin:
 
         return tab
 
-    def _build_freebies_abils_tab(self: "Wizard", parent) -> ttk.Frame:
+    def _build_freebies_abils_tab(self: "ChargenInterface", parent) -> ttk.Frame:
         import tkinter as tk
         outer = ttk.Frame(parent)
         outer.grid_rowconfigure(0, weight=1)
@@ -780,14 +780,14 @@ class _FreebiesMixin:
                 row_idx += 1
         return outer
 
-    def _freebie_increment(self: "Wizard", dot_vars, remaining_var, min_dots, max_dots, cost=1) -> None:
+    def _freebie_increment(self: "ChargenInterface", dot_vars, remaining_var, min_dots, max_dots, cost=1) -> None:
         current = sum(v.get() for v in dot_vars[:max_dots])
         if current >= max_dots or remaining_var.get() < cost:
             return
         remaining_var.set(remaining_var.get() - cost)
         dot_vars[current].set(True)
 
-    def _freebie_decrement(self: "Wizard", dot_vars, remaining_var, min_dots, cost=1, max_dots=None) -> None:
+    def _freebie_decrement(self: "ChargenInterface", dot_vars, remaining_var, min_dots, cost=1, max_dots=None) -> None:
         limit = max_dots if max_dots is not None else len(dot_vars)
         current = sum(v.get() for v in dot_vars[:limit])
         if current <= min_dots:
@@ -819,5 +819,5 @@ class _FreebiesMixin:
             v.trace_add("write", _refresh)
         return val_var
 
-    def _validate_freebies(self: "Wizard") -> str | None:
+    def _validate_freebies(self: "ChargenInterface") -> str | None:
         return None  # unspent freebies are allowed

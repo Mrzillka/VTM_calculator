@@ -13,7 +13,7 @@ from ui.charsheet._section_mixins import _AttributesMixin, _AdvantagesMixin, _Tr
 from ui.utils import frm, place_widgets
 
 
-class Interface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _TrackersMixin, LocaleWidgetsMixin):
+class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _TrackersMixin, LocaleWidgetsMixin):
     """Main content frame for the character sheet."""
 
     def __init__(self, parent: ttk.Frame, root) -> None:

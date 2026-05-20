@@ -7,14 +7,14 @@ from tkinter import ttk
 from typing import Callable
 
 from game.character import Character
-from ui.charsheet.interface import Interface
+from ui.charsheet.interface import CharsheetInterface
 from ui.constants import MOUSEWHEEL_DIVISOR, SHEET_HEIGHT, SHEET_MIN_HEIGHT, SHEET_MIN_WIDTH, SHEET_WIDTH
 from ui.styles import configure_sheet_styles
 from ui.theme import theme
 from ui.utils import apply_icon
 
 
-class Root(Toplevel):
+class CharsheetWindow(Toplevel):
     """Character sheet window with a vertically scrollable interface."""
 
     def __init__(
@@ -73,7 +73,7 @@ class Root(Toplevel):
 
         self._setup_mousewheel(canvas)
 
-        self._interface = Interface(inner, self)
+        self._interface = CharsheetInterface(inner, self)
         self._interface.pack(fill="both", expand=True)
 
         def _on_theme_change() -> None:

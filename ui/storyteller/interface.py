@@ -16,13 +16,13 @@ from ui.storyteller.constants import NO_ROLLER
 from ui.utils import frm
 
 if TYPE_CHECKING:
-    from ui.storyteller.root import Root
+    from ui.storyteller.root import StorytellerRoot
 
 
-class Interface(BaseInterface):
+class StorytellerInterface(BaseInterface):
     """Storyteller interface — toolbar + tabbed character panel + history."""
 
-    def __init__(self, root: "Root") -> None:
+    def __init__(self, root: "StorytellerRoot") -> None:
         super().__init__(root)
         self.root = root
         self._roller_cb: ttk.Combobox | None = None

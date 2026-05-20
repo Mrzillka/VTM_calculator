@@ -238,8 +238,8 @@ class PCPanel(ttk.Frame):
             win.lift()
             win.focus_force()
             return
-        from ui.charsheet.root import Root as CharSheet
-        win = CharSheet(character=char, read_only=True)
+        from ui.charsheet.root import CharsheetWindow
+        win = CharsheetWindow(character=char, read_only=True)
         self._sheet_wins[path] = win
 
 
@@ -344,8 +344,8 @@ class NPCPanel(ttk.Frame):
             win.lift()
             win.focus_force()
             return
-        from ui.charsheet.root import Root as CharSheet
-        win = CharSheet(character=char, save_path=path)
+        from ui.charsheet.root import CharsheetWindow
+        win = CharsheetWindow(character=char, save_path=path)
         self._sheet_wins[path] = win
 
 
