@@ -81,6 +81,7 @@ class PlayerRoot(Tk):
         ]
         self.quick_penalty = IntVar(value=0)
         self.default_skill_penalty = BooleanVar(value=True)
+        self.chargen_min_will = BooleanVar(value=False)
 
         # ── UI flags ───────────────────────────────────────────────────────────
         self.additional_options   = BooleanVar(value=False)
@@ -352,6 +353,7 @@ class PlayerRoot(Tk):
                 var.trace_add("write", lambda *_: self._schedule_save())
         self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
+        self.chargen_min_will.trace_add("write", lambda *_: self._schedule_save())
 
     def _schedule_save(self) -> None:
         if self._autosave_job:
@@ -466,6 +468,7 @@ class PlayerRoot(Tk):
         dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF",      theme.mode)
         dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",      self.session_code.get())
         dotenv.set_key(str(ENV_FILE_PATH), "UNSKILLED_PENALTY", "1" if self.default_skill_penalty.get() else "0")
+        dotenv.set_key(str(ENV_FILE_PATH), "CHARGEN_MIN_WILL",  "1" if self.chargen_min_will.get() else "0")
         filename = f"{self.character.character_name.get()}.json"
         dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
         char_data = self.character.to_dict()
@@ -491,6 +494,7 @@ class PlayerRoot(Tk):
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") not in (None, "None", "") else None
         self.session_code.set(env.get("SESSION_CODE", ""))
         self.default_skill_penalty.set(env.get("UNSKILLED_PENALTY", "1") == "1")
+        self.chargen_min_will.set(env.get("CHARGEN_MIN_WILL", "0") == "1")
 
         if not self._try_load_character(env):
             self.save_to_file()

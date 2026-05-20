@@ -65,6 +65,7 @@ class PlayerInterface(BaseInterface):
         self._chargen_window = ChargenWindow(
             character=Character(),
             on_finish=self._on_chargen_finish,
+            min_will_var=self.root.chargen_min_will,
         )
 
     def _on_chargen_finish(self, new_char) -> None:
@@ -888,6 +889,10 @@ class PlayerInterface(BaseInterface):
                          root.default_skill_penalty,
                          locale_key="controls.unskilled_penalty").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=2)
+        self._dot_toggle(app_lf, locale.t("controls.chargen_min_will"),
+                         root.chargen_min_will,
+                         locale_key="controls.chargen_min_will").grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=2)
         app_lf.grid_columnconfigure(1, weight=1)
 
     @frm(padding=2, style="solid.TFrame")

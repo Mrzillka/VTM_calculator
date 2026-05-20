@@ -16,7 +16,7 @@ WIZARD_HEIGHT = 680
 class ChargenWindow(Toplevel):
     """Character creation wizard window."""
 
-    def __init__(self, parent=None, character: Character | None = None, on_finish=None) -> None:
+    def __init__(self, parent=None, character: Character | None = None, on_finish=None, min_will_var=None) -> None:
         super().__init__(parent)
         self.title(locale.t("chargen.title"))
         self.resizable(False, False)
@@ -25,7 +25,8 @@ class ChargenWindow(Toplevel):
         apply_icon(self, "icon.ico", inherit=False)
 
         self.character = character if character is not None else Character()
-        self._wizard = ChargenInterface(self, self.character, on_finish=on_finish)
+        self._wizard = ChargenInterface(self, self.character, on_finish=on_finish,
+                                        min_will_var=min_will_var)
         self._wizard.pack(fill="both", expand=True)
 
         def _on_theme() -> None:
