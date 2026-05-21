@@ -28,7 +28,7 @@ class ChargenInterface(
 ):
     """Step-based character creation frame."""
 
-    def __init__(self, parent, character: Character, on_finish=None) -> None:
+    def __init__(self, parent, character: Character, on_finish=None, min_will_var=None) -> None:
         super().__init__(parent)
         self.character = character
         self._on_finish = on_finish
@@ -41,6 +41,8 @@ class ChargenInterface(
         self._last_flaw_bonus: int = 0
         self._last_merit_total: int = 0
         self._last_will_auto_cost: int = 0
+        self._freebie_base_snapshot: dict | None = None
+        self._min_will_var = min_will_var
 
         # Per-category remaining points (populated in _init_pools)
         _attr_cats  = list(character.attributes.keys())
@@ -171,6 +173,7 @@ class ChargenInterface(
 
         if self._current_step == 4:
             self._apply_flaw_bonus()
+            self._save_freebie_snapshot()
 
         if self._current_step == len(steps) - 1:
             self._finish()
@@ -180,6 +183,8 @@ class ChargenInterface(
     def _go_back(self) -> None:
         if self._current_step > 0:
             self._error_var.set("")
+            if self._current_step == 5:
+                self._restore_freebie_snapshot()
             self._show_step(self._current_step - 1)
 
     # ── Pool initialisation (called on leaving Step 1) ─────────────────────────
@@ -273,12 +278,62 @@ class ChargenInterface(
         self.character.humanity_value.set(humanity_val)
         self.character.set_humanity(load=True)
 
-        # Dots added by the min-will rule (beyond what Courage alone provides) cost 1 freebie each
-        will_auto = will_val - courage
-        delta = will_auto - self._last_will_auto_cost
-        if delta != 0:
-            self.freebie_remaining.set(self.freebie_remaining.get() - delta)
-            self._last_will_auto_cost = will_auto
+        if self._min_will_var is not None and self._min_will_var.get():
+            will_auto = will_val - courage
+            delta = will_auto - self._last_will_auto_cost
+            if delta != 0:
+                self.freebie_remaining.set(self.freebie_remaining.get() - delta)
+                self._last_will_auto_cost = will_auto
+
+    # ── Freebie snapshot (save/restore when entering/leaving Step 6) ──────────
+
+    def _save_freebie_snapshot(self) -> None:
+        snap: dict = {"pool": self.freebie_remaining.get(), "dots": {}}
+        for cat, attrs in self.character.attributes.items():
+            for name, stat in attrs.items():
+                snap["dots"][("attr", cat, name)] = [v.get() for v in stat["vars"][:5]]
+        for cat, abils in self.character.abilities.items():
+            for name, stat in abils.items():
+                snap["dots"][("abil", cat, name)] = [v.get() for v in stat["vars"][:5]]
+        for i, row in enumerate(self.character.backgrounds):
+            snap["dots"][("bg", i)] = [v.get() for v in row["vars"][:5]]
+        for i, row in enumerate(self.character.disciplines):
+            snap["dots"][("disc", i)] = [v.get() for v in row["vars"][:5]]
+        for i, row in enumerate(self.character.virtues):
+            snap["dots"][("virt", i)] = [v.get() for v in row["vars"][:5]]
+        snap["will"]     = self.character.will_value.get()
+        snap["humanity"] = self.character.humanity_value.get()
+        self._freebie_base_snapshot = snap
+
+    def _restore_freebie_snapshot(self) -> None:
+        if self._freebie_base_snapshot is None:
+            return
+        snap = self._freebie_base_snapshot
+        self.freebie_remaining.set(snap["pool"])
+        for cat, attrs in self.character.attributes.items():
+            for name, stat in attrs.items():
+                for v, val in zip(stat["vars"][:5], snap["dots"][("attr", cat, name)]):
+                    v.set(val)
+        for cat, abils in self.character.abilities.items():
+            for name, stat in abils.items():
+                for v, val in zip(stat["vars"][:5], snap["dots"][("abil", cat, name)]):
+                    v.set(val)
+        for i, row in enumerate(self.character.backgrounds):
+            for v, val in zip(row["vars"][:5], snap["dots"][("bg", i)]):
+                v.set(val)
+        for i, row in enumerate(self.character.disciplines):
+            for v, val in zip(row["vars"][:5], snap["dots"][("disc", i)]):
+                v.set(val)
+        for i, row in enumerate(self.character.virtues):
+            for v, val in zip(row["vars"][:5], snap["dots"][("virt", i)]):
+                v.set(val)
+        self.character.will_value.set(snap["will"])
+        self.character.set_will(load=True)
+        self.character.humanity_value.set(snap["humanity"])
+        self.character.set_humanity(load=True)
+        if 5 in self._step_frames:
+            self._step_frames[5].destroy()
+            del self._step_frames[5]
 
     # ── Flaw bonus ─────────────────────────────────────────────────────────────
 
