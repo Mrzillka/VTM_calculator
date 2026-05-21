@@ -647,9 +647,17 @@ class _FreebiesMixin:
             self.character.humanity_value.set(conscience + self_ctrl)
             self.character.set_humanity(load=True)
 
+        hum_tids = []
         for virt_idx in (0, 1):
             for v in self.character.virtues[virt_idx]["vars"][:5]:
-                v.trace_add("write", _refresh_humanity)
+                tid = v.trace_add("write", _refresh_humanity)
+                hum_tids.append((v, tid))
+
+        def _cleanup_humanity_traces(*_):
+            for var, tid in hum_tids:
+                try: var.trace_remove("write", tid)
+                except Exception: pass
+        outer.bind("<Destroy>", _cleanup_humanity_traces, add=True)
 
         return outer
 
@@ -706,7 +714,7 @@ class _FreebiesMixin:
             will_dec_btn.configure(
                 state="disabled" if self.character.will_value.get() <= base_will else "normal"
             )
-        self.character.will_value.trace_add("write", _upd_will_dec)
+        tid_will = self.character.will_value.trace_add("write", _upd_will_dec)
         _upd_will_dec()
 
         ttk.Label(tab, text=locale.t("sheet.sheet_trackers.humanity"),
@@ -722,8 +730,15 @@ class _FreebiesMixin:
             hum_dec_btn.configure(
                 state="disabled" if self.character.humanity_value.get() <= base_humanity else "normal"
             )
-        self.character.humanity_value.trace_add("write", _upd_hum_dec)
+        tid_hum = self.character.humanity_value.trace_add("write", _upd_hum_dec)
         _upd_hum_dec()
+
+        def _cleanup_tracker_traces(*_):
+            try: self.character.will_value.trace_remove("write", tid_will)
+            except Exception: pass
+            try: self.character.humanity_value.trace_remove("write", tid_hum)
+            except Exception: pass
+        tab.bind("<Destroy>", _cleanup_tracker_traces, add=True)
 
         return tab
 
@@ -799,6 +814,8 @@ class _FreebiesMixin:
     def _wire_dec_btn(btn, dot_vars: list, min_dots: int, max_dots: int) -> None:
         """Disable btn whenever the dot count is already at min_dots."""
         def _upd(*_):
+            if not btn.winfo_exists():
+                return
             btn.configure(
                 state="disabled" if sum(v.get() for v in dot_vars[:max_dots]) <= min_dots
                 else "normal"
