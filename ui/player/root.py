@@ -538,6 +538,7 @@ class PlayerRoot(Tk):
         src = filedialog.askopenfilename(
             title=locale.t("controls.load_character"),
             filetypes=[("JSON files", "*.json")],
+            initialdir=CHARACTERS_DIR,
         )
         if not src:
             return
