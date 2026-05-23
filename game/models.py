@@ -40,7 +40,7 @@ class RollRecord:
     probability: float
     # Empty string means the Storyteller rolled (no specific character).
     roller_name: str = field(default="")
-    roll_type: Literal["NORMAL", "DAMAGE", "INITIATIVE"] = field(default="NORMAL")
+    roll_type: Literal["NORMAL", "DAMAGE", "QUICK", "INITIATIVE"] = field(default="NORMAL")
 
     @property
     def outcome(self) -> str:

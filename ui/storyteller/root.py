@@ -17,8 +17,9 @@ from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
 from ui.constants import NET_POLL_MS
-from ui.storyteller.interface import Interface
+from ui.storyteller.interface import StorytellerInterface
 from ui.styles import configure_main_styles
+from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
 
 logger = logging.getLogger(__name__)
@@ -31,17 +32,19 @@ def _generate_topic() -> str:
     return "vtm-" + secrets.token_hex(6)
 
 
-class Root(Tk):
+class StorytellerRoot(Tk):
     """Main window for the Storyteller application."""
 
     def __init__(self) -> None:
         super().__init__()
         self.title("VTM Storyteller")
-        self.resizable(False, False)
+        self.resizable(True, True)
+        self.minsize(920, 560)
 
         apply_icon(self, "icon_storyteller.ico")
 
         self._restore_lang_pref()
+        self._restore_theme_pref()
 
         self.dice_number        = IntVar(value=5)
         self.difficulty         = IntVar(value=6)
@@ -73,11 +76,33 @@ class Root(Tk):
         if saved != locale.lang:
             locale.set_lang(saved)
 
+    def _restore_theme_pref(self) -> None:
+        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        theme.set_mode(env.get("THEME_PREF", "light"))
+
     def _configure_styles(self) -> None:
-        configure_main_styles(ttk.Style())
+        s = ttk.Style()
+        s.theme_use("clam")
+        configure_main_styles(s, theme.palette)
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.configure(bg=theme.palette["bg"])
+
+    def toggle_theme(self) -> None:
+        theme.toggle()
+        s = ttk.Style()
+        configure_main_styles(s, theme.palette)
+        self.configure(bg=theme.palette["bg"])
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.save_lang_pref()
 
     def _build_interface(self) -> None:
-        self._interface = Interface(self)
+        self._interface = StorytellerInterface(self)
         place_widgets([[self._interface]])
 
     # ── Locale ─────────────────────────────────────────────────────────────────
@@ -224,7 +249,8 @@ class Root(Tk):
     # ── Persistence ────────────────────────────────────────────────────────────
 
     def save_lang_pref(self) -> None:
-        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF", locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",  locale.lang)
+        dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF", theme.mode)
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

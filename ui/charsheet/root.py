@@ -7,13 +7,14 @@ from tkinter import ttk
 from typing import Callable
 
 from game.character import Character
-from ui.charsheet.interface import Interface
+from ui.charsheet.interface import CharsheetInterface
 from ui.constants import MOUSEWHEEL_DIVISOR, SHEET_HEIGHT, SHEET_MIN_HEIGHT, SHEET_MIN_WIDTH, SHEET_WIDTH
 from ui.styles import configure_sheet_styles
+from ui.theme import theme
 from ui.utils import apply_icon
 
 
-class Root(Toplevel):
+class CharsheetWindow(Toplevel):
     """Character sheet window with a vertically scrollable interface."""
 
     def __init__(
@@ -47,11 +48,11 @@ class Root(Toplevel):
             self._interface._apply_lock()
 
     def _configure_styles(self) -> None:
-        configure_sheet_styles(ttk.Style())
+        configure_sheet_styles(ttk.Style(), theme.palette)
 
     def _build_scrollable(self) -> None:
         """Wrap the Interface in a Canvas-based scrollable container."""
-        canvas = tk.Canvas(self, highlightthickness=0)
+        canvas = tk.Canvas(self, highlightthickness=0, bg=theme.palette["bg"])
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -72,8 +73,24 @@ class Root(Toplevel):
 
         self._setup_mousewheel(canvas)
 
-        self._interface = Interface(inner, self)
+        self._interface = CharsheetInterface(inner, self)
         self._interface.pack(fill="both", expand=True)
+
+        def _on_theme_change() -> None:
+            try:
+                if not self.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            canvas.configure(bg=theme.palette["bg"])
+            self.configure(bg=theme.palette["bg"])
+            configure_sheet_styles(ttk.Style(), theme.palette)
+            self._interface._refresh_mf_totals()
+            self._interface._refresh_wp_cells()
+            self._interface._refresh_humanity_cells()
+            self._interface._refresh_sheet_blood_cells()
+
+        theme.on_change(_on_theme_change)
 
     def _setup_mousewheel(self, canvas: tk.Canvas) -> None:
         def _scroll_win(e: tk.Event) -> None:

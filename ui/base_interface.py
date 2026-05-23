@@ -7,14 +7,11 @@ from typing import TYPE_CHECKING, Callable
 
 from lang import locale
 from ui.constants import MOUSEWHEEL_DIVISOR
+from ui.theme import theme
 from ui.utils import place_widgets
 
 if TYPE_CHECKING:
     from game.models import RollRecord
-
-_HIT_FG    = "#1b5e20"
-_BOTCH_FG  = "#b71c1c"
-_NORMAL_FG = ""
 
 _OUTCOME_STYLE: dict[str, str] = {
     "SUCCESS": "Success.TLabel",
@@ -102,9 +99,18 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
         self, parent: ttk.Frame, *, width: int, height: int
     ) -> None:
         """Set up the scrollable canvas at row=1 of *parent*; populates history attributes."""
-        canvas = tk.Canvas(parent, width=width, height=height, highlightthickness=0)
+        canvas = tk.Canvas(parent, width=width, height=height, highlightthickness=0,
+                           bg=theme.palette["bg"])
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
+
+        def _update_canvas_bg() -> None:
+            try:
+                if canvas.winfo_exists():
+                    canvas.configure(bg=theme.palette["bg"])
+            except tk.TclError:
+                pass
+        theme.on_change(_update_canvas_bg)
 
         canvas.grid(row=1, column=0, sticky="nsew")
         scrollbar.grid(row=1, column=1, sticky="ns")
@@ -199,6 +205,8 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
         )
         if record.roll_type == "DAMAGE":
             meta_text += f"  •  {locale.t('controls.damage_soak')}"
+        elif record.roll_type == "QUICK":
+            meta_text += f"  •  {locale.t('controls.quick_rolls')}"
 
         ttk.Label(frame, text=meta_text, style="HistoryMeta.TLabel").grid(
             row=current_row, column=0, sticky="w")
@@ -226,14 +234,15 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
 
     @staticmethod
     def _build_dice_display(parent: ttk.Frame, record: "RollRecord") -> ttk.Frame:
+        palette = theme.palette
         frame = ttk.Frame(parent, style="flat.TFrame")
         for col, value in enumerate(sorted(record.dice, reverse=True)):
             is_hit   = value >= record.difficulty
             is_botch = value == 1 and record.roll_type != "DAMAGE"
             fg = (
-                _BOTCH_FG if is_botch
-                else _HIT_FG if is_hit
-                else _NORMAL_FG
+                palette["botch_fg"] if is_botch
+                else palette["hit_fg"] if is_hit
+                else palette["normal_fg"]
             )
             lbl = ttk.Label(frame, text=str(value), style="HistoryDice.TLabel",
                             width=2, anchor="center")

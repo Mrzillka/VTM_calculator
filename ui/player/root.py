@@ -15,21 +15,22 @@ import dotenv
 from bot.tg_bot import TgBot
 from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, ENV_FILE_PATH, get_bot_token
 from game.calculator import Calculator
-from game.character import Character
+from game.character import ABILITIES, ATTRIBUTES, Character
 from game.models import RollRecord
 from game.roller import Roller
 from lang import locale
 from network.protocol import dict_to_roll_record, roll_record_to_dict
 from network.session import NtfySession
-from ui.constants import BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
-from ui.interface import Interface
+from ui.constants import AUTOSAVE_DEBOUNCE_MS, BOT_STATUS_POLL_MS, NET_POLL_MS, TRACKER_DEBOUNCE_MS
+from ui.player.interface import PlayerInterface
 from ui.styles import configure_main_styles
+from ui.theme import theme
 from ui.utils import apply_icon, place_widgets
 
 logger = logging.getLogger(__name__)
 
 
-class Root(Tk):
+class PlayerRoot(Tk):
     """
     Main application window for VTM Calculator (Player).
 
@@ -45,7 +46,9 @@ class Root(Tk):
 
         apply_icon(self, "icon.ico")
 
-        self._restore_lang_pref()
+        _env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+        self._restore_lang_pref(_env)
+        self._restore_theme_pref(_env)
 
         # ── Character ──────────────────────────────────────────────────────────
         self.character = Character()
@@ -65,6 +68,20 @@ class Root(Tk):
         self.success_needed = IntVar(value=1)
         self.auto_success   = IntVar(value=0)
         self.specialisation = BooleanVar(value=False)
+
+        # ── Quick rolls ────────────────────────────────────────────────────────
+        _attr_names = [a for attrs in ATTRIBUTES.values() for a in attrs]
+        _abil_names = [a for abils in ABILITIES.values() for a in abils]
+        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar, BooleanVar]] = [
+            (StringVar(value=_attr_names[0]),
+             StringVar(value=_abil_names[0]),
+             IntVar(value=6),
+             BooleanVar(value=False))
+            for _ in range(4)
+        ]
+        self.quick_penalty = IntVar(value=0)
+        self.default_skill_penalty = BooleanVar(value=True)
+        self.chargen_min_will = BooleanVar(value=False)
 
         # ── UI flags ───────────────────────────────────────────────────────────
         self.additional_options   = BooleanVar(value=False)
@@ -93,26 +110,48 @@ class Root(Tk):
         self._net_queue: queue.Queue[tuple[str, object]] = queue.Queue()
         self._session: NtfySession | None = None
         self._tracker_send_job: str | None = None
+        self._autosave_job: str | None = None
         self._setup_tracker_traces()
+        self._setup_autosave_traces()
         self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
 
-    def _restore_lang_pref(self) -> None:
-        env = dotenv.dotenv_values(str(ENV_FILE_PATH))
+    def _restore_lang_pref(self, env: dict) -> None:
         saved = env.get("LANG_PREF", "en")
         if saved != locale.lang:
             locale.set_lang(saved)
+
+    def _restore_theme_pref(self, env: dict) -> None:
+        theme.set_mode(env.get("THEME_PREF", "light"))
 
     def _configure_grid(self) -> None:
         self.grid_columnconfigure(0, weight=1, pad=10)
         self.grid_rowconfigure(0, weight=1, pad=10)
 
     def _configure_styles(self) -> None:
-        configure_main_styles(ttk.Style())
+        s = ttk.Style()
+        s.theme_use("clam")
+        configure_main_styles(s, theme.palette)
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.configure(bg=theme.palette["bg"])
+
+    def toggle_theme(self) -> None:
+        theme.toggle()
+        s = ttk.Style()
+        configure_main_styles(s, theme.palette)
+        self.configure(bg=theme.palette["bg"])
+        self.option_add("*TCombobox*Listbox.background",       theme.palette["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground",       theme.palette["entry_fg"])
+        self.option_add("*TCombobox*Listbox.selectBackground", theme.palette["select_bg"])
+        self.option_add("*TCombobox*Listbox.selectForeground", theme.palette["select_fg"])
+        self.save_to_file()
 
     def _build_interface(self) -> None:
-        self._interface = Interface(self)
+        self._interface = PlayerInterface(self)
         place_widgets([[self._interface]])
 
     # ── Locale ─────────────────────────────────────────────────────────────────
@@ -197,6 +236,46 @@ class Root(Tk):
         )
         self._record_and_emit(record)
 
+    def quick_roll(self, index: int) -> None:
+        attr_var, abil_var, diff_var, spec_var = self.quick_rolls[index]
+        attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_var.get())
+        abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_var.get())
+        attr_val  = self.character.get_stat_value(attr_name)
+        abil_val  = self.character.get_stat_value(abil_name)
+        dice_pool = attr_val + abil_val
+        if abil_name and abil_val == 0 and self.default_skill_penalty.get():
+            dice_pool -= 1
+        penalty   = self.character.roll_penalty.get() - self.quick_penalty.get()
+
+        effective_dice = max(1, max(1, dice_pool) + penalty)
+        probability = Calculator(
+            dice_number=effective_dice,
+            difficulty=diff_var.get(),
+            success_needed=1,
+            auto_successes=0,
+            specialisation=spec_var.get(),
+        ).get_probability()
+
+        roller = Roller(
+            dice_number=max(1, dice_pool),
+            difficulty=diff_var.get(),
+            penalty=penalty,
+            specialisation=spec_var.get(),
+        )
+        result = roller.roll()
+        record = RollRecord(
+            dice_number=dice_pool,
+            difficulty=diff_var.get(),
+            auto_success=0,
+            dice=list(result.dice),
+            specialisation_dice=list(result.specialisation_dice),
+            successes=result.successes,
+            probability=probability,
+            roller_name=self.character.character_name.get(),
+            roll_type="QUICK",
+        )
+        self._record_and_emit(record)
+
     def roll_initiative(self) -> None:
         from random import randint
         char    = self.character
@@ -258,6 +337,28 @@ class Root(Tk):
         self._session.publish("sheet", self.character.to_dict())
 
     # ── Tracker auto-send (debounced) ──────────────────────────────────────────
+
+    def _setup_autosave_traces(self) -> None:
+        for var in (
+            self.character.blood_value, self.character.blood_max_value,
+            self.character.wounds_value, self.character.humanity_value,
+            self.character.will_value, self.character.willpower_max,
+            self.dice_number, self.difficulty, self.success_needed,
+            self.auto_success, self.specialisation,
+            self.session_code, self.character.character_name,
+        ):
+            var.trace_add("write", lambda *_: self._schedule_save())
+        for av, bv, dv, sv in self.quick_rolls:
+            for var in (av, bv, dv, sv):
+                var.trace_add("write", lambda *_: self._schedule_save())
+        self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
+        self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
+        self.chargen_min_will.trace_add("write", lambda *_: self._schedule_save())
+
+    def _schedule_save(self) -> None:
+        if self._autosave_job:
+            self.after_cancel(self._autosave_job)
+        self._autosave_job = self.after(AUTOSAVE_DEBOUNCE_MS, self.save_to_file)
 
     def _setup_tracker_traces(self) -> None:
         for var in (
@@ -364,10 +465,27 @@ class Root(Tk):
         dotenv.set_key(str(ENV_FILE_PATH), "CHAT_ID",         str(self.bot.chat_id))
         dotenv.set_key(str(ENV_FILE_PATH), "THREAD_ID",       str(self.bot.thread_id))
         dotenv.set_key(str(ENV_FILE_PATH), "LANG_PREF",       locale.lang)
-        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",    self.session_code.get())
+        dotenv.set_key(str(ENV_FILE_PATH), "THEME_PREF",      theme.mode)
+        dotenv.set_key(str(ENV_FILE_PATH), "SESSION_CODE",      self.session_code.get())
+        dotenv.set_key(str(ENV_FILE_PATH), "UNSKILLED_PENALTY", "1" if self.default_skill_penalty.get() else "0")
+        dotenv.set_key(str(ENV_FILE_PATH), "CHARGEN_MIN_WILL",  "1" if self.chargen_min_will.get() else "0")
         filename = f"{self.character.character_name.get()}.json"
         dotenv.set_key(str(ENV_FILE_PATH), "LAST_CHARACTER",  filename)
-        self.character.save()
+        char_data = self.character.to_dict()
+        char_data["quick_rolls"] = [
+            {
+                "attr": locale.reverse_lookup_en("sheet.attr_names", av.get()),
+                "abil": locale.reverse_lookup_en("sheet.ability_names", bv.get()),
+                "diff": dv.get(),
+                "spec": sv.get(),
+            }
+            for av, bv, dv, sv in self.quick_rolls
+        ]
+        char_data["quick_penalty"] = self.quick_penalty.get()
+        save_path = CHARACTERS_DIR / filename
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(char_data, f, indent=2, ensure_ascii=False)
 
     def load_from_file(self) -> None:
         """Restore settings and the last-used character from disk."""
@@ -375,6 +493,8 @@ class Root(Tk):
         self.bot.chat_id   = env.get("CHAT_ID")   if env.get("CHAT_ID")   not in (None, "None", "") else None
         self.bot.thread_id = env.get("THREAD_ID") if env.get("THREAD_ID") not in (None, "None", "") else None
         self.session_code.set(env.get("SESSION_CODE", ""))
+        self.default_skill_penalty.set(env.get("UNSKILLED_PENALTY", "1") == "1")
+        self.chargen_min_will.set(env.get("CHARGEN_MIN_WILL", "0") == "1")
 
         if not self._try_load_character(env):
             self.save_to_file()
@@ -397,7 +517,9 @@ class Root(Tk):
             path = CHARACTERS_DIR / last
             if path.exists():
                 with open(path, encoding="utf-8") as f:
-                    self.character.load(json.load(f))
+                    data = json.load(f)
+                self.character.load(data)
+                self._load_quick_rolls(data)
                 return True
 
         # One-time migration from the old single-file storage.
@@ -416,6 +538,7 @@ class Root(Tk):
         src = filedialog.askopenfilename(
             title=locale.t("controls.load_character"),
             filetypes=[("JSON files", "*.json")],
+            initialdir=CHARACTERS_DIR,
         )
         if not src:
             return
@@ -442,9 +565,22 @@ class Root(Tk):
             shutil.copy2(src_path, dst)
 
         self.character.load(data)
+        self._load_quick_rolls(data)
         self._interface.refresh_blood_cells()
         self.character.apply_trackers()
         self.save_to_file()
+
+    def _load_quick_rolls(self, data: dict) -> None:
+        for (attr_var, abil_var, diff_var, spec_var), entry in zip(
+            self.quick_rolls, data.get("quick_rolls", [])
+        ):
+            attr_name = entry.get("attr", "")
+            abil_name = entry.get("abil", "")
+            attr_var.set(locale.translate_known("sheet.attr_names", attr_name))
+            abil_var.set(locale.translate_known("sheet.ability_names", abil_name))
+            diff_var.set(entry.get("diff", 6))
+            spec_var.set(bool(entry.get("spec", False)))
+        self.quick_penalty.set(data.get("quick_penalty", 0))
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

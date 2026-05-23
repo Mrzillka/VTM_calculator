@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import BooleanVar, StringVar, Widget
+from tkinter import BooleanVar, StringVar
 from tkinter import ttk
 from typing import TYPE_CHECKING, Any
 
-from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, WOUND_LEVELS
+from config import BLOOD_COLS, BLOOD_ROWS, MAX_DOT_TRACKER, SPEC_MIN_DOTS, WOUND_LEVELS
 from lang import locale
 from ui.base_interface import BaseInterface
+from ui.theme import theme
 from ui.constants import (
     AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
     HISTORY_HEIGHT, HISTORY_WIDTH, SCALE_LENGTH, SUCCESS_NEEDED_MAX,
@@ -15,18 +16,18 @@ from ui.constants import (
 from ui.utils import frm, place_widgets
 
 if TYPE_CHECKING:
-    from ui.root import Root
+    from ui.player.root import PlayerRoot
 
 
-class Interface(BaseInterface):
+class PlayerInterface(BaseInterface):
     """Root widget of the main application interface."""
 
-    def __init__(self, root: "Root") -> None:
+    def __init__(self, root: "PlayerRoot") -> None:
         super().__init__(root)
         self.root = root
 
-        self._additional_row: list[Widget] = []
         self._sheet_window = None
+        self._chargen_window = None
         self._blood_cells: list[list[ttk.Label]] = []
 
         self._build()
@@ -43,25 +44,36 @@ class Interface(BaseInterface):
 
     # ── Toggle handlers ───────────────────────────────────────────────────────
 
-    def _toggle_additional_options(self) -> None:
-        if self.root.additional_options.get():
-            for col_idx, widget in enumerate(self._additional_row):
-                widget.grid(column=col_idx, row=4)
-                widget.update()
-        else:
-            for widget in self._additional_row:
-                widget.grid_remove()
-
     def _open_character_sheet(self) -> None:
         if self._sheet_window is not None and self._sheet_window.winfo_exists():
             self._sheet_window.lift()
             self._sheet_window.focus_force()
             return
-        from ui.charsheet.root import Root as CharacterSheet
-        self._sheet_window = CharacterSheet(
+        from ui.charsheet.root import CharsheetWindow
+        self._sheet_window = CharsheetWindow(
             character=self.root.character,
             send_sheet_callback=self.root.send_sheet_to_server,
         )
+
+    def _open_chargen(self) -> None:
+        if self._chargen_window is not None and self._chargen_window.winfo_exists():
+            self._chargen_window.lift()
+            self._chargen_window.focus_force()
+            return
+        from game.character import Character
+        from ui.chargen.root import ChargenWindow
+        self._chargen_window = ChargenWindow(
+            character=Character(),
+            on_finish=self._on_chargen_finish,
+            min_will_var=self.root.chargen_min_will,
+        )
+
+    def _on_chargen_finish(self, new_char) -> None:
+        data = new_char.to_dict()
+        self.root.character.load(data)
+        self.refresh_blood_cells()
+        self.root.character.apply_trackers()
+        self.root.save_to_file()
 
     def _switch_language(self) -> None:
         locale.switch()
@@ -85,9 +97,20 @@ class Interface(BaseInterface):
         track_tab = self._frm_trackers(nb)
         nb.add(track_tab, text=locale.t("controls.trackers"))
 
+        # Tab 3: Stats (read-only attribute/ability snapshot)
+        stats_tab = self._frm_stats_tab(nb)
+        nb.add(stats_tab, text=locale.t("controls.stats_tab"))
+
+        # Tab 4: Settings
+        settings_tab = self._frm_settings_tab(nb)
+        nb.add(settings_tab, text=locale.t("controls.settings"))
+
         def _update_tab_titles() -> None:
             nb.tab(0, text=locale.t("roll_history"))
             nb.tab(1, text=locale.t("controls.trackers"))
+            nb.tab(2, text=locale.t("controls.stats_tab"))
+            nb.tab(3, text=locale.t("controls.settings"))
+            self._rebuild_stats_tab()
 
         locale.on_change(_update_tab_titles)
         return nb
@@ -134,28 +157,16 @@ class Interface(BaseInterface):
             self._dot_toggle(frm, locale.t("controls.specialisation"),
                              root.specialisation,
                              locale_key="controls.specialisation"),
-            self._dot_toggle(frm, locale.t("controls.send_telegram"),
-                             root.is_send_to_telegram,
-                             locale_key="controls.send_telegram"),
-            self._dot_toggle(frm, "∨", root.additional_options,
-                             command=self._toggle_additional_options),
         ])
-        place_widgets(rows)
-
-        self._additional_row = [
-            self._tlabel(frm, "controls.success_needed", width=16, style="M.TLabel", anchor="e"),
+        rows.append([
+            self._tlabel(frm, "controls.success_needed", width=22, style="M.TLabel", anchor="e"),
             ttk.Scale(frm, from_=1, to=SUCCESS_NEEDED_MAX, length=SCALE_LENGTH,
                       variable=root.success_needed, style="my.Horizontal.TScale",
                       command=lambda s: root.scaler(s, root.success_needed)),
             ttk.Spinbox(frm, from_=1, to=SUCCESS_NEEDED_MAX, textvariable=root.success_needed,
                         width=3, style="my.TSpinbox"),
-        ]
-        for col_idx, widget in enumerate(self._additional_row):
-            widget.grid(column=col_idx, row=4)
-            widget.update()
-        if not root.additional_options.get():
-            for widget in self._additional_row:
-                widget.grid_remove()
+        ])
+        place_widgets(rows)
 
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
@@ -179,6 +190,130 @@ class Interface(BaseInterface):
             self._tbutton(frm, "controls.damage_soak", style="M.TButton",
                           command=self.root.roll_damage_soak),
         ]])
+
+    # ── Stats tab ─────────────────────────────────────────────────────────────
+
+    @frm(padding=0, style="solid.TFrame")
+    def _frm_stats_tab(self, outer: ttk.Frame) -> None:
+        canvas = tk.Canvas(outer, highlightthickness=0, bg=theme.palette["bg"])
+        scrollbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
+
+        inner = ttk.Frame(canvas, padding=5)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(win_id, width=e.width))
+        self._bind_mousewheel(canvas)
+
+        self._stats_tab_frame = inner
+        self._stats_rebuild_pending = False
+        self._build_stats_content(inner)
+
+        def _update_stats_canvas_bg() -> None:
+            try:
+                if canvas.winfo_exists():
+                    canvas.configure(bg=theme.palette["bg"])
+            except tk.TclError:
+                pass
+
+        def _on_theme_stats() -> None:
+            try:
+                if self._stats_tab_frame.winfo_exists():
+                    self._rebuild_stats_tab()
+            except tk.TclError:
+                pass
+
+        theme.on_change(_update_stats_canvas_bg)
+        theme.on_change(_on_theme_stats)
+
+        char = self.root.character
+        for cat_data in char.attributes.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+        for cat_data in char.abilities.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+        for cat_rows in char.custom_abilities.values():
+            for row in cat_rows:
+                for var in row["vars"]:
+                    var.trace_add("write", self._schedule_stats_rebuild)
+
+    def _schedule_stats_rebuild(self, *_) -> None:
+        if not self._stats_rebuild_pending:
+            self._stats_rebuild_pending = True
+            self._stats_tab_frame.after(0, self._rebuild_stats_tab)
+
+    def _rebuild_stats_tab(self) -> None:
+        self._stats_rebuild_pending = False
+        frm = self._stats_tab_frame
+        for child in frm.winfo_children():
+            child.destroy()
+        self._build_stats_content(frm)
+
+    def _build_stats_content(self, parent: ttk.Frame) -> None:
+        char = self.root.character
+
+        def _stat_row(col_frame: ttk.Frame, name: str, count: int, spec: str = "") -> None:
+            row = ttk.Frame(col_frame, style="flat.TFrame")
+            row.pack(anchor="w", fill="x", pady=(1, 0))
+            ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
+            dot_lbl = ttk.Label(row, text="●" * count, anchor="w", style="S.TLabel")
+            dot_lbl.configure(foreground=theme.palette["dot_fg"])
+            dot_lbl.pack(side="left", padx=(3, 0))
+            if spec and count >= SPEC_MIN_DOTS:
+                spec_row = ttk.Frame(col_frame, style="flat.TFrame")
+                spec_row.pack(anchor="w", fill="x", pady=(0, 2))
+                ttk.Label(spec_row, width=13, style="S.TLabel").pack(side="left")
+                spec_lbl = ttk.Label(spec_row, text=f"({spec})", anchor="w", style="S.TLabel")
+                spec_lbl.configure(foreground=theme.palette["spec_fg"],
+                                   font=("TkDefaultFont", 8, "italic"))
+                spec_lbl.pack(side="left", padx=(3, 0))
+
+        def _build_section(
+            categories: dict,
+            cat_locale_prefix: str,
+            name_locale_prefix: str,
+            row_offset: int,
+        ) -> None:
+            for col_idx, (cat_name, cat_data) in enumerate(categories.items()):
+                col_frame = ttk.Frame(parent, style="flat.TFrame")
+                col_frame.grid(row=row_offset, column=col_idx, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(
+                    col_frame,
+                    text=locale.t(f"{cat_locale_prefix}.{cat_name}"),
+                    style="M.TLabel",
+                ).pack(anchor="center", pady=(0, 2))
+                for stat_name, stat_data in cat_data.items():
+                    count = sum(v.get() for v in stat_data["vars"])
+                    if count > 0:
+                        _stat_row(col_frame, locale.t(f"{name_locale_prefix}.{stat_name}"), count, stat_data["spec"].get())
+
+        _build_section(char.attributes, "sheet.attr_categories", "sheet.attr_names", 0)
+
+        ttk.Separator(parent, orient="horizontal").grid(
+            row=1, column=0, columnspan=3, sticky="ew", pady=4,
+        )
+
+        _build_section(char.abilities, "sheet.ability_categories", "sheet.ability_names", 2)
+
+        for col_idx, cat_name in enumerate(char.abilities):
+            slaves = parent.grid_slaves(row=2, column=col_idx)
+            if not slaves:
+                continue
+            col_frame = slaves[0]
+            for row in char.custom_abilities.get(cat_name, []):
+                name = row["name"].get().strip()
+                count = sum(v.get() for v in row["vars"])
+                if name and count > 0:
+                    _stat_row(col_frame, name, count, row["spec"].get())
 
     # ── Roll history ──────────────────────────────────────────────────────────
 
@@ -411,9 +546,156 @@ class Interface(BaseInterface):
 
     @frm(padding=5, style="solid.TFrame")
     def _frm_bottom(self, frm) -> None:
-        self._frm_stats_row(frm).grid(row=0, column=0, sticky="ew")
-        self._frm_info_row(frm).grid(row=1, column=0, sticky="ew")
-        frm.grid_columnconfigure(0, weight=1)
+        self._frm_quick_rolls(frm).grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self._frm_stats_row(frm).grid(row=0, column=1, sticky="ew")
+        self._frm_info_row(frm).grid(row=1, column=1, sticky="ew")
+        frm.grid_columnconfigure(1, weight=1)
+
+    @frm(padding=4, style="solid.TFrame")
+    def _frm_quick_rolls(self, frm: ttk.Frame) -> None:
+        root = self.root
+
+        self._tlabel(frm, "controls.quick_rolls", style="S.TLabel").grid(
+            row=0, column=0, columnspan=5, sticky="w")
+
+        pen_var = StringVar()
+        def _upd_pen(*_):
+            pen_var.set(f"Pen: {root.quick_penalty.get()}")
+        root.quick_penalty.trace_add("write", _upd_pen)
+        _upd_pen()
+        ttk.Label(frm, textvariable=pen_var, style="S.TLabel").grid(
+            row=0, column=5, padx=(6, 2))
+
+        self._qr_attr_cbs: list[ttk.Combobox] = []
+        self._qr_abil_cbs: list[ttk.Combobox] = []
+
+        for i, (attr_var, abil_var, diff_var, spec_var) in enumerate(root.quick_rolls):
+            r = i + 1
+            attr_cb = ttk.Combobox(
+                frm, textvariable=attr_var,
+                state="readonly", width=12,
+            )
+            attr_cb.grid(row=r, column=0, padx=2, pady=1)
+            self._qr_attr_cbs.append(attr_cb)
+
+            _prev_attr = [attr_var.get()]
+
+            def _on_attr_sel(event, var=attr_var, prev=_prev_attr):
+                val = var.get()
+                if val.startswith("──"):
+                    var.set(prev[0])
+                else:
+                    prev[0] = val
+
+            attr_cb.bind("<<ComboboxSelected>>", _on_attr_sel)
+
+            abil_cb = ttk.Combobox(
+                frm, textvariable=abil_var, state="readonly", width=18,
+            )
+            abil_cb.configure(
+                postcommand=lambda cb=abil_cb: cb.configure(
+                    values=self._build_abil_cb_values()
+                )
+            )
+            abil_cb.grid(row=r, column=1, padx=2, pady=1, sticky="ew")
+            self._qr_abil_cbs.append(abil_cb)
+
+            _prev_abil = [abil_var.get()]
+
+            def _on_abil_sel(event, var=abil_var, prev=_prev_abil):
+                val = var.get()
+                if val.startswith("──"):
+                    var.set(prev[0])
+                else:
+                    prev[0] = val
+
+            abil_cb.bind("<<ComboboxSelected>>", _on_abil_sel)
+
+            ttk.Spinbox(
+                frm, textvariable=diff_var,
+                from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX,
+                width=3, style="my.TSpinbox",
+            ).grid(row=r, column=2, padx=2)
+
+            spec_dot = ttk.Label(frm, text="●" if spec_var.get() else "○",
+                                 style="S.TLabel", cursor="hand2")
+            spec_var.trace_add("write",
+                               lambda *_, d=spec_dot, v=spec_var: d.configure(
+                                   text="●" if v.get() else "○"))
+            spec_dot.bind("<Button-1>", lambda e, v=spec_var: v.set(not v.get()))
+            spec_dot.grid(row=r, column=3, padx=(4, 0))
+
+            ttk.Button(
+                frm, text="▶", width=2,
+                command=lambda idx=i: root.quick_roll(idx),
+                style="S.TButton",
+            ).grid(row=r, column=4, padx=(2, 0))
+
+        ttk.Scale(
+            frm, from_=5, to=0, orient=tk.VERTICAL,
+            variable=root.quick_penalty, length=88,
+            style="Vertical.TScale",
+            command=lambda s: root.scaler(s, root.quick_penalty),
+        ).grid(row=1, column=5, rowspan=4, padx=(6, 2), sticky="ns")
+
+        frm.grid_columnconfigure(1, weight=1)
+
+        locale.on_change(self._refresh_qr_values)
+        self._refresh_qr_values()
+
+    def _build_attr_cb_values(self) -> list[str]:
+        values: list[str] = []
+        for cat_name, cat_data in self.root.character.attributes.items():
+            values.append(f"── {locale.t(f'sheet.attr_categories.{cat_name}')} ──")
+            for name in cat_data:
+                values.append(locale.translate_known("sheet.attr_names", name))
+        return values
+
+    def _build_abil_cb_values(self) -> list[str]:
+        char = self.root.character
+        values: list[str] = []
+        seen: set[str] = set()
+
+        for cat_name, cat_data in char.abilities.items():
+            values.append(f"── {locale.t(f'sheet.ability_categories.{cat_name}')} ──")
+            for name in cat_data:
+                values.append(locale.translate_known("sheet.ability_names", name))
+                seen.add(name)
+
+        custom_names = []
+        for cat_rows in char.custom_abilities.values():
+            for row in cat_rows:
+                n = row["name"].get().strip()
+                if n and n not in seen:
+                    custom_names.append(locale.translate_known("sheet.ability_names", n))
+                    seen.add(n)
+        if custom_names:
+            values.append("── Custom ──")
+            values.extend(custom_names)
+
+        disc_names = [row["name"].get().strip() for row in char.disciplines if row["name"].get().strip()]
+        if disc_names:
+            values.append(f"── {locale.t('sheet.adv_columns.Disciplines')} ──")
+            values.extend(disc_names)
+
+        bg_names = [row["name"].get().strip() for row in char.backgrounds if row["name"].get().strip()]
+        if bg_names:
+            values.append(f"── {locale.t('sheet.adv_columns.Backgrounds')} ──")
+            values.extend(bg_names)
+
+        return values
+
+    def _refresh_qr_values(self) -> None:
+        root = self.root
+        attr_vals = self._build_attr_cb_values()
+        abil_vals = self._build_abil_cb_values()
+        for (attr_var, abil_var, *_), attr_cb, abil_cb in zip(
+            root.quick_rolls, self._qr_attr_cbs, self._qr_abil_cbs
+        ):
+            attr_cb.configure(values=attr_vals)
+            abil_cb.configure(values=abil_vals)
+            attr_var.set(locale.translate_known("sheet.attr_names", attr_var.get()))
+            abil_var.set(locale.translate_known("sheet.ability_names", abil_var.get()))
 
     @frm(padding=2, style="flat.TFrame")
     def _frm_stats_row(self, frm: ttk.Frame) -> None:
@@ -475,7 +757,7 @@ class Interface(BaseInterface):
         delta_lbl   = ttk.Label(frm, textvariable=delta_var, style="M.TLabel", anchor="center")
 
         def _update(_record=None) -> None:
-            history = [r for r in self.root.roll_history if r.roll_type == "NORMAL"]
+            history = [r for r in self.root.roll_history if r.roll_type in ("NORMAL", "QUICK")]
             total = len(history)
             if total == 0:
                 summary_var.set("—")
@@ -490,7 +772,9 @@ class Interface(BaseInterface):
             rates_var.set(f"Exp: {expected:.1f}%  Got: {actual:.1f}%")
             sign = "+" if delta >= 0 else ""
             delta_var.set(f"{sign}{delta:.1f}%")
-            delta_lbl.configure(foreground="#2d8a2d" if delta >= 0 else "#cc3333")
+            delta_lbl.configure(
+                foreground=theme.palette["delta_pos"] if delta >= 0 else theme.palette["delta_neg"]
+            )
 
         self.root.on_roll(_update)
 
@@ -505,8 +789,6 @@ class Interface(BaseInterface):
     def _frm_options(self, frm: ttk.Frame) -> None:
         place_widgets([[
             self._frm_name(frm),
-            self._frm_action_buttons(frm),
-            self._frm_session(frm),
             self._frm_nav_buttons(frm),
         ]])
 
@@ -519,23 +801,39 @@ class Interface(BaseInterface):
         ])
 
     @frm(padding=5)
-    def _frm_action_buttons(self, frm: ttk.Frame) -> None:
+    def _frm_nav_buttons(self, frm: ttk.Frame) -> None:
         place_widgets([
-            [ttk.Button(frm, textvariable=self.root.pooling_state,
-                        command=self.root.start_bot_polling, style="S.TButton")],
-            [self._tbutton(frm, "controls.save",
-                           command=self.root.save_to_file, style="S.TButton")],
+            [self._tbutton(frm, "controls.sheet", style="S.TButton",
+                           command=self._open_character_sheet)],
         ])
 
-    @frm(padding=5)
-    def _frm_session(self, frm: ttk.Frame) -> None:
-        """Session code field + Join/Leave button."""
+    @frm(padding=8, style="solid.TFrame")
+    def _frm_settings_tab(self, frm: ttk.Frame) -> None:
         root = self.root
 
-        self._tlabel(frm, "controls.session_code",
-                     style="S.TLabel", anchor="e").grid(row=0, column=0, sticky="e")
-        ttk.Entry(frm, textvariable=root.session_code,
-                  width=16, style="my.TEntry").grid(row=0, column=1, padx=(4, 0))
+        def _section(key: str) -> ttk.LabelFrame:
+            lf = ttk.LabelFrame(frm, text=locale.t(key), padding=(8, 4))
+            locale.on_change(lambda *_: lf.configure(text=locale.t(key)))
+            lf.pack(fill="x", pady=(0, 6))
+            lf.grid_columnconfigure(0, weight=1)
+            return lf
+
+        # ── Character ─────────────────────────────────────────────────────────
+        char_lf = _section("controls.settings_character")
+        self._tbutton(char_lf, "controls.load_character", style="S.TButton",
+                      command=root.load_character_dialog).grid(
+            row=0, column=0, sticky="ew", padx=(0, 3), pady=2)
+        self._tbutton(char_lf, "chargen.btn_create", style="S.TButton",
+                      command=self._open_chargen).grid(
+            row=0, column=1, sticky="ew", padx=(3, 0), pady=2)
+        char_lf.grid_columnconfigure(1, weight=1)
+
+        # ── Session ───────────────────────────────────────────────────────────
+        sess_lf = _section("controls.settings_session")
+        self._tlabel(sess_lf, "controls.session_code", style="S.TLabel").grid(
+            row=0, column=0, sticky="w", pady=2)
+        ttk.Entry(sess_lf, textvariable=root.session_code,
+                  width=12, style="my.TEntry").grid(row=0, column=1, sticky="ew", padx=(4, 4), pady=2)
 
         btn_var = tk.StringVar(value=locale.t("controls.join_session"))
 
@@ -552,22 +850,50 @@ class Interface(BaseInterface):
             else:
                 root.join_session()
 
-        ttk.Button(frm, textvariable=btn_var, command=_on_click,
-                   style="S.TButton").grid(row=1, column=0, columnspan=2, pady=(4, 0))
+        ttk.Button(sess_lf, textvariable=btn_var, command=_on_click,
+                   style="S.TButton").grid(row=0, column=2, pady=2)
+        sess_lf.grid_columnconfigure(1, weight=1)
 
-    @frm(padding=5)
-    def _frm_nav_buttons(self, frm: ttk.Frame) -> None:
-        lang_btn = ttk.Button(frm, text=locale.t("lang_btn"), style="S.TButton",
+        # ── Telegram ──────────────────────────────────────────────────────────
+        tg_lf = _section("controls.settings_telegram")
+        ttk.Button(tg_lf, textvariable=root.pooling_state,
+                   command=root.start_bot_polling,
+                   style="S.TButton").grid(row=0, column=0, sticky="ew", pady=2)
+        self._dot_toggle(tg_lf, locale.t("controls.send_telegram"),
+                         root.is_send_to_telegram,
+                         locale_key="controls.send_telegram").grid(
+            row=1, column=0, sticky="w", pady=2)
+
+        # ── App ───────────────────────────────────────────────────────────────
+        app_lf = _section("controls.settings_app")
+
+        theme_var = tk.StringVar()
+
+        def _upd_theme_btn(*_) -> None:
+            key = "controls.dark_mode" if theme.mode == "light" else "controls.light_mode"
+            theme_var.set(locale.t(key))
+
+        _upd_theme_btn()
+        locale.on_change(_upd_theme_btn)
+        theme.on_change(_upd_theme_btn)
+        ttk.Button(app_lf, textvariable=theme_var, style="S.TButton",
+                   command=root.toggle_theme).grid(
+            row=0, column=0, sticky="ew", padx=(0, 3), pady=2)
+
+        lang_btn = ttk.Button(app_lf, text=locale.t("lang_btn"), style="S.TButton",
                               command=self._switch_language)
         locale.register(lang_btn, "lang_btn")
+        lang_btn.grid(row=0, column=1, sticky="ew", padx=(3, 0), pady=2)
 
-        place_widgets([
-            [self._tbutton(frm, "controls.sheet", style="S.TButton",
-                           command=self._open_character_sheet)],
-            [self._tbutton(frm, "controls.load_character", style="S.TButton",
-                           command=self.root.load_character_dialog)],
-            [lang_btn],
-        ])
+        self._dot_toggle(app_lf, locale.t("controls.unskilled_penalty"),
+                         root.default_skill_penalty,
+                         locale_key="controls.unskilled_penalty").grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=2)
+        self._dot_toggle(app_lf, locale.t("controls.chargen_min_will"),
+                         root.chargen_min_will,
+                         locale_key="controls.chargen_min_will").grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=2)
+        app_lf.grid_columnconfigure(1, weight=1)
 
     @frm(padding=2, style="solid.TFrame")
     def _frm_stat_label(self, frm: ttk.Frame, title_key: str, var) -> None:

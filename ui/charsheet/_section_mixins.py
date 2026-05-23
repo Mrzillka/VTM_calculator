@@ -7,10 +7,8 @@ from typing import Callable
 
 from config import BLOOD_COLS, BLOOD_ROWS, DISCIPLINE_PATHS, FLAWS, MAX_BLOOD_POOL, MAX_DOT_TRACKER, MERITS, SPEC_MIN_DOTS, WOUND_LEVELS
 from lang import locale
+from ui.theme import theme
 from ui.utils import frm, place_widgets
-
-_VIRTUE_COLOR = "crimson"
-_DISABLED_COLOR = "gray"
 
 
 # ── Attributes & Abilities ────────────────────────────────────────────────────
@@ -436,7 +434,7 @@ class _TrackersMixin:
         self._flaw_total_lbl.configure(text=locale.t("sheet.mf.gain").format(n=f))
 
         net = f - m
-        color = _VIRTUE_COLOR if net > 0 else (_DISABLED_COLOR if net < 0 else "")
+        color = theme.palette["virtue_fg"] if net > 0 else (theme.palette["disabled_fg"] if net < 0 else "")
         self._net_lbl.configure(
             text=locale.t("sheet.mf.free").format(n=net),
             foreground=color,
@@ -573,10 +571,10 @@ class _TrackersMixin:
 
         for i, lbl in enumerate(self._willpower_labels):
             if i >= max_val:
-                lbl.configure(text="○", foreground=_DISABLED_COLOR, cursor="")
+                lbl.configure(text="○", foreground=theme.palette["disabled_fg"], cursor="")
                 lbl.unbind("<Button-1>")
             elif i < current:
-                color = _VIRTUE_COLOR if i < courage else ""
+                color = theme.palette["virtue_fg"] if i < courage else ""
                 lbl.configure(text="●", foreground=color, cursor="hand2")
                 lbl.bind("<Button-1>", lambda e, x=i: self._click_will(x))
             else:
@@ -612,7 +610,7 @@ class _TrackersMixin:
 
         for i, lbl in enumerate(self._humanity_dot_labels):
             if i < current:
-                color = _VIRTUE_COLOR if i < conscience else ""
+                color = theme.palette["virtue_fg"] if i < conscience else ""
                 lbl.configure(text="●", foreground=color)
             else:
                 lbl.configure(text="○", foreground="")
@@ -663,7 +661,7 @@ class _TrackersMixin:
                     lbl.configure(cursor="hand2", foreground="")
                     lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
                 else:
-                    lbl.configure(cursor="", foreground=_DISABLED_COLOR)
+                    lbl.configure(cursor="", foreground=theme.palette["disabled_fg"])
                     lbl.unbind("<Button-1>")
                     char.blood[i][j].set(False)
 
