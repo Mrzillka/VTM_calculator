@@ -21,16 +21,27 @@ def apply_icon(window: tk.Wm, icon_name: str, *, inherit: bool = True) -> None:
         icon_name: filename relative to the project/bundle root (e.g. 'icon.ico').
         inherit:  passed to wm_iconphoto — True propagates the icon to all
                   future Toplevel children; False applies only to this window.
+                  Ignored on Windows where class-level inheritance is automatic.
     """
+    import sys
     path = resource_path(icon_name)
     if not path.exists():
         return
     try:
-        from PIL import Image, ImageTk
-        window.wm_iconbitmap(str(path))
-        img = ImageTk.PhotoImage(Image.open(path))
-        window.wm_iconphoto(inherit, img)
-        window._icon_ref = img  # type: ignore[attr-defined]  # prevent GC
+        if sys.platform == "win32":
+            # On Windows only the root Tk window needs wm_iconbitmap — all Toplevels
+            # inherit the class icon automatically.  Calling wm_iconbitmap on a
+            # Toplevel sets the shared class icon and can clear it on destroy,
+            # losing the icon from every window.  wm_iconphoto must not follow
+            # wm_iconbitmap on Windows because it overwrites the native multi-res
+            # .ico with a single-size RGBA image that renders transparent.
+            if isinstance(window, tk.Tk):
+                window.wm_iconbitmap(str(path))
+        else:
+            from PIL import Image, ImageTk
+            img = ImageTk.PhotoImage(Image.open(path))
+            window.wm_iconphoto(inherit, img)
+            window._icon_ref = img  # type: ignore[attr-defined]  # prevent GC
     except Exception as exc:
         logger.debug("Could not apply icon %s: %s", icon_name, exc)
 
