@@ -347,6 +347,7 @@ class ChargenInterface(
     # ── Finish ─────────────────────────────────────────────────────────────────
 
     def _finish(self) -> None:
+        self.character.capture_chargen_snapshot()
         self.character.save()
         if self._on_finish is not None:
             self._on_finish(self.character)

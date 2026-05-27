@@ -24,6 +24,7 @@ class _AttributesMixin:
             "Stamina":   char.sta_boost,
         }
         categories = char.attributes
+        snap_attrs = (char.chargen_snapshot or {}).get("attributes", {})
         headers = [
             self._tlabel(frm, f"sheet.attr_categories.{name}", style="sheet.M.TLabel")
             for name in categories
@@ -32,6 +33,7 @@ class _AttributesMixin:
             self._frm_stat_lines(
                 frm, data, "sheet.attr_names",
                 boost_map=(boost_map if cat == "Physical" else None),
+                baseline_map={name: snap_attrs.get(cat, {}).get(name, 0) for name in data},
             )
             for cat, data in categories.items()
         ]
@@ -43,6 +45,9 @@ class _AttributesMixin:
     def _frm_abilities(self, frm: ttk.Frame) -> None:
         char = self.character
         category_names = list(char.abilities.keys())
+        snap = char.chargen_snapshot or {}
+        snap_abilities = snap.get("abilities", {})
+        snap_custom = snap.get("custom_abilities", {})
 
         headers = [
             self._tlabel(frm, f"sheet.ability_categories.{name}", style="sheet.M.TLabel")
@@ -54,6 +59,22 @@ class _AttributesMixin:
                 char.abilities[cat],
                 "sheet.ability_names",
                 char.custom_abilities.get(cat, []),
+                baseline_map={
+                    name: snap_abilities.get(cat, {}).get(name, 0)
+                    for name in char.abilities[cat]
+                },
+                custom_baseline_list=[
+                    snap_custom.get(cat, [])[i].get("dots", 0)
+                    if i < len(snap_custom.get(cat, []))
+                    else 0
+                    for i in range(len(char.custom_abilities.get(cat, [])))
+                ],
+                custom_name_locked_list=[
+                    bool(snap_custom.get(cat, [])[i].get("name", ""))
+                    if i < len(snap_custom.get(cat, []))
+                    else False
+                    for i in range(len(char.custom_abilities.get(cat, [])))
+                ],
             )
             for cat in category_names
         ]
@@ -88,6 +109,9 @@ class _AttributesMixin:
         name_prefix: str,
         custom_entries: list[dict] | None = None,
         boost_map: dict[str, IntVar] | None = None,
+        baseline_map: dict[str, int] | None = None,
+        custom_baseline_list: list[int] | None = None,
+        custom_name_locked_list: list[bool] | None = None,
     ) -> None:
         """
         Build all stat rows directly in one shared grid so tkinter aligns
@@ -97,16 +121,18 @@ class _AttributesMixin:
         Custom rows:   editable Entry (col 0), spec Entry (col 1), dots (col 2).
         """
         row_idx = 0
+        has_snapshot = self.character.chargen_snapshot is not None
 
         for label, values in data.items():
+            baseline = (baseline_map or {}).get(label, 0) if has_snapshot else None
             name_lbl = self._tlabel(frm, f"{name_prefix}.{label}",
                                     width=15, anchor="e", style="sheet.S.TLabel")
             spec_entry = ttk.Entry(frm, textvariable=values["spec"],
                                    width=15, style="sheet.TEntry")
             if boost_map and label in boost_map:
-                dots = self._frm_dots_with_boost(frm, values["vars"], boost_map[label])
+                dots = self._frm_dots_with_boost(frm, values["vars"], boost_map[label], baseline=baseline)
             else:
-                dots = self._frm_dots(frm, values["vars"])
+                dots = self._frm_dots(frm, values["vars"], baseline=baseline)
 
             self._lockable.append(spec_entry)
             self._wire_spec_state(spec_entry, values["vars"], values["spec"])
@@ -116,14 +142,22 @@ class _AttributesMixin:
             dots.grid(row=row_idx, column=2, padx=(2, 0), pady=1)
             row_idx += 1
 
-        for entry in (custom_entries or []):
+        for i, entry in enumerate(custom_entries or []):
+            raw = (custom_baseline_list or [])[i] if custom_baseline_list and i < len(custom_baseline_list) else 0
+            baseline = raw if has_snapshot else None
+            name_locked = (custom_name_locked_list or [])[i] if custom_name_locked_list and i < len(custom_name_locked_list) else False
+
             name_entry = ttk.Entry(frm, textvariable=entry["name"],
                                    width=15, style="sheet.TEntry")
             spec_entry = ttk.Entry(frm, textvariable=entry["spec"],
                                    width=15, style="sheet.TEntry")
-            dots = self._frm_dots(frm, entry["vars"])
+            dots = self._frm_dots(frm, entry["vars"], baseline=baseline)
 
-            self._lockable.extend([name_entry, spec_entry])
+            if has_snapshot and name_locked:
+                self._permanent_locked.append(name_entry)
+            else:
+                self._lockable.append(name_entry)
+            self._lockable.append(spec_entry)
             self._wire_spec_state(spec_entry, entry["vars"], entry["spec"])
 
             name_entry.grid(row=row_idx, column=0, sticky="ew", pady=1)
@@ -181,11 +215,19 @@ class _AdvantagesMixin:
     def _frm_adv_backgrounds(self, frm: ttk.Frame) -> None:
         rows = []
         self._bg_comboboxes: list[ttk.Combobox] = []
-        for e in self.character.backgrounds:
+        snap = self.character.chargen_snapshot or {}
+        snap_bgs = snap.get("advantages", {}).get("backgrounds", [])
+        has_snapshot = self.character.chargen_snapshot is not None
+        for i, e in enumerate(self.character.backgrounds):
+            snap_entry = snap_bgs[i] if i < len(snap_bgs) else {}
+            baseline = snap_entry.get("dots", 0) if has_snapshot else None
             cb = ttk.Combobox(frm, textvariable=e["name"], width=20)
-            self._lockable.append(cb)
             self._bg_comboboxes.append(cb)
-            rows.append([cb, self._frm_dots(frm, e["vars"])])
+            if has_snapshot and snap_entry.get("name", ""):
+                self._permanent_locked.append(cb)
+            else:
+                self._lockable.append(cb)
+            rows.append([cb, self._frm_dots(frm, e["vars"], baseline=baseline)])
         place_widgets(rows)
         self._refresh_bg_values()
         locale.on_change(self._refresh_bg_values)
@@ -200,16 +242,23 @@ class _AdvantagesMixin:
         rows = []
         self._disc_comboboxes: list[ttk.Combobox] = []
         self._path_comboboxes: list[ttk.Combobox] = []
+        snap = self.character.chargen_snapshot or {}
+        snap_discs = snap.get("advantages", {}).get("disciplines", [])
+        has_snapshot = self.character.chargen_snapshot is not None
 
-        for e in self.character.disciplines:
+        for i, e in enumerate(self.character.disciplines):
+            snap_entry = snap_discs[i] if i < len(snap_discs) else {}
+            baseline = snap_entry.get("dots", 0) if has_snapshot else None
             cb_disc = ttk.Combobox(frm, textvariable=e["name"], width=16)
             cb_path = ttk.Combobox(frm, textvariable=e["path"], width=16)
-            self._lockable.append(cb_disc)
-            self._lockable.append(cb_path)
             self._disc_comboboxes.append(cb_disc)
             self._path_comboboxes.append(cb_path)
+            if has_snapshot and snap_entry.get("name", ""):
+                self._permanent_locked.extend([cb_disc, cb_path])
+            else:
+                self._lockable.extend([cb_disc, cb_path])
 
-            rows.append([cb_disc, cb_path, self._frm_dots(frm, e["vars"])])
+            rows.append([cb_disc, cb_path, self._frm_dots(frm, e["vars"], baseline=baseline)])
 
         place_widgets(rows)
 
@@ -317,12 +366,17 @@ class _AdvantagesMixin:
 
     @frm(padding=2)
     def _frm_adv_virtues(self, frm: ttk.Frame) -> None:
-        place_widgets([
-            [ttk.Label(frm, textvariable=e["name"], width=30,
-                       style="sheet.S.TLabel", anchor="w"),
-             self._frm_dots(frm, e["vars"])]
-            for e in self.character.virtues
-        ])
+        has_snapshot = self.character.chargen_snapshot is not None
+        snap_virtues = (self.character.chargen_snapshot or {}).get("advantages", {}).get("virtues", [])
+        rows = []
+        for i, e in enumerate(self.character.virtues):
+            baseline = snap_virtues[i] if (has_snapshot and i < len(snap_virtues)) else None
+            rows.append([
+                ttk.Label(frm, textvariable=e["name"], width=30,
+                          style="sheet.S.TLabel", anchor="w"),
+                self._frm_dots(frm, e["vars"], baseline=baseline),
+            ])
+        place_widgets(rows)
 
     def _sync_virtue_names(self) -> None:
         virtue_names = locale.raw("sheet.virtue_names")
@@ -385,13 +439,17 @@ class _TrackersMixin:
         ]]
 
         comboboxes: list[ttk.Combobox] = []
+        has_snapshot = self.character.chargen_snapshot is not None
         for entry in entries:
             self._bind_autofill_locale(entry["name"], entry["cost"], en_lookup, locale_section)
             cb = ttk.Combobox(frm, textvariable=entry["name"], width=25)
             sp = ttk.Spinbox(frm, from_=0, to=max_cost,
                              textvariable=entry["cost"],
                              width=3, style="sheet.TSpinbox")
-            self._lockable.extend([cb, sp])
+            if has_snapshot:
+                self._permanent_locked.extend([cb, sp])
+            else:
+                self._lockable.extend([cb, sp])
             comboboxes.append(cb)
             rows.append([cb, sp])
         place_widgets(rows)

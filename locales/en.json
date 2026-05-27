@@ -139,6 +139,7 @@
     "title": "Vampire the Masquerade",
     "save": "💾 Save",
     "lock": "🔒 Lock",
+    "xp_label": "XP spent: {n}",
     "send_sheet": "📤 Send",
     "sections": {
       "attributes": "Attributes",

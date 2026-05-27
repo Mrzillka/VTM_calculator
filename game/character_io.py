@@ -18,7 +18,7 @@ class CharacterIO:
 
     def to_dict(self) -> dict:
         """Serialize the full character state to a plain dictionary."""
-        return {
+        d = {
             "header": {
                 "character_name": self.character_name.get(),
                 "player":         self.player.get(),
@@ -96,6 +96,9 @@ class CharacterIO:
                 ],
             },
         }
+        if self.chargen_snapshot is not None:
+            d["chargen_snapshot"] = self.chargen_snapshot
+        return d
 
     # ── Save ───────────────────────────────────────────────────────────────────
 
@@ -200,6 +203,13 @@ class CharacterIO:
             if i < len(self.flaws):
                 self.flaws[i]["name"].set(entry.get("name", ""))
                 self.flaws[i]["cost"].set(entry.get("cost", 0))
+
+        raw_snap = data.get("chargen_snapshot")
+        if raw_snap is not None:
+            self.chargen_snapshot = raw_snap
+        else:
+            # Legacy save: treat current values as the chargen baseline (0 XP spent).
+            self.capture_chargen_snapshot()
 
     def load_from_file(self) -> bool:
         """Load character data from the legacy single-file path.

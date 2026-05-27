@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import BooleanVar, Toplevel
+from tkinter import BooleanVar, IntVar, Toplevel
 from tkinter import ttk
 from typing import Callable
 
@@ -39,6 +39,7 @@ class CharsheetWindow(Toplevel):
         self._send_sheet_callback = send_sheet_callback
         self.character = character if character is not None else Character()
         self.locked = BooleanVar(value=False)
+        self.xp_spent = IntVar(value=0)
 
         self._configure_styles()
         self._build_scrollable()

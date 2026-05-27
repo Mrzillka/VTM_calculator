@@ -47,6 +47,10 @@ class Character(CharacterIO):
     _DOTS = 8
 
     def __init__(self) -> None:
+        # Chargen baseline snapshot (plain dict, set by capture_chargen_snapshot).
+        # None means no chargen has been completed for this character object yet.
+        self.chargen_snapshot: dict | None = None
+
         # Header
         self.character_name = StringVar(value=choice(NPC_NAMES))
         self.player = StringVar()
@@ -146,6 +150,65 @@ class Character(CharacterIO):
             {'name': StringVar(), 'cost': IntVar(value=0)}
             for _ in range(_MERIT_FLAW_ROWS)
         ]
+
+    # ── Chargen snapshot ───────────────────────────────────────────────────────
+
+    def capture_chargen_snapshot(self) -> dict:
+        """Snapshot current state as the chargen baseline and store on self."""
+        snap = {
+            "attributes": {
+                category: {
+                    attr: sum(v.get() for v in values["vars"])
+                    for attr, values in attrs.items()
+                }
+                for category, attrs in self.attributes.items()
+            },
+            "abilities": {
+                category: {
+                    ability: sum(v.get() for v in values["vars"])
+                    for ability, values in abilities.items()
+                }
+                for category, abilities in self.abilities.items()
+            },
+            "custom_abilities": {
+                category: [
+                    {
+                        "name": entry["name"].get(),
+                        "dots": sum(v.get() for v in entry["vars"]),
+                    }
+                    for entry in entries
+                ]
+                for category, entries in self.custom_abilities.items()
+            },
+            "advantages": {
+                "backgrounds": [
+                    {"name": e["name"].get(), "dots": sum(v.get() for v in e["vars"])}
+                    for e in self.backgrounds
+                ],
+                "disciplines": [
+                    {"name": e["name"].get(), "dots": sum(v.get() for v in e["vars"])}
+                    for e in self.disciplines
+                ],
+                "virtues": [
+                    sum(v.get() for v in e["vars"])
+                    for e in self.virtues
+                ],
+                "merits": [
+                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    for e in self.merits
+                ],
+                "flaws": [
+                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    for e in self.flaws
+                ],
+            },
+            "trackers": {
+                "willpower_max":   self.willpower_max.get(),
+                "humanity_value":  self.humanity_value.get(),
+            },
+        }
+        self.chargen_snapshot = snap
+        return snap
 
     # ── Attribute wiring ───────────────────────────────────────────────────────
 
