@@ -100,6 +100,7 @@ class StorytellerInterface(BaseInterface):
             nb,
             on_roster_change=self._refresh_roller_combobox,
             on_set_roller=lambda name: self.root.active_roller.set(name),
+            on_quick_roll=lambda rname, pool, no_botch: self.root.npc_quick_roll(rname, pool, no_botch),
         )
         nb.add(self._pc_panel, text=locale.t("panels.players"))
         nb.add(self._npc_panel, text=locale.t("panels.npcs"))

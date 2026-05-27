@@ -248,7 +248,7 @@ class PCPanel(ttk.Frame):
 class NPCPanel(ttk.Frame):
     """Scrollable GM panel for creating and managing NPC summary cards."""
 
-    WIDTH = 260
+    WIDTH = 280
     HEIGHT = 420
 
     def __init__(
@@ -257,10 +257,12 @@ class NPCPanel(ttk.Frame):
         *,
         on_roster_change: Callable[[], None] | None = None,
         on_set_roller: Callable[[str], None] | None = None,
+        on_quick_roll: Callable[[str, int, bool], None] | None = None,
     ) -> None:
         super().__init__(parent, style="solid.TFrame", padding=4)
         self._on_roster_change = on_roster_change
         self._on_set_roller = on_set_roller
+        self._on_quick_roll = on_quick_roll
         self._entries: list[dict] = []
         self._sheet_wins: dict[Path, tk.Toplevel] = {}
         self._build()
@@ -317,11 +319,16 @@ class NPCPanel(ttk.Frame):
             (lambda c=char: self._on_set_roller(c.character_name.get()))
             if self._on_set_roller else None
         )
+        quick_roll_cb = (
+            (lambda rname, pool, nb: self._on_quick_roll(rname, pool, nb))
+            if self._on_quick_roll else None
+        )
         card = _build_npc_card(
             self._inner, char,
             on_open=lambda c=char, p=path: self._open_sheet(c, p),
             on_remove=lambda e=entry: self._remove_entry(e),
             on_set_roller=set_roller_cb,
+            on_quick_roll=quick_roll_cb,
         )
         entry["card"] = card
         card.pack(fill="x", padx=2, pady=(0, 4))
@@ -412,6 +419,7 @@ def _build_npc_card(
     on_open: Callable,
     on_remove: Callable,
     on_set_roller: Callable | None = None,
+    on_quick_roll: Callable[[str, int, bool], None] | None = None,
 ) -> ttk.Frame:
     """Compact editable NPC summary card showing key GM stats."""
     frame = ttk.Frame(parent, style="solid.TFrame", padding=6)
@@ -434,4 +442,64 @@ def _build_npc_card(
     _stat_pair(stats, "Wounds", char.wounds_display,                                row=0, col=2)
     _stat_pair(stats, "Will",   _ratio_var(char.will_value,  char.willpower_max),   row=1, col=0)
     stats.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
+
+    if on_quick_roll:
+        # (label, attr1, attr2, no_botch, grid_row, grid_col, conditional_on_attr2)
+        # Max 2 columns so buttons fit within the card width.
+        _FAST_ROLLS = [
+            ("Brawl",    "Strength",  "Brawl",    False, 0, 0, False),
+            ("Dodge",    "Dexterity", "Dodge",     False, 0, 1, False),
+            ("Soak",     "Stamina",   "Fortitude", True,  1, 0, False),
+            ("Melee",    "Dexterity", "Melee",     False, 1, 1, True),
+            ("Firearms", "Dexterity", "Firearms",  False, 2, 0, True),
+        ]
+
+        btn_row = ttk.Frame(frame, style="flat.TFrame")
+        btn_row.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        btn_row.grid_columnconfigure(0, weight=1)
+        btn_row.grid_columnconfigure(1, weight=1)
+
+        _trace_registrations: list[tuple[tk.IntVar, str]] = []
+
+        def _make_btn(
+            grow: int, gcol: int,
+            label_prefix: str,
+            attr1: str, attr2: str,
+            no_botch: bool,
+            conditional: bool,
+        ) -> None:
+            base_pool = char.get_stat_value(attr1) + char.get_stat_value(attr2)
+            if conditional and char.get_stat_value(attr2) < 1:
+                return
+
+            label_var = tk.StringVar()
+
+            def _update(*_) -> None:
+                effective = max(1, base_pool + char.roll_penalty.get())
+                label_var.set(f"{label_prefix} {effective}d")
+
+            _update()
+            tid = char.roll_penalty.trace_add("write", _update)
+            _trace_registrations.append((char.roll_penalty, tid))
+
+            def _click(pool=base_pool, nb=no_botch) -> None:
+                effective = max(1, pool + char.roll_penalty.get())
+                on_quick_roll(char.character_name.get(), effective, nb)
+
+            ttk.Button(
+                btn_row, textvariable=label_var, style="S.TButton", command=_click,
+            ).grid(row=grow, column=gcol, sticky="ew", padx=(0, 3), pady=(0, 2))
+
+        for lbl, a1, a2, nb, r, c, cond in _FAST_ROLLS:
+            _make_btn(r, c, lbl, a1, a2, nb, cond)
+
+        def _cleanup_traces(*_) -> None:
+            for var, tid in _trace_registrations:
+                try:
+                    var.trace_remove("write", tid)
+                except Exception:
+                    pass
+
+        frame.bind("<Destroy>", _cleanup_traces, add=True)
+
     return frame

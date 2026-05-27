@@ -205,6 +205,42 @@ class StorytellerRoot(Tk):
         )
         self._record_and_emit(record)
 
+    def npc_quick_roll(
+        self,
+        roller_name: str,
+        dice_pool: int,
+        no_botch: bool,
+    ) -> None:
+        """Roll instantly for an NPC; uses the toolbar difficulty setting."""
+        effective = max(1, dice_pool)
+        difficulty = self.difficulty.get()
+        probability = Calculator(
+            dice_number=effective,
+            difficulty=difficulty,
+            success_needed=1,
+            auto_successes=0,
+            specialisation=False,
+            no_botch=no_botch,
+        ).get_probability()
+        roller = Roller(
+            dice_number=effective,
+            difficulty=difficulty,
+            no_botch=no_botch,
+        )
+        result = roller.roll()
+        record = RollRecord(
+            dice_number=dice_pool,
+            difficulty=difficulty,
+            auto_success=0,
+            dice=list(result.dice),
+            specialisation_dice=list(result.specialisation_dice),
+            successes=result.successes,
+            probability=probability,
+            roller_name=roller_name,
+            roll_type="QUICK",
+        )
+        self._record_and_emit(record)
+
     def _record_and_emit(self, record: RollRecord) -> None:
         self.roll_history.append(record)
         self._emit_roll(record)
