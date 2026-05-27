@@ -179,7 +179,7 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
             for i, entry in enumerate(entries):
                 baseline = snap_entries[i]["dots"] if i < len(snap_entries) else 0
                 current = sum(v.get() for v in entry["vars"])
-                total += xp_for_increase("ability", baseline, current)
+                total += xp_for_increase("secondary_ability", baseline, current)
 
         snap_discs = snap.get("advantages", {}).get("disciplines", [])
         for i, entry in enumerate(char.disciplines):

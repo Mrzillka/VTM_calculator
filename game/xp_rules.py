@@ -5,8 +5,8 @@ XP_COSTS: dict[str, int] = {
     "ability":                2,
     "new_ability":            3,   # flat cost for 0→1
     "secondary_ability":      1,
-    "new_secondary_ability":  1,   # flat cost for 0→1
-    "background":             2,
+    "new_secondary_ability":  2,   # flat cost for 0→1
+    "background":             0,
     "discipline_inclan":      5,
     "discipline_outclan":     7,
     "new_discipline_outclan": 10,  # flat cost for 0→1 out-of-clan
@@ -32,6 +32,7 @@ def xp_for_increase(
     Per-dot cost formula: target_rating × multiplier, summed for each increment.
     First-dot special cases:
       - ability 0→1:            3 XP flat (new_ability)
+      - secondary ability 0→1:            2 XP flat (new_ability)
       - discipline 0→1 out-of-clan: 10 XP flat (new_discipline_outclan)
     """
     if to_dots <= from_dots:
@@ -44,6 +45,9 @@ def xp_for_increase(
     if start == 0:
         if trait_type == "ability":
             total += XP_COSTS["new_ability"]
+            start = 1
+        elif trait_type == "secondary_ability":
+            total += XP_COSTS["new_secondary_ability"]
             start = 1
         elif trait_type == "discipline":
             total += XP_COSTS["new_discipline_outclan"]
