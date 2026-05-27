@@ -46,6 +46,9 @@
     "players": "Players",
     "npcs":    "NPCs"
   },
+  "npc_card": {
+    "soak": "Soak"
+  },
   "stats": {
     "blood": "Blood",
     "wounds": "Wounds",

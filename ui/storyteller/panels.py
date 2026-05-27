@@ -10,6 +10,7 @@ from typing import Callable
 
 from config import NPC_DIR, PC_DIR
 from game.character import Character
+from lang import locale
 from ui.constants import MOUSEWHEEL_DIVISOR
 
 
@@ -444,14 +445,15 @@ def _build_npc_card(
     stats.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
     if on_quick_roll:
-        # (label, attr1, attr2, no_botch, grid_row, grid_col, conditional_on_attr2)
+        # (locale_key, attr1, attr2, no_botch, grid_row, grid_col, conditional_on_attr2)
+        # Reuses sheet.ability_names.* keys; only "soak" needs its own key.
         # Max 2 columns so buttons fit within the card width.
         _FAST_ROLLS = [
-            ("Brawl",    "Strength",  "Brawl",    False, 0, 0, False),
-            ("Dodge",    "Dexterity", "Dodge",     False, 0, 1, False),
-            ("Soak",     "Stamina",   "Fortitude", True,  1, 0, False),
-            ("Melee",    "Dexterity", "Melee",     False, 1, 1, True),
-            ("Firearms", "Dexterity", "Firearms",  False, 2, 0, True),
+            ("sheet.ability_names.Brawl",    "Strength",  "Brawl",    False, 0, 0, False),
+            ("sheet.ability_names.Dodge",    "Dexterity", "Dodge",     False, 0, 1, False),
+            ("npc_card.soak",                "Stamina",   "Fortitude", True,  1, 0, False),
+            ("sheet.ability_names.Melee",    "Dexterity", "Melee",     False, 1, 1, True),
+            ("sheet.ability_names.Firearms", "Dexterity", "Firearms",  False, 2, 0, True),
         ]
 
         btn_row = ttk.Frame(frame, style="flat.TFrame")
@@ -463,7 +465,7 @@ def _build_npc_card(
 
         def _make_btn(
             grow: int, gcol: int,
-            label_prefix: str,
+            locale_key: str,
             attr1: str, attr2: str,
             no_botch: bool,
             conditional: bool,
@@ -475,12 +477,15 @@ def _build_npc_card(
             label_var = tk.StringVar()
 
             def _update(*_) -> None:
+                if not frame.winfo_exists():
+                    return
                 effective = max(1, base_pool + char.roll_penalty.get())
-                label_var.set(f"{label_prefix} {effective}d")
+                label_var.set(f"{locale.t(locale_key)} {effective}d")
 
             _update()
             tid = char.roll_penalty.trace_add("write", _update)
             _trace_registrations.append((char.roll_penalty, tid))
+            locale.on_change(_update)
 
             def _click(pool=base_pool, nb=no_botch) -> None:
                 effective = max(1, pool + char.roll_penalty.get())
@@ -490,8 +495,8 @@ def _build_npc_card(
                 btn_row, textvariable=label_var, style="S.TButton", command=_click,
             ).grid(row=grow, column=gcol, sticky="ew", padx=(0, 3), pady=(0, 2))
 
-        for lbl, a1, a2, nb, r, c, cond in _FAST_ROLLS:
-            _make_btn(r, c, lbl, a1, a2, nb, cond)
+        for lkey, a1, a2, nb, r, c, cond in _FAST_ROLLS:
+            _make_btn(r, c, lkey, a1, a2, nb, cond)
 
         def _cleanup_traces(*_) -> None:
             for var, tid in _trace_registrations:

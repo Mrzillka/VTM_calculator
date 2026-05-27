@@ -46,6 +46,9 @@
     "players": "Игроки",
     "npcs":    "НПС"
   },
+  "npc_card": {
+    "soak": "Стойкость"
+  },
   "stats": {
     "blood": "Кровь",
     "wounds": "Раны",
