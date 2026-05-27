@@ -145,6 +145,7 @@
       "attributes": "Атрибуты",
       "abilities": "Способности",
       "advantages": "Преимущества",
+      "combo_disciplines": "Комбинированные дисциплины",
       "merits_flaws": "Достоинства, Недостатки и Трекеры"
     },
     "header": {
@@ -329,6 +330,35 @@
         "Path of Duat": "Путь Дуата",
         "Path of Phobos": "Путь Фобоса"
       }
+    },
+    "combo_disciplines": {
+      "Alacrity": "Проворность",
+      "Baal's Bloody Talons": "Кровавые когти Баала",
+      "Blinding the Alloy Eye": "Слепота стального глаза",
+      "Blood Tempering": "Закалка кровью",
+      "Burning Wrath": "Пылающий гнев",
+      "Dead Flesh's Ploy": "Уловка мёртвой плоти",
+      "Devil's Touch": "Прикосновение дьявола",
+      "Draught of the Soul": "Глоток души",
+      "Earthshock": "Сейсмоудар",
+      "Eyes of the Night Hawk": "Глаза ночного ястреба",
+      "Far Mastery": "Власть на расстоянии",
+      "Flesh of Marble": "Мраморная плоть",
+      "Heart of Stone": "Каменное сердце",
+      "Infernal Investiture": "Адское облачение",
+      "Iron Glare": "Железный взор",
+      "Kiss of the Dark Mother": "Поцелуй Тёмной Матери",
+      "Meld with the Land": "Слияние с природой",
+      "Mirror's Visage": "Зеркальный облик",
+      "Quicken Sight": "Молниеносный взор",
+      "Sanguine Clarity": "Кровавая ясность",
+      "Shadow Step": "Шаг из тени",
+      "Soul Mask": "Маска Души",
+      "Tame the Savage Beast": "Укрощение дикого зверя",
+      "Vanishing": "Исчезновение",
+      "Veil the Legions": "Покров легионов",
+      "Web of Shadows": "Сеть теней",
+      "Wolf Claws": "Волчьи когти"
     },
     "merits": {
       "Acute Senses": "Острое восприятие",

@@ -94,6 +94,7 @@ class CharacterIO:
                     {"name": e["name"].get(), "cost": e["cost"].get()}
                     for e in self.flaws
                 ],
+                "combo_disciplines": [sv.get() for sv in self.combo_disciplines],
             },
         }
         if self.chargen_snapshot is not None:
@@ -203,6 +204,10 @@ class CharacterIO:
             if i < len(self.flaws):
                 self.flaws[i]["name"].set(entry.get("name", ""))
                 self.flaws[i]["cost"].set(entry.get("cost", 0))
+
+        for i, name in enumerate(advantages.get("combo_disciplines", [])):
+            if i < len(self.combo_disciplines):
+                self.combo_disciplines[i].set(name)
 
         raw_snap = data.get("chargen_snapshot")
         if raw_snap is not None:

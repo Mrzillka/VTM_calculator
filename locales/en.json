@@ -145,6 +145,7 @@
       "attributes": "Attributes",
       "abilities": "Abilities",
       "advantages": "Advantages",
+      "combo_disciplines": "Combination Disciplines",
       "merits_flaws": "Merits, Flaws & Trackers"
     },
     "header": {
@@ -329,6 +330,35 @@
         "Path of Duat": "Path of Duat",
         "Path of Phobos": "Path of Phobos"
       }
+    },
+    "combo_disciplines": {
+      "Alacrity": "Alacrity",
+      "Baal's Bloody Talons": "Baal's Bloody Talons",
+      "Blinding the Alloy Eye": "Blinding the Alloy Eye",
+      "Blood Tempering": "Blood Tempering",
+      "Burning Wrath": "Burning Wrath",
+      "Dead Flesh's Ploy": "Dead Flesh's Ploy",
+      "Devil's Touch": "Devil's Touch",
+      "Draught of the Soul": "Draught of the Soul",
+      "Earthshock": "Earthshock",
+      "Eyes of the Night Hawk": "Eyes of the Night Hawk",
+      "Far Mastery": "Far Mastery",
+      "Flesh of Marble": "Flesh of Marble",
+      "Heart of Stone": "Heart of Stone",
+      "Infernal Investiture": "Infernal Investiture",
+      "Iron Glare": "Iron Glare",
+      "Kiss of the Dark Mother": "Kiss of the Dark Mother",
+      "Meld with the Land": "Meld with the Land",
+      "Mirror's Visage": "Mirror's Visage",
+      "Quicken Sight": "Quicken Sight",
+      "Sanguine Clarity": "Sanguine Clarity",
+      "Shadow Step": "Shadow Step",
+      "Soul Mask": "Soul Mask",
+      "Tame the Savage Beast": "Tame the Savage Beast",
+      "Vanishing": "Vanishing",
+      "Veil the Legions": "Veil the Legions",
+      "Web of Shadows": "Web of Shadows",
+      "Wolf Claws": "Wolf Claws"
     },
     "merits": {
       "Acute Senses": "Acute Senses",

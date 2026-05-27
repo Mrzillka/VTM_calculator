@@ -33,6 +33,7 @@ _VIRTUE_NAMES: tuple[str, ...] = (
 _ADVANTAGE_ROWS: int = 7
 _MERIT_FLAW_ROWS: int = 7
 _CUSTOM_ABILITY_ROWS: int = 3
+_COMBO_DISC_ROWS: int = 10
 
 
 class Character(CharacterIO):
@@ -149,6 +150,10 @@ class Character(CharacterIO):
         self.flaws: list[dict[str, StringVar | IntVar]] = [
             {'name': StringVar(), 'cost': IntVar(value=0)}
             for _ in range(_MERIT_FLAW_ROWS)
+        ]
+
+        self.combo_disciplines: list[StringVar] = [
+            StringVar() for _ in range(_COMBO_DISC_ROWS)
         ]
 
     # ── Chargen snapshot ───────────────────────────────────────────────────────

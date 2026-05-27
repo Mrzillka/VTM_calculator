@@ -19,6 +19,264 @@ class DisciplinePower:
     notes: str = field(default="")  # per-turn costs or special mechanics
 
 
+@dataclass(frozen=True)
+class ComboDiscipline:
+    """A power requiring a minimum rating in two separate disciplines."""
+    name: str
+    requires: tuple[tuple[str, int], ...]  # ((disc_name, min_dots), ...)
+    xp_cost: int
+    attribute: str | None = None
+    ability: str | None = None
+    difficulty: int = 6
+    difficulty_context: str | None = None
+    opposition: str | None = None
+    blood_cost: int = 0
+    is_automatic: bool = True
+    notes: str = field(default="")
+
+
+# ---------------------------------------------------------------------------
+# Combination disciplines (V20 core, pp. 491-495).
+# requires keys must match DISCIPLINE_POWERS keys exactly.
+# ---------------------------------------------------------------------------
+
+COMBO_DISCIPLINES: list[ComboDiscipline] = [
+    ComboDiscipline(
+        "Alacrity",
+        requires=(("Celerity", 1), ("Obfuscate", 1)),
+        xp_cost=3,
+        notes="Move at Celerity speed while remaining unnoticed via Obfuscate",
+    ),
+    ComboDiscipline(
+        "Baal's Bloody Talons",
+        requires=(("Potence", 5), ("Quietus", 4)),
+        xp_cost=21,
+        blood_cost=1,
+        notes="Coat natural weapons with blood; damage becomes aggravated",
+    ),
+    ComboDiscipline(
+        "Blinding the Alloy Eye",
+        requires=(("Auspex", 3), ("Obfuscate", 3)),
+        xp_cost=12,
+        attribute="Wits",
+        ability="Occult",
+        difficulty=8,
+        is_automatic=False,
+        notes="Blind electronic surveillance devices in the immediate area",
+    ),
+    ComboDiscipline(
+        "Blood Tempering",
+        requires=(("Fortitude", 3), ("Thaumaturgy", 3)),
+        xp_cost=12,
+        blood_cost=1,
+        notes="Harden own blood; add Fortitude dots as extra soak dice vs fire or sunlight",
+    ),
+    ComboDiscipline(
+        "Burning Wrath",
+        requires=(("Potence", 3), ("Thaumaturgy", 3)),
+        xp_cost=12,
+        attribute="Strength",
+        ability="Brawl",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Add fire damage to Potence-enhanced unarmed strikes",
+    ),
+    ComboDiscipline(
+        "Dead Flesh's Ploy",
+        requires=(("Fortitude", 1), ("Vicissitude", 1)),
+        xp_cost=3,
+        notes="Reshape flesh around an incoming blow to reduce damage",
+    ),
+    ComboDiscipline(
+        "Devil's Touch",
+        requires=(("Presence", 3), ("Thaumaturgy", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Empathy",
+        difficulty_context="target's Willpower",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Mark a mortal as cursed; others shun and fear them instinctively",
+    ),
+    ComboDiscipline(
+        "Draught of the Soul",
+        requires=(("Auspex", 3), ("Quietus", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Occult",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Drain one Willpower point from the victim with each successful bite",
+    ),
+    ComboDiscipline(
+        "Earthshock",
+        requires=(("Potence", 4), ("Vicissitude", 4)),
+        xp_cost=18,
+        blood_cost=2,
+        notes="Strike the ground to create a shockwave; nearby targets make Dex+Athletics diff 6 or fall",
+    ),
+    ComboDiscipline(
+        "Eyes of the Night Hawk",
+        requires=(("Auspex", 2), ("Animalism", 2)),
+        xp_cost=6,
+        notes="See through the eyes of any animal within Auspex × 1 mile",
+    ),
+    ComboDiscipline(
+        "Far Mastery",
+        requires=(("Auspex", 4), ("Dominate", 5)),
+        xp_cost=21,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Use any Dominate power at unlimited range via an established Auspex link",
+    ),
+    ComboDiscipline(
+        "Flesh of Marble",
+        requires=(("Fortitude", 3), ("Potence", 2)),
+        xp_cost=9,
+        blood_cost=1,
+        notes="Skin hardens like stone; add Potence dots as additional soak dice",
+    ),
+    ComboDiscipline(
+        "Heart of Stone",
+        requires=(("Fortitude", 3), ("Vicissitude", 5)),
+        xp_cost=18,
+        attribute="Stamina",
+        ability="Medicine",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=3,
+        notes="Remove own heart and store it safely; become immune to staking",
+    ),
+    ComboDiscipline(
+        "Infernal Investiture",
+        requires=(("Potence", 5), ("Obtenebration", 5)),
+        xp_cost=21,
+        blood_cost=2,
+        notes="Encase limbs in animated shadow; gain claws and bonus Strength dice",
+    ),
+    ComboDiscipline(
+        "Iron Glare",
+        requires=(("Dominate", 3), ("Obfuscate", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Intimidation",
+        difficulty_context="target's Willpower",
+        difficulty=6,
+        is_automatic=False,
+        notes="Implant a Dominate command while fully concealed by Obfuscate",
+    ),
+    ComboDiscipline(
+        "Kiss of the Dark Mother",
+        requires=(("Obtenebration", 3), ("Vicissitude", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Crafts",
+        difficulty=7,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Sculpt solidified shadow into semi-permanent physical constructs",
+    ),
+    ComboDiscipline(
+        "Meld with the Land",
+        requires=(("Animalism", 3), ("Protean", 3)),
+        xp_cost=12,
+        blood_cost=1,
+        notes="Sink into natural terrain; emerge anywhere within Animalism × 10 yards",
+    ),
+    ComboDiscipline(
+        "Mirror's Visage",
+        requires=(("Auspex", 3), ("Vicissitude", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Performance",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Read a target's appearance with Auspex, then reshape own face to match",
+    ),
+    ComboDiscipline(
+        "Quicken Sight",
+        requires=(("Auspex", 1), ("Celerity", 1)),
+        xp_cost=3,
+        notes="Process visual information at Celerity speed; negate ranged penalty dice",
+    ),
+    ComboDiscipline(
+        "Sanguine Clarity",
+        requires=(("Auspex", 3), ("Quietus", 1)),
+        xp_cost=9,
+        attribute="Perception",
+        ability="Alertness",
+        difficulty=5,
+        is_automatic=False,
+        notes="See through supernatural blood-based concealment and detect poisons",
+    ),
+    ComboDiscipline(
+        "Shadow Step",
+        requires=(("Celerity", 2), ("Obtenebration", 2)),
+        xp_cost=6,
+        blood_cost=1,
+        notes="Teleport instantly between any two shadows within Obtenebration × 10 yards",
+    ),
+    ComboDiscipline(
+        "Soul Mask",
+        requires=(("Auspex", 4), ("Obfuscate", 4)),
+        xp_cost=18,
+        notes="Conceal aura from Aura Perception; project a false aura of choice",
+    ),
+    ComboDiscipline(
+        "Tame the Savage Beast",
+        requires=(("Animalism", 4), ("Presence", 4)),
+        xp_cost=18,
+        attribute="Charisma",
+        ability="Animal Ken",
+        difficulty_context="target's Willpower",
+        difficulty=6,
+        opposition="Willpower",
+        is_automatic=False,
+        notes="Calm supernatural creatures; extends Animalism to Lupines, fae, other Kindred",
+    ),
+    ComboDiscipline(
+        "Vanishing",
+        requires=(("Obfuscate", 3), ("Protean", 4)),
+        xp_cost=15,
+        blood_cost=1,
+        notes="Merge into any surface, not just natural earth; remain fully undetectable",
+    ),
+    ComboDiscipline(
+        "Veil the Legions",
+        requires=(("Animalism", 4), ("Obfuscate", 4)),
+        xp_cost=18,
+        attribute="Wits",
+        ability="Stealth",
+        difficulty=7,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Conceal an entire group of animals from all forms of detection",
+    ),
+    ComboDiscipline(
+        "Web of Shadows",
+        requires=(("Obtenebration", 3), ("Obfuscate", 3)),
+        xp_cost=12,
+        attribute="Manipulation",
+        ability="Occult",
+        difficulty=6,
+        is_automatic=False,
+        blood_cost=1,
+        notes="Weave shadows into an area-wide veil; all within gain Obfuscate 2 benefits",
+    ),
+    ComboDiscipline(
+        "Wolf Claws",
+        requires=(("Animalism", 2), ("Protean", 2)),
+        xp_cost=6,
+        blood_cost=1,
+        notes="Grow wolf's claws in human form; damage is aggravated",
+    ),
+]
+
+
 # ---------------------------------------------------------------------------
 # Roll rules for all 30 disciplines (V20 base; correct via corrections later)
 # Keys match config.py::DISCIPLINES exactly.

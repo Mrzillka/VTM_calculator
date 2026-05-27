@@ -78,6 +78,10 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
             rows.append([self._collapsible_header(title_key, content)])
             rows.append([content])
 
+        combo = self._frm_combo_disciplines()
+        rows.append([self._collapsible_header("sheet.sections.combo_disciplines", combo)])
+        rows.append([combo])
+
         bottom = self._frm_bottom()
         rows.append([self._collapsible_header("sheet.sections.merits_flaws", bottom)])
         rows.append([bottom])

@@ -6,6 +6,7 @@ from tkinter import ttk
 from typing import Callable
 
 from config import BLOOD_COLS, BLOOD_ROWS, DISCIPLINE_PATHS, FLAWS, MAX_BLOOD_POOL, MAX_DOT_TRACKER, MERITS, SPEC_MIN_DOTS, WOUND_LEVELS
+from game.discipline_rules import COMBO_DISCIPLINES
 from lang import locale
 from ui.theme import theme
 from ui.utils import frm, place_widgets
@@ -323,6 +324,7 @@ class _AdvantagesMixin:
             self._translate_simple_entries(self.character.flaws,       "sheet.flaws")
         finally:
             self._translating = False
+        self._translate_combo_disciplines()
 
         for entry, cb_path in zip(
             self.character.disciplines,
@@ -385,6 +387,71 @@ class _AdvantagesMixin:
         for i, entry in enumerate(self.character.virtues):
             if i < len(virtue_names):
                 entry["name"].set(virtue_names[i])
+
+    # ── Combination disciplines ───────────────────────────────────────────────
+
+    @frm(padding=2)
+    def _frm_combo_disciplines(self, frm: ttk.Frame) -> None:
+        self._combo_disc_comboboxes: list[ttk.Combobox] = []
+        rows = []
+        for sv in self.character.combo_disciplines:
+            cb = ttk.Combobox(frm, textvariable=sv, width=32)
+            self._combo_disc_comboboxes.append(cb)
+            self._lockable.append(cb)
+            rows.append([cb])
+        place_widgets(rows)
+
+        # Recompute available combos whenever any discipline name or dot changes.
+        for e in self.character.disciplines:
+            e["name"].trace_add("write", self._refresh_all_combo_values)
+            for v in e["vars"]:
+                v.trace_add("write", self._refresh_all_combo_values)
+
+        locale.on_change(self._refresh_all_combo_values)
+        self._refresh_all_combo_values()
+
+    def _refresh_all_combo_values(self, *_) -> None:
+        """Recompute available combo disciplines and set them on every combo combobox."""
+        comboboxes = getattr(self, "_combo_disc_comboboxes", [])
+        if not comboboxes:
+            return
+        try:
+            if not comboboxes[0].winfo_exists():
+                return
+        except tk.TclError:
+            return
+
+        disc_ratings: dict[str, int] = {}
+        for e in self.character.disciplines:
+            name = e["name"].get()
+            if name:
+                en_name = locale.reverse_lookup_en("sheet.disciplines", name) or name
+                dots = sum(v.get() for v in e["vars"])
+                if dots > disc_ratings.get(en_name, 0):
+                    disc_ratings[en_name] = dots
+
+        available = sorted(
+            locale.t(f"sheet.combo_disciplines.{combo.name}")
+            for combo in COMBO_DISCIPLINES
+            if all(disc_ratings.get(disc, 0) >= lvl for disc, lvl in combo.requires)
+        )
+        values = [""] + available
+
+        for cb in comboboxes:
+            try:
+                if cb.winfo_exists():
+                    cb.configure(values=values)
+            except tk.TclError:
+                pass
+
+    def _translate_combo_disciplines(self) -> None:
+        for sv in self.character.combo_disciplines:
+            old = sv.get()
+            if not old:
+                continue
+            new = locale.translate_known("sheet.combo_disciplines", old)
+            if new != old:
+                sv.set(new)
 
 
 # ── Trackers, Merits & Flaws ──────────────────────────────────────────────────
