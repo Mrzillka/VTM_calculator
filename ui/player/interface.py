@@ -245,6 +245,26 @@ class PlayerInterface(BaseInterface):
             for row in cat_rows:
                 for var in row["vars"]:
                     var.trace_add("write", self._schedule_stats_rebuild)
+        for row in char.disciplines:
+            row["name"].trace_add("write", self._schedule_stats_rebuild)
+            row["path"].trace_add("write", self._schedule_stats_rebuild)
+            for var in row["vars"]:
+                var.trace_add("write", self._schedule_stats_rebuild)
+        for row in char.backgrounds:
+            row["name"].trace_add("write", self._schedule_stats_rebuild)
+            for var in row["vars"]:
+                var.trace_add("write", self._schedule_stats_rebuild)
+        for row in char.merits:
+            row["name"].trace_add("write", self._schedule_stats_rebuild)
+            row["cost"].trace_add("write", self._schedule_stats_rebuild)
+        for row in char.flaws:
+            row["name"].trace_add("write", self._schedule_stats_rebuild)
+            row["cost"].trace_add("write", self._schedule_stats_rebuild)
+        for row in char.virtues:
+            for var in row["vars"]:
+                var.trace_add("write", self._schedule_stats_rebuild)
+        for sv in char.combo_disciplines:
+            sv.trace_add("write", self._schedule_stats_rebuild)
 
     def _schedule_stats_rebuild(self, *_) -> None:
         if not self._stats_rebuild_pending:
@@ -261,14 +281,14 @@ class PlayerInterface(BaseInterface):
     def _build_stats_content(self, parent: ttk.Frame) -> None:
         char = self.root.character
 
-        def _stat_row(col_frame: ttk.Frame, name: str, count: int, spec: str = "") -> None:
+        def _stat_row(col_frame: ttk.Frame, name: str, count: int, spec: str = "", always_spec: bool = False) -> None:
             row = ttk.Frame(col_frame, style="flat.TFrame")
             row.pack(anchor="w", fill="x", pady=(1, 0))
             ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
             dot_lbl = ttk.Label(row, text="●" * count, anchor="w", style="S.TLabel")
             dot_lbl.configure(foreground=theme.palette["dot_fg"])
             dot_lbl.pack(side="left", padx=(3, 0))
-            if spec and count >= SPEC_MIN_DOTS:
+            if spec and (always_spec or count >= SPEC_MIN_DOTS):
                 spec_row = ttk.Frame(col_frame, style="flat.TFrame")
                 spec_row.pack(anchor="w", fill="x", pady=(0, 2))
                 ttk.Label(spec_row, width=13, style="S.TLabel").pack(side="left")
@@ -276,6 +296,20 @@ class PlayerInterface(BaseInterface):
                 spec_lbl.configure(foreground=theme.palette["spec_fg"],
                                    font=("TkDefaultFont", 8, "italic"))
                 spec_lbl.pack(side="left", padx=(3, 0))
+
+        def _cost_row(col_frame: ttk.Frame, name: str, cost: int) -> None:
+            row = ttk.Frame(col_frame, style="flat.TFrame")
+            row.pack(anchor="w", fill="x", pady=(1, 0))
+            ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
+            cost_lbl = ttk.Label(row, text=f"{cost}pt{'s' if cost != 1 else ''}",
+                                 anchor="w", style="S.TLabel")
+            cost_lbl.configure(foreground=theme.palette["dot_fg"])
+            cost_lbl.pack(side="left", padx=(3, 0))
+
+        def _name_row(col_frame: ttk.Frame, name: str) -> None:
+            row = ttk.Frame(col_frame, style="flat.TFrame")
+            row.pack(anchor="w", fill="x", pady=(1, 0))
+            ttk.Label(row, text=name, anchor="w", style="S.TLabel").pack(side="left", padx=(3, 0))
 
         def _build_section(
             categories: dict,
@@ -314,6 +348,97 @@ class PlayerInterface(BaseInterface):
                 count = sum(v.get() for v in row["vars"])
                 if name and count > 0:
                     _stat_row(col_frame, name, count, row["spec"].get())
+
+        bg_rows = [
+            (r["name"].get().strip(), sum(v.get() for v in r["vars"]))
+            for r in char.backgrounds
+            if r["name"].get().strip() and sum(v.get() for v in r["vars"]) > 0
+        ]
+        disc_rows = [
+            (r["name"].get().strip(), sum(v.get() for v in r["vars"]), r["path"].get().strip())
+            for r in char.disciplines
+            if r["name"].get().strip() and sum(v.get() for v in r["vars"]) > 0
+        ]
+        virtue_rows = [
+            (r["name"].get(), sum(v.get() for v in r["vars"]))
+            for r in char.virtues
+            if sum(v.get() for v in r["vars"]) > 0
+        ]
+        merit_rows = [
+            r["name"].get().strip()
+            for r in char.merits
+            if r["name"].get().strip()
+        ]
+        flaw_rows = [
+            r["name"].get().strip()
+            for r in char.flaws
+            if r["name"].get().strip()
+        ]
+        combo_rows = [sv.get().strip() for sv in char.combo_disciplines if sv.get().strip()]
+
+        next_row = 3
+
+        if bg_rows or disc_rows or virtue_rows:
+            ttk.Separator(parent, orient="horizontal").grid(
+                row=next_row, column=0, columnspan=3, sticky="ew", pady=4,
+            )
+            next_row += 1
+
+            if bg_rows:
+                bg_frame = ttk.Frame(parent, style="flat.TFrame")
+                bg_frame.grid(row=next_row, column=0, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(bg_frame, text=locale.t("sheet.adv_columns.Backgrounds"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name, count in bg_rows:
+                    _stat_row(bg_frame, name, count)
+
+            if disc_rows:
+                disc_frame = ttk.Frame(parent, style="flat.TFrame")
+                disc_frame.grid(row=next_row, column=1, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(disc_frame, text=locale.t("sheet.adv_columns.Disciplines"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name, count, path in disc_rows:
+                    _stat_row(disc_frame, name, count, path, always_spec=True)
+
+            if virtue_rows:
+                virt_frame = ttk.Frame(parent, style="flat.TFrame")
+                virt_frame.grid(row=next_row, column=2, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(virt_frame, text=locale.t("sheet.adv_columns.Virtues"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name, count in virtue_rows:
+                    _stat_row(virt_frame, name, count)
+
+            next_row += 1
+
+        if merit_rows or flaw_rows or combo_rows:
+            ttk.Separator(parent, orient="horizontal").grid(
+                row=next_row, column=0, columnspan=3, sticky="ew", pady=4,
+            )
+            next_row += 1
+
+            if merit_rows:
+                merit_frame = ttk.Frame(parent, style="flat.TFrame")
+                merit_frame.grid(row=next_row, column=0, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(merit_frame, text=locale.t("sheet.mf.merits"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name in merit_rows:
+                    _name_row(merit_frame, name)
+
+            if flaw_rows:
+                flaw_frame = ttk.Frame(parent, style="flat.TFrame")
+                flaw_frame.grid(row=next_row, column=1, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(flaw_frame, text=locale.t("sheet.mf.flaws"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name in flaw_rows:
+                    _name_row(flaw_frame, name)
+
+            if combo_rows:
+                combo_frame = ttk.Frame(parent, style="flat.TFrame")
+                combo_frame.grid(row=next_row, column=2, sticky="nw", padx=4, pady=(0, 4))
+                ttk.Label(combo_frame, text=locale.t("sheet.sections.combo_disciplines"),
+                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
+                for name in combo_rows:
+                    _name_row(combo_frame, name)
 
     # ── Roll history ──────────────────────────────────────────────────────────
 
