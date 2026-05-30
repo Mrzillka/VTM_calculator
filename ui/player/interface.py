@@ -136,7 +136,7 @@ class PlayerInterface(BaseInterface):
             [self._frm_main_buttons(frm)],
         ])
 
-    @frm(padding=2)
+    @frm(padding=4)
     def _frm_main_cb(self, frm: ttk.Frame) -> None:
         root = self.root
 
@@ -227,6 +227,8 @@ class PlayerInterface(BaseInterface):
                         width=3, style="my.TSpinbox"),
         ])
         place_widgets(rows)
+        for i in range(len(rows)):
+            frm.grid_rowconfigure(i, pad=4)
 
     @frm(padding=5)
     def _frm_main_buttons(self, frm: ttk.Frame) -> None:
@@ -242,14 +244,19 @@ class PlayerInterface(BaseInterface):
         locale.on_change(_update_initiative_text)
         _update_initiative_text()
 
-        place_widgets([[
-            self._tbutton(frm, "controls.roll", style="L.TButton",
-                          command=self.root.roll_and_calculate),
-            ttk.Button(frm, textvariable=initiative_var, style="M.TButton",
-                       command=self.root.roll_initiative),
-            self._tbutton(frm, "controls.damage_soak", style="M.TButton",
-                          command=self.root.roll_damage_soak),
-        ]])
+        roll_btn = self._tbutton(frm, "controls.roll", style="L.TButton",
+                                 command=self.root.roll_and_calculate)
+        init_btn = ttk.Button(frm, textvariable=initiative_var, style="M.TButton",
+                              command=self.root.roll_initiative)
+        damage_btn = self._tbutton(frm, "controls.damage_soak", style="M.TButton",
+                                   command=self.root.roll_damage_soak)
+
+        roll_btn.grid(row=0, column=0, sticky="ew", padx=(0, 3))
+        init_btn.grid(row=0, column=1, sticky="ew", padx=(0, 3))
+        damage_btn.grid(row=0, column=2, sticky="ew")
+        frm.grid_columnconfigure(0, weight=2)
+        frm.grid_columnconfigure(1, weight=1)
+        frm.grid_columnconfigure(2, weight=1)
 
     # ── Stats tab ─────────────────────────────────────────────────────────────
 
@@ -755,23 +762,25 @@ class PlayerInterface(BaseInterface):
         self._tlabel(frm, "controls.quick_rolls", style="S.TLabel").grid(
             row=0, column=0, columnspan=6, sticky="w")
 
-        pen_var = StringVar()
+        self._tlabel(frm, "controls.quick_bp", style="S.TLabel", anchor="center", width=5).grid(
+            row=0, column=6, padx=(6, 2))
+
+        pen_val_var = StringVar()
         def _upd_pen(*_):
             v = root.quick_penalty.get()
             sign = "+" if v > 0 else ""
-            pen_var.set(f"{locale.t('controls.quick_bp')} {sign}{v}")
+            pen_val_var.set(f"{sign}{v}")
         root.quick_penalty.trace_add("write", _upd_pen)
-        locale.on_change(_upd_pen)
         _upd_pen()
-        ttk.Label(frm, textvariable=pen_var, width=7, style="S.TLabel").grid(
-            row=0, column=6, padx=(6, 2))
+        ttk.Label(frm, textvariable=pen_val_var, style="S.TLabel", anchor="center", width=5).grid(
+            row=1, column=6, padx=(6, 2), pady=(4, 0))
 
         for col, key in enumerate([
             "controls.attr_short", "controls.abil_short", "controls.diff_short",
             "controls.auto_short", "controls.spec_short",
         ]):
             self._tlabel(frm, key, style="S.TLabel", anchor="center").grid(
-                row=1, column=col, padx=2)
+                row=1, column=col, padx=2, pady=(4, 0))
 
         self._qr_attr_cbs: list[ttk.Combobox] = []
         self._qr_abil_cbs: list[ttk.Combobox] = []
@@ -783,7 +792,7 @@ class PlayerInterface(BaseInterface):
                 frm, textvariable=attr_var,
                 state="readonly", width=12,
             )
-            attr_cb.grid(row=r, column=0, padx=2, pady=1)
+            attr_cb.grid(row=r, column=0, padx=2, pady=(4, 0))
             self._qr_attr_cbs.append(attr_cb)
 
             _prev_attr = [attr_var.get()]
@@ -805,7 +814,7 @@ class PlayerInterface(BaseInterface):
                     values=self._build_abil_cb_values()
                 )
             )
-            abil_cb.grid(row=r, column=1, padx=2, pady=1, sticky="ew")
+            abil_cb.grid(row=r, column=1, padx=2, pady=(4, 0), sticky="ew")
             self._qr_abil_cbs.append(abil_cb)
 
             _prev_abil = [abil_var.get()]
@@ -823,13 +832,13 @@ class PlayerInterface(BaseInterface):
                 frm, textvariable=diff_var,
                 from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX,
                 width=3, style="my.TSpinbox",
-            ).grid(row=r, column=2, padx=2)
+            ).grid(row=r, column=2, padx=2, pady=(4, 0))
 
             ttk.Spinbox(
                 frm, textvariable=auto_var,
                 from_=0, to=AUTO_SUCCESS_MAX,
                 width=3, style="my.TSpinbox",
-            ).grid(row=r, column=3, padx=2)
+            ).grid(row=r, column=3, padx=2, pady=(4, 0))
 
             spec_dot = ttk.Label(frm, text="●" if spec_var.get() else "○",
                                  style="S.TLabel", cursor="hand2")
@@ -837,24 +846,30 @@ class PlayerInterface(BaseInterface):
                                lambda *_, d=spec_dot, v=spec_var: d.configure(
                                    text="●" if v.get() else "○"))
             spec_dot.bind("<Button-1>", lambda e, v=spec_var: v.set(not v.get()))
-            spec_dot.grid(row=r, column=4, padx=(4, 0))
+            spec_dot.grid(row=r, column=4, padx=(4, 0), pady=(4, 0))
 
             ttk.Button(
                 frm, text="▶", width=2,
                 command=lambda idx=i: root.quick_roll(idx),
                 style="S.TButton",
-            ).grid(row=r, column=5, padx=(2, 0))
+            ).grid(row=r, column=5, padx=(2, 0), pady=(4, 0))
 
             ttk.Label(frm, textvariable=root.quick_roll_dice[i],
                       style="S.TLabel", anchor="w").grid(
-                row=r2, column=0, columnspan=5, padx=(2, 0), pady=(0, 2), sticky="w")
+                row=r2, column=0, columnspan=5, padx=(2, 0), pady=(0, 4), sticky="w")
 
+        _sc = ttk.Frame(frm, style="flat.TFrame")
+        _sc.grid(row=2, column=6, rowspan=8, padx=(6, 2), sticky="nsew")
+        _sc.grid_rowconfigure(0, weight=1)
+        _sc.grid_rowconfigure(1, weight=6)
+        _sc.grid_rowconfigure(2, weight=1)
+        _sc.grid_columnconfigure(0, weight=1)
         ttk.Scale(
-            frm, from_=QUICK_BP_MAX, to=-QUICK_BP_MAX, orient=tk.VERTICAL,
-            variable=root.quick_penalty, length=150,
+            _sc, from_=QUICK_BP_MAX, to=-QUICK_BP_MAX, orient=tk.VERTICAL,
+            variable=root.quick_penalty,
             style="Vertical.TScale",
             command=lambda s: root.scaler(s, root.quick_penalty),
-        ).grid(row=2, column=6, rowspan=8, padx=(6, 2), sticky="ns")
+        ).grid(row=1, column=0, sticky="ns")
 
         frm.grid_columnconfigure(1, weight=1)
 
