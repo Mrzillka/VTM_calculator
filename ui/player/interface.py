@@ -131,9 +131,57 @@ class PlayerInterface(BaseInterface):
     def _frm_main(self, frm: ttk.Frame) -> None:
         place_widgets([
             [self._tlabel(frm, "app.title", anchor="n", style="title.TLabel")],
+            [self._frm_main_cb(frm)],
             [self._frm_controls(frm)],
             [self._frm_main_buttons(frm)],
         ])
+
+    @frm(padding=2)
+    def _frm_main_cb(self, frm: ttk.Frame) -> None:
+        root = self.root
+
+        attr_cb = ttk.Combobox(frm, textvariable=root.main_attr_var, state="readonly", width=12)
+        attr_cb.configure(
+            values=self._build_attr_cb_values(),
+            postcommand=lambda: attr_cb.configure(values=self._build_attr_cb_values()),
+        )
+        attr_cb.grid(row=0, column=0, padx=(0, 2))
+
+        def _on_attr_sel(_event):
+            if root.main_attr_var.get().startswith("──"):
+                root.main_attr_var.set("")
+            else:
+                root.update_main_dice_from_cb()
+
+        attr_cb.bind("<<ComboboxSelected>>", _on_attr_sel)
+
+        abil_cb = ttk.Combobox(frm, textvariable=root.main_abil_var, state="readonly", width=18)
+        abil_cb.configure(
+            postcommand=lambda: abil_cb.configure(values=self._build_abil_cb_values()),
+        )
+        abil_cb.grid(row=0, column=1, padx=(2, 0), sticky="ew")
+
+        def _on_abil_sel(_event):
+            if root.main_abil_var.get().startswith("──"):
+                root.main_abil_var.set("")
+            else:
+                root.update_main_dice_from_cb()
+
+        abil_cb.bind("<<ComboboxSelected>>", _on_abil_sel)
+
+        frm.grid_columnconfigure(1, weight=1)
+
+        def _refresh_locale(*_):
+            attr_cb.configure(values=self._build_attr_cb_values())
+            abil_cb.configure(values=self._build_abil_cb_values())
+            cur_attr = root.main_attr_var.get()
+            if cur_attr:
+                root.main_attr_var.set(locale.translate_known("sheet.attr_names", cur_attr))
+            cur_abil = root.main_abil_var.get()
+            if cur_abil:
+                root.main_abil_var.set(locale.translate_known("sheet.ability_names", cur_abil))
+
+        locale.on_change(_refresh_locale)
 
     @frm(padding=5)
     def _frm_controls(self, frm: ttk.Frame) -> None:

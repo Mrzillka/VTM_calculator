@@ -69,6 +69,11 @@ class PlayerRoot(Tk):
         self.auto_success   = IntVar(value=0)
         self.specialisation = BooleanVar(value=False)
 
+        # ── Main roll combobox selection ───────────────────────────────────────
+        self.main_attr_var = StringVar(value="")
+        self.main_abil_var = StringVar(value="")
+        self._cb_setting_dice = False
+
         # ── Quick rolls ────────────────────────────────────────────────────────
         _attr_names = [a for attrs in ATTRIBUTES.values() for a in attrs]
         _abil_names = [a for abils in ABILITIES.values() for a in abils]
@@ -115,6 +120,7 @@ class PlayerRoot(Tk):
         self._autosave_job: str | None = None
         self._setup_tracker_traces()
         self._setup_autosave_traces()
+        self._setup_main_cb_trace()
         self._setup_quick_roll_dice_traces()
         self._refresh_quick_roll_dice()
         self.after(NET_POLL_MS, self._poll_net_queue)
@@ -359,6 +365,29 @@ class PlayerRoot(Tk):
         self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.chargen_min_will.trace_add("write", lambda *_: self._schedule_save())
+
+    def _setup_main_cb_trace(self) -> None:
+        def _on_dice_change(*_):
+            if not self._cb_setting_dice:
+                self.main_attr_var.set("")
+                self.main_abil_var.set("")
+        self.dice_number.trace_add("write", _on_dice_change)
+
+    def update_main_dice_from_cb(self) -> None:
+        attr_raw = self.main_attr_var.get()
+        abil_raw = self.main_abil_var.get()
+        if not attr_raw or not abil_raw:
+            return
+        attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_raw)
+        abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_raw)
+        attr_val  = self.character.get_stat_value(attr_name)
+        abil_val  = self.character.get_stat_value(abil_name)
+        pool = attr_val + abil_val
+        if abil_name and abil_val == 0 and self.default_skill_penalty.get():
+            pool -= 1
+        self._cb_setting_dice = True
+        self.dice_number.set(max(0, pool))
+        self._cb_setting_dice = False
 
     def _setup_quick_roll_dice_traces(self) -> None:
         char = self.character
