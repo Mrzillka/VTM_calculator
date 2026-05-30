@@ -72,11 +72,12 @@ class PlayerRoot(Tk):
         # ── Quick rolls ────────────────────────────────────────────────────────
         _attr_names = [a for attrs in ATTRIBUTES.values() for a in attrs]
         _abil_names = [a for abils in ABILITIES.values() for a in abils]
-        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar, BooleanVar]] = [
+        self.quick_rolls: list[tuple[StringVar, StringVar, IntVar, BooleanVar, IntVar]] = [
             (StringVar(value=_attr_names[0]),
              StringVar(value=_abil_names[0]),
              IntVar(value=6),
-             BooleanVar(value=False))
+             BooleanVar(value=False),
+             IntVar(value=0))
             for _ in range(4)
         ]
         self.quick_penalty = IntVar(value=0)
@@ -237,7 +238,7 @@ class PlayerRoot(Tk):
         self._record_and_emit(record)
 
     def quick_roll(self, index: int) -> None:
-        attr_var, abil_var, diff_var, spec_var = self.quick_rolls[index]
+        attr_var, abil_var, diff_var, spec_var, auto_var = self.quick_rolls[index]
         attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_var.get())
         abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_var.get())
         attr_val  = self.character.get_stat_value(attr_name)
@@ -245,20 +246,21 @@ class PlayerRoot(Tk):
         dice_pool = attr_val + abil_val
         if abil_name and abil_val == 0 and self.default_skill_penalty.get():
             dice_pool -= 1
-        penalty   = self.character.roll_penalty.get() - self.quick_penalty.get()
+        penalty   = self.character.roll_penalty.get() + self.quick_penalty.get()
 
         effective_dice = max(1, max(1, dice_pool) + penalty)
         probability = Calculator(
             dice_number=effective_dice,
             difficulty=diff_var.get(),
             success_needed=1,
-            auto_successes=0,
+            auto_successes=auto_var.get(),
             specialisation=spec_var.get(),
         ).get_probability()
 
         roller = Roller(
             dice_number=max(1, dice_pool),
             difficulty=diff_var.get(),
+            auto_success=auto_var.get(),
             penalty=penalty,
             specialisation=spec_var.get(),
         )
@@ -266,7 +268,7 @@ class PlayerRoot(Tk):
         record = RollRecord(
             dice_number=dice_pool,
             difficulty=diff_var.get(),
-            auto_success=0,
+            auto_success=auto_var.get(),
             dice=list(result.dice),
             specialisation_dice=list(result.specialisation_dice),
             successes=result.successes,
@@ -348,8 +350,8 @@ class PlayerRoot(Tk):
             self.session_code, self.character.character_name,
         ):
             var.trace_add("write", lambda *_: self._schedule_save())
-        for av, bv, dv, sv in self.quick_rolls:
-            for var in (av, bv, dv, sv):
+        for av, bv, dv, sv, autov in self.quick_rolls:
+            for var in (av, bv, dv, sv, autov):
                 var.trace_add("write", lambda *_: self._schedule_save())
         self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
@@ -478,8 +480,9 @@ class PlayerRoot(Tk):
                 "abil": locale.reverse_lookup_en("sheet.ability_names", bv.get()),
                 "diff": dv.get(),
                 "spec": sv.get(),
+                "auto": autov.get(),
             }
-            for av, bv, dv, sv in self.quick_rolls
+            for av, bv, dv, sv, autov in self.quick_rolls
         ]
         char_data["quick_penalty"] = self.quick_penalty.get()
         save_path = CHARACTERS_DIR / filename
@@ -571,7 +574,7 @@ class PlayerRoot(Tk):
         self.save_to_file()
 
     def _load_quick_rolls(self, data: dict) -> None:
-        for (attr_var, abil_var, diff_var, spec_var), entry in zip(
+        for (attr_var, abil_var, diff_var, spec_var, auto_var), entry in zip(
             self.quick_rolls, data.get("quick_rolls", [])
         ):
             attr_name = entry.get("attr", "")
@@ -580,6 +583,7 @@ class PlayerRoot(Tk):
             abil_var.set(locale.translate_known("sheet.ability_names", abil_name))
             diff_var.set(entry.get("diff", 6))
             spec_var.set(bool(entry.get("spec", False)))
+            auto_var.set(int(entry.get("auto", 0)))
         self.quick_penalty.set(data.get("quick_penalty", 0))
 
     # ── Helpers ────────────────────────────────────────────────────────────────

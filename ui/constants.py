@@ -25,6 +25,7 @@ DIFFICULTY_MIN: int = 2
 DIFFICULTY_MAX: int = 10
 AUTO_SUCCESS_MAX: int = 5
 SUCCESS_NEEDED_MAX: int = 10
+QUICK_BP_MAX: int = 5
 
 # ── History panel canvas dimensions ──────────────────────────────────────────
 HISTORY_WIDTH: int = 300

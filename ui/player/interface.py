@@ -11,7 +11,7 @@ from ui.base_interface import BaseInterface
 from ui.theme import theme
 from ui.constants import (
     AUTO_SUCCESS_MAX, DICE_MAX, DICE_MIN, DIFFICULTY_MAX, DIFFICULTY_MIN,
-    HISTORY_HEIGHT, HISTORY_WIDTH, SCALE_LENGTH, SUCCESS_NEEDED_MAX,
+    HISTORY_HEIGHT, HISTORY_WIDTH, QUICK_BP_MAX, SCALE_LENGTH, SUCCESS_NEEDED_MAX,
 )
 from ui.utils import frm, place_widgets
 
@@ -701,21 +701,31 @@ class PlayerInterface(BaseInterface):
         root = self.root
 
         self._tlabel(frm, "controls.quick_rolls", style="S.TLabel").grid(
-            row=0, column=0, columnspan=5, sticky="w")
+            row=0, column=0, columnspan=6, sticky="w")
 
         pen_var = StringVar()
         def _upd_pen(*_):
-            pen_var.set(f"Pen: {root.quick_penalty.get()}")
+            v = root.quick_penalty.get()
+            sign = "+" if v > 0 else ""
+            pen_var.set(f"{locale.t('controls.quick_bp')} {sign}{v}")
         root.quick_penalty.trace_add("write", _upd_pen)
+        locale.on_change(_upd_pen)
         _upd_pen()
         ttk.Label(frm, textvariable=pen_var, style="S.TLabel").grid(
-            row=0, column=5, padx=(6, 2))
+            row=0, column=6, padx=(6, 2))
+
+        for col, key in enumerate([
+            "controls.attr_short", "controls.abil_short", "controls.diff_short",
+            "controls.auto_short", "controls.spec_short",
+        ]):
+            self._tlabel(frm, key, style="S.TLabel", anchor="center").grid(
+                row=1, column=col, padx=2)
 
         self._qr_attr_cbs: list[ttk.Combobox] = []
         self._qr_abil_cbs: list[ttk.Combobox] = []
 
-        for i, (attr_var, abil_var, diff_var, spec_var) in enumerate(root.quick_rolls):
-            r = i + 1
+        for i, (attr_var, abil_var, diff_var, spec_var, auto_var) in enumerate(root.quick_rolls):
+            r = i + 2
             attr_cb = ttk.Combobox(
                 frm, textvariable=attr_var,
                 state="readonly", width=12,
@@ -762,26 +772,32 @@ class PlayerInterface(BaseInterface):
                 width=3, style="my.TSpinbox",
             ).grid(row=r, column=2, padx=2)
 
+            ttk.Spinbox(
+                frm, textvariable=auto_var,
+                from_=0, to=AUTO_SUCCESS_MAX,
+                width=3, style="my.TSpinbox",
+            ).grid(row=r, column=3, padx=2)
+
             spec_dot = ttk.Label(frm, text="●" if spec_var.get() else "○",
                                  style="S.TLabel", cursor="hand2")
             spec_var.trace_add("write",
                                lambda *_, d=spec_dot, v=spec_var: d.configure(
                                    text="●" if v.get() else "○"))
             spec_dot.bind("<Button-1>", lambda e, v=spec_var: v.set(not v.get()))
-            spec_dot.grid(row=r, column=3, padx=(4, 0))
+            spec_dot.grid(row=r, column=4, padx=(4, 0))
 
             ttk.Button(
                 frm, text="▶", width=2,
                 command=lambda idx=i: root.quick_roll(idx),
                 style="S.TButton",
-            ).grid(row=r, column=4, padx=(2, 0))
+            ).grid(row=r, column=5, padx=(2, 0))
 
         ttk.Scale(
-            frm, from_=5, to=0, orient=tk.VERTICAL,
+            frm, from_=QUICK_BP_MAX, to=-QUICK_BP_MAX, orient=tk.VERTICAL,
             variable=root.quick_penalty, length=88,
             style="Vertical.TScale",
             command=lambda s: root.scaler(s, root.quick_penalty),
-        ).grid(row=1, column=5, rowspan=4, padx=(6, 2), sticky="ns")
+        ).grid(row=2, column=6, rowspan=4, padx=(6, 2), sticky="ns")
 
         frm.grid_columnconfigure(1, weight=1)
 
