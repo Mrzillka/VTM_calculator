@@ -6,6 +6,7 @@ from random import choice
 from typing import TYPE_CHECKING
 
 from config import CHARACTER_FILE_PATH, CHARACTERS_DIR, NPC_NAMES
+from lang import locale
 
 if TYPE_CHECKING:
     pass
@@ -77,8 +78,11 @@ class CharacterIO:
                 ],
                 "disciplines": [
                     {
-                        "name": e["name"].get(),
-                        "path": e["path"].get(),
+                        "name": locale.reverse_lookup_en("sheet.disciplines", e["name"].get()),
+                        "path": locale.reverse_lookup_en(
+                            f"sheet.discipline_paths.{locale.reverse_lookup_en('sheet.disciplines', e['name'].get())}",
+                            e["path"].get(),
+                        ),
                         "dots": [v.get() for v in e["vars"]],
                     }
                     for e in self.disciplines
@@ -88,14 +92,17 @@ class CharacterIO:
                     for e in self.virtues
                 ],
                 "merits": [
-                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    {"name": locale.reverse_lookup_en("sheet.merits", e["name"].get()), "cost": e["cost"].get()}
                     for e in self.merits
                 ],
                 "flaws": [
-                    {"name": e["name"].get(), "cost": e["cost"].get()}
+                    {"name": locale.reverse_lookup_en("sheet.flaws", e["name"].get()), "cost": e["cost"].get()}
                     for e in self.flaws
                 ],
-                "combo_disciplines": [sv.get() for sv in self.combo_disciplines],
+                "combo_disciplines": [
+                    locale.reverse_lookup_en("sheet.combo_disciplines", sv.get())
+                    for sv in self.combo_disciplines
+                ],
             },
         }
         if self.chargen_snapshot is not None:
