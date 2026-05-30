@@ -16,7 +16,7 @@ _LIGHT: dict[str, str] = {
     "tab_sel":     "#f5ecd7",   # selected tab — full parchment
     "select_bg":   "#8b1a1a",   # crimson selection
     "select_fg":   "#fdf6e3",
-    "disabled_fg": "#9e8870",   # sepia-toned grey
+    "disabled_fg": "#7a5838",   # medium sepia — readable on light vellum (~6:1)
     # Semantic
     "hit_fg":      "#2e5b1a",   # forest green (success)
     "botch_fg":    "#8b0000",   # dark red (botch die)
@@ -48,7 +48,7 @@ _DARK: dict[str, str] = {
     "tab_sel":     "#1a0e0e",   # selected tab — matches bg
     "select_bg":   "#8b1a1a",   # crimson selection
     "select_fg":   "#e8d5b0",
-    "disabled_fg": "#6b5040",   # muted sepia
+    "disabled_fg": "#c8b090",   # bright parchment — readable on dark bg (~9:1)
     # Semantic
     "hit_fg":      "#a8d878",   # pale lime (success on dark)
     "botch_fg":    "#e87070",   # bright red (botch die)

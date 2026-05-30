@@ -71,7 +71,7 @@ def configure_main_styles(s: ttk.Style, palette: dict[str, str]) -> None:
     s.configure("TEntry", fieldbackground=ebg, foreground=efg,
                 selectbackground=sbg, selectforeground=sfg,
                 insertcolor=efg, bordercolor=bdr)
-    s.map("TEntry", fieldbackground=[("disabled", bg)],
+    s.map("TEntry", fieldbackground=[("disabled", ebg)],
           foreground=[("disabled", dis)])
     s.configure("my.TEntry", font=(FONT, 10))
 
@@ -79,7 +79,7 @@ def configure_main_styles(s: ttk.Style, palette: dict[str, str]) -> None:
     s.configure("TSpinbox", fieldbackground=ebg, foreground=efg,
                 background=bbg, selectbackground=sbg, selectforeground=sfg,
                 insertcolor=efg, bordercolor=bdr, arrowcolor=fg)
-    s.map("TSpinbox", fieldbackground=[("disabled", bg)],
+    s.map("TSpinbox", fieldbackground=[("disabled", ebg)],
           foreground=[("disabled", dis)])
     s.configure("my.TSpinbox", font=(FONT, 10))
 
@@ -147,14 +147,14 @@ def configure_sheet_styles(s: ttk.Style, palette: dict[str, str]) -> None:
     s.configure("sheet.TEntry",    fieldbackground=ebg, foreground=efg,
                 selectbackground=sbg, selectforeground=sfg,
                 insertcolor=efg, bordercolor=bdr, font=(FONT, 10))
-    s.map("sheet.TEntry", fieldbackground=[("disabled", bg)],
+    s.map("sheet.TEntry", fieldbackground=[("disabled", ebg)],
           foreground=[("disabled", dis)])
 
     s.configure("sheet.TSpinbox", fieldbackground=ebg, foreground=efg,
                 background=bbg, selectbackground=sbg, selectforeground=sfg,
                 insertcolor=efg, bordercolor=bdr, arrowcolor=fg,
                 font=(FONT, 10))
-    s.map("sheet.TSpinbox", fieldbackground=[("disabled", bg)],
+    s.map("sheet.TSpinbox", fieldbackground=[("disabled", ebg)],
           foreground=[("disabled", dis)])
 
     s.configure("sheet.TCheckbutton", background=bg, foreground=fg,
