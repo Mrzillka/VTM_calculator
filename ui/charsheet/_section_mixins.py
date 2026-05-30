@@ -583,7 +583,6 @@ class _TrackersMixin:
                                       self._refresh_sheet_blood_cells,
                                       max_to=MAX_BLOOD_POOL)],
             [self._frm_sheet_blood_cells(frm)],
-            [self._frm_xp_section(frm)],
         ])
 
     @frm(padding=0)

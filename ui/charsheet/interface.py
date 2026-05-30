@@ -276,7 +276,7 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
              ("Heaven",     self.character.heaven),
              ("Concept",    self.character.concept)],
         ]
-        place_widgets([[self._frm_field_group(frm, g) for g in groups]])
+        place_widgets([[self._frm_field_group(frm, g) for g in groups] + [self._frm_xp_section(frm)]])
 
     _GENERATION_VALUES: tuple[str, ...] = tuple(f"{n}th" for n in range(4, 16))
 
