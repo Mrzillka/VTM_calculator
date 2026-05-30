@@ -36,7 +36,6 @@ class PlayerInterface(BaseInterface):
     def _build(self) -> None:
         place_widgets([
             [self._frm_center()],
-            [self._frm_bottom()],
         ])
 
     def refresh_blood_cells(self) -> None:
@@ -83,8 +82,22 @@ class PlayerInterface(BaseInterface):
 
     @frm(padding=4, style="solid.TFrame")
     def _frm_center(self, frm: ttk.Frame) -> None:
-        nb = self._build_tabs(frm)
-        place_widgets([[self._frm_main(frm), nb]])
+        left = ttk.Frame(frm)
+        self._frm_main(left).grid(row=0, column=0, sticky="new")
+        self._frm_quick_rolls(left).grid(row=1, column=0, sticky="new")
+        left.grid(row=0, column=0, sticky="nsew")
+
+        right = ttk.Frame(frm)
+        nb = self._build_tabs(right)
+        nb.grid(row=0, column=0, sticky="nsew")
+        self._frm_stats_row(right).grid(row=1, column=0, sticky="ew")
+        self._frm_info_row(right).grid(row=2, column=0, sticky="ew")
+        right.grid_rowconfigure(0, weight=1)
+        right.grid_columnconfigure(0, weight=1)
+        right.grid(row=0, column=1, sticky="nsew")
+
+        frm.grid_columnconfigure(1, weight=1)
+        frm.grid_rowconfigure(0, weight=1)
 
     def _build_tabs(self, parent: ttk.Frame) -> ttk.Notebook:
         nb = ttk.Notebook(parent)
@@ -687,15 +700,6 @@ class PlayerInterface(BaseInterface):
             dots.append(dot)
         place_widgets([labels, dots])
 
-    # ── Bottom block ──────────────────────────────────────────────────────────
-
-    @frm(padding=5, style="solid.TFrame")
-    def _frm_bottom(self, frm) -> None:
-        self._frm_quick_rolls(frm).grid(row=0, column=0, rowspan=2, sticky="nsew")
-        self._frm_stats_row(frm).grid(row=0, column=1, sticky="ew")
-        self._frm_info_row(frm).grid(row=1, column=1, sticky="ew")
-        frm.grid_columnconfigure(1, weight=1)
-
     @frm(padding=4, style="solid.TFrame")
     def _frm_quick_rolls(self, frm: ttk.Frame) -> None:
         root = self.root
@@ -711,7 +715,7 @@ class PlayerInterface(BaseInterface):
         root.quick_penalty.trace_add("write", _upd_pen)
         locale.on_change(_upd_pen)
         _upd_pen()
-        ttk.Label(frm, textvariable=pen_var, style="S.TLabel").grid(
+        ttk.Label(frm, textvariable=pen_var, width=7, style="S.TLabel").grid(
             row=0, column=6, padx=(6, 2))
 
         for col, key in enumerate([
@@ -725,7 +729,8 @@ class PlayerInterface(BaseInterface):
         self._qr_abil_cbs: list[ttk.Combobox] = []
 
         for i, (attr_var, abil_var, diff_var, spec_var, auto_var) in enumerate(root.quick_rolls):
-            r = i + 2
+            r = i * 2 + 2
+            r2 = r + 1
             attr_cb = ttk.Combobox(
                 frm, textvariable=attr_var,
                 state="readonly", width=12,
@@ -792,12 +797,16 @@ class PlayerInterface(BaseInterface):
                 style="S.TButton",
             ).grid(row=r, column=5, padx=(2, 0))
 
+            ttk.Label(frm, textvariable=root.quick_roll_dice[i],
+                      style="S.TLabel", anchor="w").grid(
+                row=r2, column=0, columnspan=5, padx=(2, 0), pady=(0, 2), sticky="w")
+
         ttk.Scale(
             frm, from_=QUICK_BP_MAX, to=-QUICK_BP_MAX, orient=tk.VERTICAL,
-            variable=root.quick_penalty, length=88,
+            variable=root.quick_penalty, length=150,
             style="Vertical.TScale",
             command=lambda s: root.scaler(s, root.quick_penalty),
-        ).grid(row=2, column=6, rowspan=4, padx=(6, 2), sticky="ns")
+        ).grid(row=2, column=6, rowspan=8, padx=(6, 2), sticky="ns")
 
         frm.grid_columnconfigure(1, weight=1)
 

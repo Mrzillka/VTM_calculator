@@ -81,6 +81,7 @@ class PlayerRoot(Tk):
             for _ in range(4)
         ]
         self.quick_penalty = IntVar(value=0)
+        self.quick_roll_dice: list[StringVar] = [StringVar(value="") for _ in range(4)]
         self.default_skill_penalty = BooleanVar(value=True)
         self.chargen_min_will = BooleanVar(value=False)
 
@@ -114,6 +115,8 @@ class PlayerRoot(Tk):
         self._autosave_job: str | None = None
         self._setup_tracker_traces()
         self._setup_autosave_traces()
+        self._setup_quick_roll_dice_traces()
+        self._refresh_quick_roll_dice()
         self.after(NET_POLL_MS, self._poll_net_queue)
 
     # ── Setup ──────────────────────────────────────────────────────────────────
@@ -356,6 +359,46 @@ class PlayerRoot(Tk):
         self.quick_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.default_skill_penalty.trace_add("write", lambda *_: self._schedule_save())
         self.chargen_min_will.trace_add("write", lambda *_: self._schedule_save())
+
+    def _setup_quick_roll_dice_traces(self) -> None:
+        char = self.character
+        for av, bv, _dv, _sv, autov in self.quick_rolls:
+            av.trace_add("write", self._refresh_quick_roll_dice)
+            bv.trace_add("write", self._refresh_quick_roll_dice)
+            autov.trace_add("write", self._refresh_quick_roll_dice)
+        self.quick_penalty.trace_add("write", self._refresh_quick_roll_dice)
+        char.roll_penalty.trace_add("write", self._refresh_quick_roll_dice)
+        self.default_skill_penalty.trace_add("write", self._refresh_quick_roll_dice)
+        for v in (char.str_boost, char.dex_boost, char.sta_boost):
+            v.trace_add("write", self._refresh_quick_roll_dice)
+        locale.on_change(self._refresh_quick_roll_dice)
+        for cat_data in char.attributes.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._refresh_quick_roll_dice)
+        for cat_data in char.abilities.values():
+            for stat_data in cat_data.values():
+                for var in stat_data["vars"]:
+                    var.trace_add("write", self._refresh_quick_roll_dice)
+
+    def _refresh_quick_roll_dice(self, *_) -> None:
+        char = self.character
+        pen = char.roll_penalty.get() + self.quick_penalty.get()
+        for i, roll_tuple in enumerate(self.quick_rolls):
+            attr_var, abil_var = roll_tuple[0], roll_tuple[1]
+            attr_name = locale.reverse_lookup_en("sheet.attr_names", attr_var.get())
+            abil_name = locale.reverse_lookup_en("sheet.ability_names", abil_var.get())
+            attr_val = char.get_stat_value(attr_name)
+            abil_val = char.get_stat_value(abil_name)
+            pool = attr_val + abil_val
+            if abil_name and abil_val == 0 and self.default_skill_penalty.get():
+                pool -= 1
+            eff = max(1, max(1, pool) + pen)
+            auto_val = roll_tuple[4].get()
+            text = f"{attr_val} + {abil_val} = {eff}"
+            if auto_val > 0:
+                text += f"  +{auto_val} auto"
+            self.quick_roll_dice[i].set(text)
 
     def _schedule_save(self) -> None:
         if self._autosave_job:
