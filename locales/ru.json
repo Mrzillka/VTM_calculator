@@ -284,7 +284,15 @@
       "Visceratika": "Висцератика",
       "Assamite Sorcery": "Асасинская ворожба",
       "Koldunic Sorcery": "Колдовство Колдунов",
-      "Setite Sorcery": "Магия Последователей Сета"
+      "Setite Sorcery": "Магия Последователей Сета",
+      "Valeren": "Валерен",
+      "Ogham": "Огам",
+      "Spiritus": "Спиритус",
+      "Gargoyle Flight": "Полёт горгульи",
+      "Bardo": "Бардо",
+      "Kineticism": "Кинетицизм",
+      "Nihilistics": "Нигилизм",
+      "Dark Thaumaturgy": "Тёмная тауматургия"
     },
     "discipline_paths": {
       "Thaumaturgy": {
@@ -301,7 +309,15 @@
         "Path of Technomancy": "Путь Технократии",
         "Path of the Father's Vengeance": "Путь Отцовского Мщения",
         "Thaumaturgical Countermagic": "Контрмагия Таматургии",
-        "Weather Control": "Власть над Погодой"
+        "Weather Control": "Власть над Погодой",
+        "Alchemy": "Алхимия",
+        "Biothaumaturgy": "Биотауматургия",
+        "Oneiromancy": "Онейромантия",
+        "The Hearth Path": "Путь домашнего очага",
+        "Path of Shadowcrafting": "Путь создания теней",
+        "Path of Spirit Manipulation": "Путь управления духами",
+        "The Focused Mind": "Сосредоточенный разум",
+        "Mastery of the Mortal Shell": "Управление смертной оболочкой"
       },
       "Necromancy": {
         "Sepulchre Path": "Путь Склепа",
@@ -323,12 +339,31 @@
         "Way of Fire": "Путь Огня",
         "Way of Water": "Путь Воды",
         "Way of Wind": "Путь Ветра",
-        "Way of Spirit": "Путь Духа"
+        "Way of Spirit": "Путь Духа",
+        "Way of Sorrow": "Путь скорби"
       },
       "Setite Sorcery": {
         "Path of the Cobra's Favor": "Путь Милости Кобры",
         "Path of Duat": "Путь Дуата",
-        "Path of Phobos": "Путь Фобоса"
+        "Path of Phobos": "Путь Фобоса",
+        "Immanence of Set": "Имманентность Сета",
+        "Divine Hand": "Длань Божья",
+        "Snake Inside": "Змей-искуситель",
+        "Path of the Dry Nile": "Путь иссохшего Нила",
+        "Ushabti": "Ушабти"
+      },
+      "Dark Thaumaturgy": {
+        "Hands of Destruction": "Руки разрушения",
+        "The Fires of the Inferno": "Огни преисподней",
+        "The Taking of the Spirit": "Похищение духа",
+        "Path of Pain": "Путь боли",
+        "Chains of Pleasure": "Цепи удовольствия",
+        "Path of Pleasure": "Путь удовольствия",
+        "Path of the Unspoken": "Путь невысказанного",
+        "Path of Torture": "Путь пыток",
+        "Path of the Defiler": "Путь осквернителя",
+        "Path of Secret Knowledge": "Путь тайного знания",
+        "Path of Pestilence": "Путь мора"
       }
     },
     "combo_disciplines": {
@@ -358,7 +393,25 @@
       "Vanishing": "Исчезновение",
       "Veil the Legions": "Покров легионов",
       "Web of Shadows": "Сеть теней",
-      "Wolf Claws": "Волчьи когти"
+      "Wolf Claws": "Волчьи когти",
+      "Aura Absorption": "Поглощение ауры",
+      "Binding the Beast": "Укрощение зверя",
+      "Breath of the Dragon": "Дыхание дракона",
+      "Coma": "Кома",
+      "Condemnation of Mara": "Проклятие Мары",
+      "Dark Passage": "Тёмный переход",
+      "Ecstatic Agony": "Экстатическая агония",
+      "Flesh Mastery": "Власть над плотью",
+      "Heart of Ice": "Ледяное сердце",
+      "Mark of the Predator": "Метка хищника",
+      "Open Sesame": "Сезам, откройся",
+      "Scalpel Tongue": "Язык скальпеля",
+      "Sovereign's Displeasure": "Царский гнев",
+      "War Ghoul": "Боевой гул",
+      "Words of Spirit": "Слова духа",
+      "Random Patterns": "Хаотичные движения",
+      "Burning Bright": "Пылающий натиск",
+      "Serpent's Mastery": "Власть змея"
     },
     "merits": {
       "Acute Senses": "Острое восприятие",

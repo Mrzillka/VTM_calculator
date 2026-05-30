@@ -714,7 +714,7 @@ class _TrackersMixin:
         self._humanity_dot_labels = self._build_tracker_dot_row(frm, MAX_DOT_TRACKER, char.set_humanity)
 
         char.humanity_value.trace_add("write", lambda *_: self._refresh_humanity_cells())
-        for v in char.virtues[0]["vars"]:
+        for v in char.virtues[0]["vars"] + char.virtues[1]["vars"]:
             v.trace_add("write", lambda *_: self._refresh_humanity_cells())
 
         self._refresh_humanity_cells()
@@ -730,12 +730,15 @@ class _TrackersMixin:
             self._humanity_dot_labels = []
             return
         char = self.character
-        conscience = sum(v.get() for v in char.virtues[0]["vars"])
+        virtue_threshold = (
+            sum(v.get() for v in char.virtues[0]["vars"])
+            + sum(v.get() for v in char.virtues[1]["vars"])
+        )
         current = char.humanity_value.get()
 
         for i, lbl in enumerate(self._humanity_dot_labels):
             if i < current:
-                color = theme.palette["virtue_fg"] if i < conscience else ""
+                color = theme.palette["virtue_fg"] if i < virtue_threshold else ""
                 lbl.configure(text="●", foreground=color)
             else:
                 lbl.configure(text="○", foreground="")

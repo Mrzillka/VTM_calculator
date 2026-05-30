@@ -284,7 +284,15 @@
       "Visceratika": "Visceratika",
       "Assamite Sorcery": "Assamite Sorcery",
       "Koldunic Sorcery": "Koldunic Sorcery",
-      "Setite Sorcery": "Setite Sorcery"
+      "Setite Sorcery": "Setite Sorcery",
+      "Valeren": "Valeren",
+      "Ogham": "Ogham",
+      "Spiritus": "Spiritus",
+      "Gargoyle Flight": "Gargoyle Flight",
+      "Bardo": "Bardo",
+      "Kineticism": "Kineticism",
+      "Nihilistics": "Nihilistics",
+      "Dark Thaumaturgy": "Dark Thaumaturgy"
     },
     "discipline_paths": {
       "Thaumaturgy": {
@@ -301,7 +309,15 @@
         "Path of Technomancy": "Path of Technomancy",
         "Path of the Father's Vengeance": "Path of the Father's Vengeance",
         "Thaumaturgical Countermagic": "Thaumaturgical Countermagic",
-        "Weather Control": "Weather Control"
+        "Weather Control": "Weather Control",
+        "Alchemy": "Alchemy",
+        "Biothaumaturgy": "Biothaumaturgy",
+        "Oneiromancy": "Oneiromancy",
+        "The Hearth Path": "The Hearth Path",
+        "Path of Shadowcrafting": "Path of Shadowcrafting",
+        "Path of Spirit Manipulation": "Path of Spirit Manipulation",
+        "The Focused Mind": "The Focused Mind",
+        "Mastery of the Mortal Shell": "Mastery of the Mortal Shell"
       },
       "Necromancy": {
         "Sepulchre Path": "Sepulchre Path",
@@ -323,12 +339,31 @@
         "Way of Fire": "Way of Fire",
         "Way of Water": "Way of Water",
         "Way of Wind": "Way of Wind",
-        "Way of Spirit": "Way of Spirit"
+        "Way of Spirit": "Way of Spirit",
+        "Way of Sorrow": "Way of Sorrow"
       },
       "Setite Sorcery": {
         "Path of the Cobra's Favor": "Path of the Cobra's Favor",
         "Path of Duat": "Path of Duat",
-        "Path of Phobos": "Path of Phobos"
+        "Path of Phobos": "Path of Phobos",
+        "Immanence of Set": "Immanence of Set",
+        "Divine Hand": "Divine Hand",
+        "Snake Inside": "Snake Inside",
+        "Path of the Dry Nile": "Path of the Dry Nile",
+        "Ushabti": "Ushabti"
+      },
+      "Dark Thaumaturgy": {
+        "Hands of Destruction": "Hands of Destruction",
+        "The Fires of the Inferno": "The Fires of the Inferno",
+        "The Taking of the Spirit": "The Taking of the Spirit",
+        "Path of Pain": "Path of Pain",
+        "Chains of Pleasure": "Chains of Pleasure",
+        "Path of Pleasure": "Path of Pleasure",
+        "Path of the Unspoken": "Path of the Unspoken",
+        "Path of Torture": "Path of Torture",
+        "Path of the Defiler": "Path of the Defiler",
+        "Path of Secret Knowledge": "Path of Secret Knowledge",
+        "Path of Pestilence": "Path of Pestilence"
       }
     },
     "combo_disciplines": {
@@ -358,7 +393,25 @@
       "Vanishing": "Vanishing",
       "Veil the Legions": "Veil the Legions",
       "Web of Shadows": "Web of Shadows",
-      "Wolf Claws": "Wolf Claws"
+      "Wolf Claws": "Wolf Claws",
+      "Aura Absorption": "Aura Absorption",
+      "Binding the Beast": "Binding the Beast",
+      "Breath of the Dragon": "Breath of the Dragon",
+      "Coma": "Coma",
+      "Condemnation of Mara": "Condemnation of Mara",
+      "Dark Passage": "Dark Passage",
+      "Ecstatic Agony": "Ecstatic Agony",
+      "Flesh Mastery": "Flesh Mastery",
+      "Heart of Ice": "Heart of Ice",
+      "Mark of the Predator": "Mark of the Predator",
+      "Open Sesame": "Open Sesame",
+      "Scalpel Tongue": "Scalpel Tongue",
+      "Sovereign's Displeasure": "Sovereign's Displeasure",
+      "War Ghoul": "War Ghoul",
+      "Words of Spirit": "Words of Spirit",
+      "Random Patterns": "Random Patterns",
+      "Burning Bright": "Burning Bright",
+      "Serpent's Mastery": "Serpent's Mastery"
     },
     "merits": {
       "Acute Senses": "Acute Senses",

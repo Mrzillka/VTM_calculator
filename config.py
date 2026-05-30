@@ -43,6 +43,8 @@ DISCIPLINES: tuple[str, ...] = (
     "Mortis", "Mytherceria", "Obeah",
     "Sanguinus", "Temporis", "Thanatosis", "Visceratika",
     "Assamite Sorcery", "Koldunic Sorcery", "Setite Sorcery",
+    "Valeren", "Ogham", "Spiritus", "Gargoyle Flight",
+    "Bardo", "Kineticism", "Nihilistics", "Dark Thaumaturgy",
 )
 
 DISCIPLINE_PATHS: dict[str, tuple[str, ...]] = {
@@ -52,6 +54,9 @@ DISCIPLINE_PATHS: dict[str, tuple[str, ...]] = {
         "Neptune's Might", "Path of Conjuring", "Path of Corruption",
         "Path of Mars", "Path of Technomancy", "Path of the Father's Vengeance",
         "Thaumaturgical Countermagic", "Weather Control",
+        "Alchemy", "Biothaumaturgy", "Oneiromancy", "The Hearth Path",
+        "Path of Shadowcrafting", "Path of Spirit Manipulation",
+        "The Focused Mind", "Mastery of the Mortal Shell",
     ),
     "Necromancy": (
         "Sepulchre Path", "Ash Path", "Bone Path",
@@ -62,10 +67,19 @@ DISCIPLINE_PATHS: dict[str, tuple[str, ...]] = {
         "Movement of the Loyal Heart", "The Stolen Heart",
     ),
     "Koldunic Sorcery": (
-        "Way of Earth", "Way of Fire", "Way of Water", "Way of Wind", "Way of Spirit",
+        "Way of Earth", "Way of Fire", "Way of Water", "Way of Wind",
+        "Way of Spirit", "Way of Sorrow",
     ),
     "Setite Sorcery": (
         "Path of the Cobra's Favor", "Path of Duat", "Path of Phobos",
+        "Immanence of Set", "Divine Hand", "Snake Inside",
+        "Path of the Dry Nile", "Ushabti",
+    ),
+    "Dark Thaumaturgy": (
+        "Hands of Destruction", "The Fires of the Inferno",
+        "The Taking of the Spirit", "Path of Pain", "Chains of Pleasure",
+        "Path of Pleasure", "Path of the Unspoken", "Path of Torture",
+        "Path of the Defiler", "Path of Secret Knowledge", "Path of Pestilence",
     ),
 }
 
