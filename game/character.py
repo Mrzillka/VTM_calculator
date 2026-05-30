@@ -96,6 +96,8 @@ class Character(CharacterIO):
         self.will_value = IntVar(value=0)
         self.willpower_max = IntVar(value=MAX_DOT_TRACKER)
 
+        self.xp_total = IntVar(value=0)
+
         self.blood_per_turn = StringVar(value="1")
         self.generation.trace_add("write", lambda *_: self._on_generation_change())
 
@@ -206,6 +208,7 @@ class Character(CharacterIO):
                     {"name": e["name"].get(), "cost": e["cost"].get()}
                     for e in self.flaws
                 ],
+                "combo_disciplines": [sv.get() for sv in self.combo_disciplines],
             },
             "trackers": {
                 "willpower_max":   self.willpower_max.get(),

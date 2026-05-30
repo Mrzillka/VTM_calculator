@@ -35,6 +35,7 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
         self._flaw_total_lbl: ttk.Label | None = None
         self._net_lbl: ttk.Label | None = None
         self._xp_label: ttk.Label | None = None
+        self._xp_remaining_label: ttk.Label | None = None
         self._merit_sum: int = 0
         self._flaw_sum: int = 0
         self._translating: bool = False
@@ -45,6 +46,7 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
         char = self.character
         char.willpower_max.trace_add("write", lambda *_: self._refresh_xp())
         char.humanity_value.trace_add("write", lambda *_: self._refresh_xp())
+        char.xp_total.trace_add("write", lambda *_: self._update_xp_label())
         self._refresh_xp()
 
         self._sync_virtue_names()
@@ -99,15 +101,13 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
             style="sheet.TCheckbutton",
             command=self._apply_lock,
         )
-        self._xp_label = ttk.Label(frm, style="sheet.S.TLabel")
         save_btn.grid(row=0, column=0, sticky="w", padx=(0, 8))
         lock_cb.grid(row=0, column=1, sticky="w")
-        self._xp_label.grid(row=0, column=2, sticky="w", padx=(16, 0))
 
         if self.root._send_sheet_callback is not None:
             send_btn = self._tbutton(frm, "sheet.send_sheet", style="sheet.save.TButton",
                                      command=self.root.send_sheet)
-            send_btn.grid(row=0, column=3, sticky="w", padx=(8, 0))
+            send_btn.grid(row=0, column=2, sticky="w", padx=(8, 0))
 
     # ── Lock ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +142,17 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
             self._xp_label.configure(text=locale.t("sheet.xp_label").format(n=n))
         else:
             self._xp_label.configure(text="")
+
+        if self._xp_remaining_label is not None:
+            try:
+                if not self._xp_remaining_label.winfo_exists():
+                    return
+            except tk.TclError:
+                return
+            remaining = self.character.xp_total.get() - n
+            self._xp_remaining_label.configure(
+                text=locale.t("sheet.xp_remaining").format(n=remaining)
+            )
 
     def _refresh_xp(self) -> None:
         try:
@@ -211,6 +222,20 @@ class CharsheetInterface(ttk.Frame, _AttributesMixin, _AdvantagesMixin, _Tracker
 
         hum_baseline = snap_trackers.get("humanity_value", 0)
         total += xp_for_increase("humanity", hum_baseline, char.humanity_value.get())
+
+        from game.discipline_rules import COMBO_DISCIPLINES as _COMBOS
+        snap_combos_en = {
+            locale.reverse_lookup_en("sheet.combo_disciplines", name)
+            for name in snap.get("advantages", {}).get("combo_disciplines", [])
+            if name
+        }
+        combo_by_en = {c.name: c for c in _COMBOS}
+        for sv in char.combo_disciplines:
+            name_en = locale.reverse_lookup_en("sheet.combo_disciplines", sv.get())
+            if name_en and name_en not in snap_combos_en:
+                combo = combo_by_en.get(name_en)
+                if combo:
+                    total += combo.xp_cost
 
         self.root.xp_spent.set(total)
         self._update_xp_label()

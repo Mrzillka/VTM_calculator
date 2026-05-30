@@ -37,6 +37,7 @@ class CharacterIO:
                 "humanity_value":  self.humanity_value.get(),
                 "will_value":      self.will_value.get(),
                 "willpower_max":   self.willpower_max.get(),
+                "xp_total":        self.xp_total.get(),
             },
             "attributes": {
                 category: {
@@ -143,6 +144,7 @@ class CharacterIO:
         self.humanity_value.set(trackers.get("humanity_value", 0))
         self.will_value.set(trackers.get("will_value", 0))
         self.willpower_max.set(trackers.get("willpower_max", 10))
+        self.xp_total.set(trackers.get("xp_total", 0))
 
         for category, attrs in data.get("attributes", {}).items():
             for attr, values in attrs.items():

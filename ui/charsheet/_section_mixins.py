@@ -398,6 +398,7 @@ class _AdvantagesMixin:
             cb = ttk.Combobox(frm, textvariable=sv, width=32)
             self._combo_disc_comboboxes.append(cb)
             self._lockable.append(cb)
+            sv.trace_add("write", lambda *_: self._refresh_xp())
             rows.append([cb])
         place_widgets(rows)
 
@@ -582,6 +583,21 @@ class _TrackersMixin:
                                       self._refresh_sheet_blood_cells,
                                       max_to=MAX_BLOOD_POOL)],
             [self._frm_sheet_blood_cells(frm)],
+            [self._frm_xp_section(frm)],
+        ])
+
+    @frm(padding=0)
+    def _frm_xp_section(self, frm: ttk.Frame) -> None:
+        xp_sp = ttk.Spinbox(frm, from_=0, to=9999, textvariable=self.character.xp_total,
+                            width=5, style="sheet.TSpinbox")
+        self._lockable.append(xp_sp)
+        self._xp_label = ttk.Label(frm, style="sheet.S.TLabel")
+        self._xp_remaining_label = ttk.Label(frm, style="sheet.S.TLabel")
+        place_widgets([
+            [self._tlabel(frm, "sheet.sheet_trackers.xp", style="sheet.M.TLabel")],
+            [self._tlabel(frm, "sheet.xp_total_label", style="sheet.S.TLabel"), xp_sp],
+            [self._xp_label],
+            [self._xp_remaining_label],
         ])
 
     @frm(padding=5)

@@ -140,6 +140,8 @@
     "save": "💾 Save",
     "lock": "🔒 Lock",
     "xp_label": "XP spent: {n}",
+    "xp_total_label": "Earned:",
+    "xp_remaining": "Remaining: {n}",
     "send_sheet": "📤 Send",
     "sections": {
       "attributes": "Attributes",
@@ -235,7 +237,8 @@
       "humanity": "Humanity / Path",
       "blood_pool": "Blood Pool",
       "health": "Health Levels",
-      "max": "Max:"
+      "max": "Max:",
+      "xp": "Experience Points"
     },
     "backgrounds": {
       "Allies": "Allies",
