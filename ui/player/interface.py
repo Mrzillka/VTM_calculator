@@ -110,7 +110,6 @@ class PlayerInterface(BaseInterface):
             nb.tab(1, text=locale.t("controls.trackers"))
             nb.tab(2, text=locale.t("controls.stats_tab"))
             nb.tab(3, text=locale.t("controls.settings"))
-            self._rebuild_stats_tab()
 
         locale.on_change(_update_tab_titles)
         return nb
@@ -232,6 +231,15 @@ class PlayerInterface(BaseInterface):
         theme.on_change(_update_stats_canvas_bg)
         theme.on_change(_on_theme_stats)
 
+        def _on_locale_stats() -> None:
+            try:
+                if self._stats_tab_frame.winfo_exists():
+                    self._rebuild_stats_tab()
+            except tk.TclError:
+                pass
+
+        locale.on_change(_on_locale_stats)
+
         char = self.root.character
         for cat_data in char.attributes.values():
             for stat_data in cat_data.values():
@@ -350,31 +358,43 @@ class PlayerInterface(BaseInterface):
                     _stat_row(col_frame, name, count, row["spec"].get())
 
         bg_rows = [
-            (r["name"].get().strip(), sum(v.get() for v in r["vars"]))
+            (locale.translate_known("sheet.backgrounds", r["name"].get().strip()), sum(v.get() for v in r["vars"]))
             for r in char.backgrounds
             if r["name"].get().strip() and sum(v.get() for v in r["vars"]) > 0
         ]
-        disc_rows = [
-            (r["name"].get().strip(), sum(v.get() for v in r["vars"]), r["path"].get().strip())
-            for r in char.disciplines
-            if r["name"].get().strip() and sum(v.get() for v in r["vars"]) > 0
-        ]
+        disc_rows = []
+        for r in char.disciplines:
+            _dname = r["name"].get().strip()
+            _dcount = sum(v.get() for v in r["vars"])
+            if _dname and _dcount > 0:
+                _disc_en = locale.reverse_lookup_en("sheet.disciplines", _dname)
+                _raw_path = r["path"].get().strip()
+                disc_rows.append((
+                    locale.translate_known("sheet.disciplines", _dname),
+                    _dcount,
+                    locale.translate_known(f"sheet.discipline_paths.{_disc_en}", _raw_path) if _raw_path else "",
+                ))
+        virtue_locale_names = locale.raw("sheet.virtue_names") or []
         virtue_rows = [
-            (r["name"].get(), sum(v.get() for v in r["vars"]))
-            for r in char.virtues
+            (virtue_locale_names[i] if i < len(virtue_locale_names) else r["name"].get(),
+             sum(v.get() for v in r["vars"]))
+            for i, r in enumerate(char.virtues)
             if sum(v.get() for v in r["vars"]) > 0
         ]
         merit_rows = [
-            r["name"].get().strip()
+            locale.translate_known("sheet.merits", r["name"].get().strip())
             for r in char.merits
             if r["name"].get().strip()
         ]
         flaw_rows = [
-            r["name"].get().strip()
+            locale.translate_known("sheet.flaws", r["name"].get().strip())
             for r in char.flaws
             if r["name"].get().strip()
         ]
-        combo_rows = [sv.get().strip() for sv in char.combo_disciplines if sv.get().strip()]
+        combo_rows = [
+            locale.translate_known("sheet.combo_disciplines", sv.get().strip())
+            for sv in char.combo_disciplines if sv.get().strip()
+        ]
 
         next_row = 3
 
