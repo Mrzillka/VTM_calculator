@@ -551,6 +551,11 @@ class _TrackersMixin:
     def _refresh_mf_totals(self) -> None:
         if self._merit_total_lbl is None:
             return
+        try:
+            if not self._merit_total_lbl.winfo_exists():
+                return
+        except tk.TclError:
+            return
         m = sum(e["cost"].get() for e in self.character.merits)
         f = sum(e["cost"].get() for e in self.character.flaws)
         self._merit_sum = m
@@ -615,10 +620,7 @@ class _TrackersMixin:
             var = char.wounds[i]
             dot = ttk.Label(frm, text="●" if var.get() else "○",
                             style="sheet.Dot.TLabel", cursor="hand2")
-            var.trace_add(
-                "write",
-                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
-            )
+            var.trace_add("write", self._make_dot_trace(dot, var))
             dot.bind("<Button-1>", lambda e, y=i: char.set_wounds(y))
 
             name_lbl = ttk.Label(frm, text=locale.t(f"wound_levels.{level.name}"),
