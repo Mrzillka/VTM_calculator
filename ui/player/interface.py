@@ -136,38 +136,47 @@ class PlayerInterface(BaseInterface):
             [self._frm_main_buttons(frm)],
         ])
 
+    @staticmethod
+    def _guard_cb_separator(cb, var, *, on_valid=None, revert_to_previous=False) -> None:
+        """Reject ``──`` separator rows in a readonly combobox.
+
+        Picking a separator either reverts to the previously selected value
+        (*revert_to_previous*) or clears the variable; picking a real entry runs
+        *on_valid* (if given).
+        """
+        prev = [var.get()]
+
+        def _on_sel(_event) -> None:
+            val = var.get()
+            if val.startswith("──"):
+                var.set(prev[0] if revert_to_previous else "")
+            else:
+                prev[0] = val
+                if on_valid is not None:
+                    on_valid()
+
+        cb.bind("<<ComboboxSelected>>", _on_sel)
+
     @frm(padding=4)
     def _frm_main_cb(self, frm: ttk.Frame) -> None:
         root = self.root
 
-        attr_cb = ttk.Combobox(frm, textvariable=root.main_attr_var, state="readonly", width=12)
+        attr_cb = ttk.Combobox(frm, textvariable=root.main_attr_var, state="readonly", width=18)
         attr_cb.configure(
             values=self._build_attr_cb_values(),
             postcommand=lambda: attr_cb.configure(values=self._build_attr_cb_values()),
         )
         attr_cb.grid(row=0, column=0, padx=(0, 2))
-
-        def _on_attr_sel(_event):
-            if root.main_attr_var.get().startswith("──"):
-                root.main_attr_var.set("")
-            else:
-                root.update_main_dice_from_cb()
-
-        attr_cb.bind("<<ComboboxSelected>>", _on_attr_sel)
+        self._guard_cb_separator(attr_cb, root.main_attr_var,
+                                 on_valid=root.update_main_dice_from_cb)
 
         abil_cb = ttk.Combobox(frm, textvariable=root.main_abil_var, state="readonly", width=18)
         abil_cb.configure(
             postcommand=lambda: abil_cb.configure(values=self._build_abil_cb_values()),
         )
         abil_cb.grid(row=0, column=1, padx=(2, 0), sticky="ew")
-
-        def _on_abil_sel(_event):
-            if root.main_abil_var.get().startswith("──"):
-                root.main_abil_var.set("")
-            else:
-                root.update_main_dice_from_cb()
-
-        abil_cb.bind("<<ComboboxSelected>>", _on_abil_sel)
+        self._guard_cb_separator(abil_cb, root.main_abil_var,
+                                 on_valid=root.update_main_dice_from_cb)
 
         frm.grid_columnconfigure(1, weight=1)
 
@@ -183,49 +192,46 @@ class PlayerInterface(BaseInterface):
 
         locale.on_change(_refresh_locale)
 
+    def _slider_row(
+        self, frm: ttk.Frame, key: str, var, lo: int, hi: int,
+        *, spin_to: int | None = None, trailing: ttk.Widget | None = None,
+    ) -> list[Any]:
+        """Build a [label, scale, spinbox] control row sharing one variable.
+
+        *spin_to* overrides the spinbox upper bound (the dice row allows typing
+        past the slider's range); *trailing* appends an extra widget (the live
+        penalty label).
+        """
+        row: list[Any] = [
+            self._tlabel(frm, key, width=22, style="M.TLabel", anchor="e"),
+            ttk.Scale(frm, from_=lo, to=hi, length=SCALE_LENGTH, variable=var,
+                      style="my.Horizontal.TScale",
+                      command=lambda s, v=var: self.root.scaler(s, v)),
+            ttk.Spinbox(frm, from_=lo, to=spin_to if spin_to is not None else hi,
+                        textvariable=var, width=3, style="my.TSpinbox"),
+        ]
+        if trailing is not None:
+            row.append(trailing)
+        return row
+
     @frm(padding=5)
     def _frm_controls(self, frm: ttk.Frame) -> None:
         root = self.root
-        rows: list[list[Any]] = []
-
-        rows.append([
-            self._tlabel(frm, "controls.dice", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=DICE_MIN, to=DICE_MAX, length=SCALE_LENGTH,
-                      variable=root.dice_number, style="my.Horizontal.TScale",
-                      command=lambda s: root.scaler(s, root.dice_number)),
-            ttk.Spinbox(frm, from_=DICE_MIN, to=50, textvariable=root.dice_number,
-                        width=3, style="my.TSpinbox"),
-            ttk.Label(frm, textvariable=root.character.roll_penalty, width=3, style="S.TLabel"),
-        ])
-        rows.append([
-            self._tlabel(frm, "controls.difficulty", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, length=SCALE_LENGTH,
-                      variable=root.difficulty, style="my.Horizontal.TScale",
-                      command=lambda s: root.scaler(s, root.difficulty)),
-            ttk.Spinbox(frm, from_=DIFFICULTY_MIN, to=DIFFICULTY_MAX, textvariable=root.difficulty,
-                        width=3, style="my.TSpinbox"),
-        ])
-        rows.append([
-            self._tlabel(frm, "controls.auto_success", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=0, to=AUTO_SUCCESS_MAX, length=SCALE_LENGTH,
-                      variable=root.auto_success, style="my.Horizontal.TScale",
-                      command=lambda s: root.scaler(s, root.auto_success)),
-            ttk.Spinbox(frm, from_=0, to=AUTO_SUCCESS_MAX, textvariable=root.auto_success,
-                        width=3, style="my.TSpinbox"),
-        ])
-        rows.append([
-            self._dot_toggle(frm, locale.t("controls.specialisation"),
-                             root.specialisation,
-                             locale_key="controls.specialisation"),
-        ])
-        rows.append([
-            self._tlabel(frm, "controls.success_needed", width=22, style="M.TLabel", anchor="e"),
-            ttk.Scale(frm, from_=1, to=SUCCESS_NEEDED_MAX, length=SCALE_LENGTH,
-                      variable=root.success_needed, style="my.Horizontal.TScale",
-                      command=lambda s: root.scaler(s, root.success_needed)),
-            ttk.Spinbox(frm, from_=1, to=SUCCESS_NEEDED_MAX, textvariable=root.success_needed,
-                        width=3, style="my.TSpinbox"),
-        ])
+        penalty_lbl = ttk.Label(frm, textvariable=root.character.roll_penalty,
+                                width=3, style="S.TLabel")
+        rows: list[list[Any]] = [
+            self._slider_row(frm, "controls.dice", root.dice_number, DICE_MIN, DICE_MAX,
+                             spin_to=50, trailing=penalty_lbl),
+            self._slider_row(frm, "controls.difficulty", root.difficulty,
+                             DIFFICULTY_MIN, DIFFICULTY_MAX),
+            self._slider_row(frm, "controls.auto_success", root.auto_success,
+                             0, AUTO_SUCCESS_MAX),
+            [self._dot_toggle(frm, locale.t("controls.specialisation"),
+                              root.specialisation,
+                              locale_key="controls.specialisation")],
+            self._slider_row(frm, "controls.success_needed", root.success_needed,
+                             1, SUCCESS_NEEDED_MAX),
+        ]
         place_widgets(rows)
         for i in range(len(rows)):
             frm.grid_rowconfigure(i, pad=4)
@@ -309,38 +315,32 @@ class PlayerInterface(BaseInterface):
         locale.on_change(_on_locale_stats)
 
         char = self.root.character
-        for cat_data in char.attributes.values():
-            for stat_data in cat_data.values():
-                for var in stat_data["vars"]:
-                    var.trace_add("write", self._schedule_stats_rebuild)
-        for cat_data in char.abilities.values():
-            for stat_data in cat_data.values():
-                for var in stat_data["vars"]:
-                    var.trace_add("write", self._schedule_stats_rebuild)
+        for var in self._iter_stat_trace_vars(char):
+            var.trace_add("write", self._schedule_stats_rebuild)
+
+    @staticmethod
+    def _iter_stat_trace_vars(char):
+        """Yield every character Var whose change should rebuild the stats tab."""
+        for group in (char.attributes, char.abilities):
+            for cat_data in group.values():
+                for stat_data in cat_data.values():
+                    yield from stat_data["vars"]
         for cat_rows in char.custom_abilities.values():
             for row in cat_rows:
-                for var in row["vars"]:
-                    var.trace_add("write", self._schedule_stats_rebuild)
+                yield from row["vars"]
         for row in char.disciplines:
-            row["name"].trace_add("write", self._schedule_stats_rebuild)
-            row["path"].trace_add("write", self._schedule_stats_rebuild)
-            for var in row["vars"]:
-                var.trace_add("write", self._schedule_stats_rebuild)
+            yield row["name"]
+            yield row["path"]
+            yield from row["vars"]
         for row in char.backgrounds:
-            row["name"].trace_add("write", self._schedule_stats_rebuild)
-            for var in row["vars"]:
-                var.trace_add("write", self._schedule_stats_rebuild)
-        for row in char.merits:
-            row["name"].trace_add("write", self._schedule_stats_rebuild)
-            row["cost"].trace_add("write", self._schedule_stats_rebuild)
-        for row in char.flaws:
-            row["name"].trace_add("write", self._schedule_stats_rebuild)
-            row["cost"].trace_add("write", self._schedule_stats_rebuild)
+            yield row["name"]
+            yield from row["vars"]
+        for row in (*char.merits, *char.flaws):
+            yield row["name"]
+            yield row["cost"]
         for row in char.virtues:
-            for var in row["vars"]:
-                var.trace_add("write", self._schedule_stats_rebuild)
-        for sv in char.combo_disciplines:
-            sv.trace_add("write", self._schedule_stats_rebuild)
+            yield from row["vars"]
+        yield from char.combo_disciplines
 
     def _schedule_stats_rebuild(self, *_) -> None:
         if not self._stats_rebuild_pending:
@@ -353,6 +353,22 @@ class PlayerInterface(BaseInterface):
         for child in frm.winfo_children():
             child.destroy()
         self._build_stats_content(frm)
+
+    @staticmethod
+    def _stat_column(parent: ttk.Frame, row: int, col: int, title: str,
+                     items: list, render) -> None:
+        """Place a titled column at (row, col) and render *items* into it.
+
+        No-op when *items* is empty, so the caller's separator bookkeeping stays
+        in charge of whether a column group is shown.
+        """
+        if not items:
+            return
+        frame = ttk.Frame(parent, style="flat.TFrame")
+        frame.grid(row=row, column=col, sticky="nw", padx=4, pady=(0, 4))
+        ttk.Label(frame, text=title, style="M.TLabel").pack(anchor="center", pady=(0, 2))
+        for item in items:
+            render(frame, item)
 
     def _build_stats_content(self, parent: ttk.Frame) -> None:
         char = self.root.character
@@ -372,15 +388,6 @@ class PlayerInterface(BaseInterface):
                 spec_lbl.configure(foreground=theme.palette["spec_fg"],
                                    font=("TkDefaultFont", 8, "italic"))
                 spec_lbl.pack(side="left", padx=(3, 0))
-
-        def _cost_row(col_frame: ttk.Frame, name: str, cost: int) -> None:
-            row = ttk.Frame(col_frame, style="flat.TFrame")
-            row.pack(anchor="w", fill="x", pady=(1, 0))
-            ttk.Label(row, text=name, width=13, anchor="e", style="S.TLabel").pack(side="left")
-            cost_lbl = ttk.Label(row, text=f"{cost}pt{'s' if cost != 1 else ''}",
-                                 anchor="w", style="S.TLabel")
-            cost_lbl.configure(foreground=theme.palette["dot_fg"])
-            cost_lbl.pack(side="left", padx=(3, 0))
 
         def _name_row(col_frame: ttk.Frame, name: str) -> None:
             row = ttk.Frame(col_frame, style="flat.TFrame")
@@ -471,31 +478,12 @@ class PlayerInterface(BaseInterface):
                 row=next_row, column=0, columnspan=3, sticky="ew", pady=4,
             )
             next_row += 1
-
-            if bg_rows:
-                bg_frame = ttk.Frame(parent, style="flat.TFrame")
-                bg_frame.grid(row=next_row, column=0, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(bg_frame, text=locale.t("sheet.adv_columns.Backgrounds"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name, count in bg_rows:
-                    _stat_row(bg_frame, name, count)
-
-            if disc_rows:
-                disc_frame = ttk.Frame(parent, style="flat.TFrame")
-                disc_frame.grid(row=next_row, column=1, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(disc_frame, text=locale.t("sheet.adv_columns.Disciplines"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name, count, path in disc_rows:
-                    _stat_row(disc_frame, name, count, path, always_spec=True)
-
-            if virtue_rows:
-                virt_frame = ttk.Frame(parent, style="flat.TFrame")
-                virt_frame.grid(row=next_row, column=2, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(virt_frame, text=locale.t("sheet.adv_columns.Virtues"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name, count in virtue_rows:
-                    _stat_row(virt_frame, name, count)
-
+            self._stat_column(parent, next_row, 0, locale.t("sheet.adv_columns.Backgrounds"),
+                              bg_rows, lambda f, it: _stat_row(f, it[0], it[1]))
+            self._stat_column(parent, next_row, 1, locale.t("sheet.adv_columns.Disciplines"),
+                              disc_rows, lambda f, it: _stat_row(f, it[0], it[1], it[2], always_spec=True))
+            self._stat_column(parent, next_row, 2, locale.t("sheet.adv_columns.Virtues"),
+                              virtue_rows, lambda f, it: _stat_row(f, it[0], it[1]))
             next_row += 1
 
         if merit_rows or flaw_rows or combo_rows:
@@ -503,30 +491,12 @@ class PlayerInterface(BaseInterface):
                 row=next_row, column=0, columnspan=3, sticky="ew", pady=4,
             )
             next_row += 1
-
-            if merit_rows:
-                merit_frame = ttk.Frame(parent, style="flat.TFrame")
-                merit_frame.grid(row=next_row, column=0, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(merit_frame, text=locale.t("sheet.mf.merits"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name in merit_rows:
-                    _name_row(merit_frame, name)
-
-            if flaw_rows:
-                flaw_frame = ttk.Frame(parent, style="flat.TFrame")
-                flaw_frame.grid(row=next_row, column=1, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(flaw_frame, text=locale.t("sheet.mf.flaws"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name in flaw_rows:
-                    _name_row(flaw_frame, name)
-
-            if combo_rows:
-                combo_frame = ttk.Frame(parent, style="flat.TFrame")
-                combo_frame.grid(row=next_row, column=2, sticky="nw", padx=4, pady=(0, 4))
-                ttk.Label(combo_frame, text=locale.t("sheet.sections.combo_disciplines"),
-                          style="M.TLabel").pack(anchor="center", pady=(0, 2))
-                for name in combo_rows:
-                    _name_row(combo_frame, name)
+            self._stat_column(parent, next_row, 0, locale.t("sheet.mf.merits"),
+                              merit_rows, lambda f, name: _name_row(f, name))
+            self._stat_column(parent, next_row, 1, locale.t("sheet.mf.flaws"),
+                              flaw_rows, lambda f, name: _name_row(f, name))
+            self._stat_column(parent, next_row, 2, locale.t("sheet.sections.combo_disciplines"),
+                              combo_rows, lambda f, name: _name_row(f, name))
 
     # ── Roll history ──────────────────────────────────────────────────────────
 
@@ -577,16 +547,11 @@ class PlayerInterface(BaseInterface):
             row_labels: list[ttk.Label] = []
             for j in range(BLOOD_COLS):
                 var = char.blood[i][j]
-                lbl = ttk.Label(
-                    frm, text="●" if var.get() else "○",
-                    width=2, style="S.TLabel", cursor="hand2",
+                lbl = self._make_dot(
+                    frm, var, width=2,
+                    command=lambda e, r=i, c=j: char.set_blood(r, c),
                 )
                 lbl.grid(row=i, column=j)
-                var.trace_add(
-                    "write",
-                    lambda *_, l=lbl, v=var: l.configure(text="●" if v.get() else "○"),
-                )
-                lbl.bind("<Button-1>", lambda e, r=i, c=j: char.set_blood(r, c))
                 row_labels.append(lbl)
             self._blood_cells.append(row_labels)
 
@@ -665,13 +630,7 @@ class PlayerInterface(BaseInterface):
         rows = []
         for i, level in enumerate(WOUND_LEVELS):
             var = char.wounds[i]
-            dot = ttk.Label(frm, text="●" if var.get() else "○",
-                            style="S.TLabel", cursor="hand2")
-            var.trace_add(
-                "write",
-                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
-            )
-            dot.bind("<Button-1>", lambda e, y=i: char.set_wounds(y))
+            dot = self._make_dot(frm, var, command=lambda e, y=i: char.set_wounds(y))
 
             name_lbl = ttk.Label(frm, text=locale.t(f"wound_levels.{level.name}"),
                                  width=15, anchor="e", style="S.TLabel")
@@ -711,13 +670,7 @@ class PlayerInterface(BaseInterface):
         ]
         self._will_dots: list[ttk.Label] = []
         for i, var in enumerate(char.will):
-            dot = ttk.Label(frm, text="●" if var.get() else "○",
-                            width=2, style="S.TLabel", cursor="hand2")
-            var.trace_add(
-                "write",
-                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
-            )
-            self._will_dots.append(dot)
+            self._will_dots.append(self._make_dot(frm, var, width=2))
         place_widgets([labels, self._will_dots])
 
         char.will_value.trace_add("write", lambda *_: self._refresh_will_dots())
@@ -743,16 +696,10 @@ class PlayerInterface(BaseInterface):
             ttk.Label(frm, text=str(i + 1), width=2, anchor="w", style="S.TLabel")
             for i in range(MAX_DOT_TRACKER)
         ]
-        dots = []
-        for i, var in enumerate(variables):
-            dot = ttk.Label(frm, text="●" if var.get() else "○",
-                            width=2, style="S.TLabel", cursor="hand2")
-            var.trace_add(
-                "write",
-                lambda *_, l=dot, v=var: l.configure(text="●" if v.get() else "○"),
-            )
-            dot.bind("<Button-1>", lambda e, x=i: command(x))
-            dots.append(dot)
+        dots = [
+            self._make_dot(frm, var, width=2, command=lambda e, x=i: command(x))
+            for i, var in enumerate(variables)
+        ]
         place_widgets([labels, dots])
 
     @frm(padding=4, style="solid.TFrame")
@@ -794,17 +741,7 @@ class PlayerInterface(BaseInterface):
             )
             attr_cb.grid(row=r, column=0, padx=2, pady=(4, 0))
             self._qr_attr_cbs.append(attr_cb)
-
-            _prev_attr = [attr_var.get()]
-
-            def _on_attr_sel(event, var=attr_var, prev=_prev_attr):
-                val = var.get()
-                if val.startswith("──"):
-                    var.set(prev[0])
-                else:
-                    prev[0] = val
-
-            attr_cb.bind("<<ComboboxSelected>>", _on_attr_sel)
+            self._guard_cb_separator(attr_cb, attr_var, revert_to_previous=True)
 
             abil_cb = ttk.Combobox(
                 frm, textvariable=abil_var, state="readonly", width=18,
@@ -816,17 +753,7 @@ class PlayerInterface(BaseInterface):
             )
             abil_cb.grid(row=r, column=1, padx=2, pady=(4, 0), sticky="ew")
             self._qr_abil_cbs.append(abil_cb)
-
-            _prev_abil = [abil_var.get()]
-
-            def _on_abil_sel(event, var=abil_var, prev=_prev_abil):
-                val = var.get()
-                if val.startswith("──"):
-                    var.set(prev[0])
-                else:
-                    prev[0] = val
-
-            abil_cb.bind("<<ComboboxSelected>>", _on_abil_sel)
+            self._guard_cb_separator(abil_cb, abil_var, revert_to_previous=True)
 
             ttk.Spinbox(
                 frm, textvariable=diff_var,
@@ -840,12 +767,10 @@ class PlayerInterface(BaseInterface):
                 width=3, style="my.TSpinbox",
             ).grid(row=r, column=3, padx=2, pady=(4, 0))
 
-            spec_dot = ttk.Label(frm, text="●" if spec_var.get() else "○",
-                                 style="S.TLabel", cursor="hand2")
-            spec_var.trace_add("write",
-                               lambda *_, d=spec_dot, v=spec_var: d.configure(
-                                   text="●" if v.get() else "○"))
-            spec_dot.bind("<Button-1>", lambda e, v=spec_var: v.set(not v.get()))
+            spec_dot = self._make_dot(
+                frm, spec_var,
+                command=lambda e, v=spec_var: v.set(not v.get()),
+            )
             spec_dot.grid(row=r, column=4, padx=(4, 0), pady=(4, 0))
 
             ttk.Button(

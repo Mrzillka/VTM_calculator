@@ -51,6 +51,43 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
     _history_inner: ttk.Frame
     _history_win_id: int
 
+    # ── Dot labels ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _dot_trace(label: ttk.Label, var: BooleanVar) -> Callable:
+        """Return a write-trace callback that re-renders a ●/○ dot label.
+
+        Guarded against widget destruction: if *label* has been destroyed while
+        *var* lives on (e.g. the stats tab rebuilds its children), the callback is
+        a no-op instead of raising ``TclError``.  Only the text is touched —
+        foreground is left to external managers (disable / grey-out logic).
+        """
+        def _cb(*_) -> None:
+            try:
+                if label.winfo_exists():
+                    label.configure(text="●" if var.get() else "○")
+            except tk.TclError:
+                pass
+        return _cb
+
+    def _make_dot(
+        self, parent: ttk.Frame, var: BooleanVar,
+        *, command: Callable | None = None, **label_kwargs,
+    ) -> ttk.Label:
+        """Create a ●/○ label bound to *var* via a guarded trace.
+
+        *command* is bound to ``<Button-1>`` when given.  Extra keyword args are
+        forwarded to ``ttk.Label`` (``style`` and ``cursor`` default to the
+        clickable-dot look).
+        """
+        label_kwargs.setdefault("style", "S.TLabel")
+        label_kwargs.setdefault("cursor", "hand2")
+        lbl = ttk.Label(parent, text="●" if var.get() else "○", **label_kwargs)
+        var.trace_add("write", self._dot_trace(lbl, var))
+        if command is not None:
+            lbl.bind("<Button-1>", command)
+        return lbl
+
     # ── Dot toggle ────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -73,7 +110,7 @@ class BaseInterface(ttk.Frame, LocaleWidgetsMixin):
             if command:
                 command()
 
-        var.trace_add("write", lambda *_: dot.configure(text="●" if var.get() else "○"))
+        var.trace_add("write", BaseInterface._dot_trace(dot, var))
         dot.bind("<Button-1>", _toggle)
         lbl.bind("<Button-1>", _toggle)
 
